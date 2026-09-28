@@ -1,6 +1,6 @@
 # ∞ Infinite jungle
 
-An endlessly scrolling isometric pixel-art jungle. Dense forest dominates, broken by small lakes, occasional meadows, dry clearings and hills. Small deer families graze and move together with their fawns; toucans flock between trees, orangutans climb, and solitary jaguars sometimes run or give chase. Monkeys forage, climb and rest, with occasional short swings on visible vines; wolf packs with occasional cubs and catch-up runs, giraffes and elephant families gather near water, fill their trunks, drink and occasionally splash their neighbors. Splashed animals turn away or retreat. Macaws, parakeets and kingfishers brighten the canopy, while gulls, fish schools and occasional whales inhabit the shores and water. Coherent, mostly upright stands mix 22 tree forms, young and mature growth, ten understory forms and gently swaying procedural vines; leaves, water and drifting lights respond to their environment.
+An endlessly scrolling isometric pixel-art jungle.
 
 Built in TypeScript with **no runtime dependencies**, using WebGL, Canvas fallback and a real headless RGBA renderer. Independent agent classes and bounded procedural-world libraries sit alongside the reusable isometric components. Everything runs as a static site.
 
