@@ -1,0 +1,33 @@
+{
+  "name": "jungle",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A living isometric pixel-art jungle and a reusable, headless-first renderer.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "npm run assets && npm run typecheck && node scripts/build.mjs",
+    "dev": "npm run build && node scripts/serve.mjs",
+    "serve": "node scripts/serve.mjs",
+    "assets": "tsx scripts/prepare-assets.ts",
+    "assets:preview": "tsx scripts/art/preview-deer.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "snapshot": "tsx scripts/snapshot.ts",
+    "check": "npm run build && npm test && npm run snapshot",
+    "benchmark": "tsx scripts/benchmark.ts",
+    "audio:preview": "tsx scripts/audio-preview.ts",
+    "plants:preview": "tsx scripts/art/preview-plants.ts",
+    "motion:preview": "tsx scripts/motion-preview.ts",
+    "elephants:preview": "tsx scripts/elephant-preview.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.25.0",
+    "sharp": "^0.34.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
+}

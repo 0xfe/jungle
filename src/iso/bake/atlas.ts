@@ -1,0 +1,71 @@
+import { createHash } from 'node:crypto';
+import type { PixelImage, Region } from '../render';
+/** Build-only sprite input. Anchors are measured in the untrimmed logical canvas. */
+export interface BakeSprite { id: string; frames: PixelImage[]; anchor: [number, number]; trim?: boolean }
+export interface PackedAtlas {
+  image: PixelImage;
+  manifest: { version: number; width: number; height: number;
+    sprites: Record<string, { width: number; height: number; anchor: [number, number]; frames: Region[] }>;
+    stats: { frames: number; uniqueFrames: number; rgbaBytes: number; occupiedPixels: number } };
+}
+
+/** Union trim an entire clip: its anchor never jumps between animation frames. */
+export function trimClip(sprite: BakeSprite): BakeSprite {
+  const first = sprite.frames[0]; if (!first) throw new Error(`${sprite.id}: empty clip`);
+  let left = first.width, top = first.height, right = -1, bottom = -1;
+  for (const frame of sprite.frames) {
+    if (frame.width !== first.width || frame.height !== first.height) throw new Error(`${sprite.id}: inconsistent frame size`);
+    for (let y = 0; y < frame.height; y++) for (let x = 0; x < frame.width; x++) if (frame.data[(y * frame.width + x) * 4 + 3]) {
+      left = Math.min(left, x); right = Math.max(right, x); top = Math.min(top, y); bottom = Math.max(bottom, y);
+    }
+  }
+  if (right < 0) throw new Error(`${sprite.id}: empty pixels`);
+  if (sprite.trim === false) return sprite;
+  const width = right - left + 1, height = bottom - top + 1;
+  return { ...sprite, anchor: [sprite.anchor[0] - left, sprite.anchor[1] - top], frames: sprite.frames.map(frame => {
+    const data = new Uint8Array(width * height * 4);
+    for (let y = 0; y < height; y++) data.set(frame.data.subarray(((y + top) * frame.width + left) * 4, ((y + top) * frame.width + left + width) * 4), y * width * 4);
+    return { width, height, data };
+  }) };
+}
+
+/** Deterministic shelf packer, two-pixel gutters, exact RGBA frame deduplication. */
+export function packAtlas(inputs: BakeSprite[], width = 2048, maxHeight = 2048): PackedAtlas {
+  const sprites = inputs.map(trimClip);
+  const unique = new Map<string, { image: PixelImage; region: Region }>();
+  const keys = new Map<string, string[]>();
+  for (const s of sprites) {
+    if (keys.has(s.id)) throw new Error(`Duplicate sprite ID: ${s.id}`);
+    keys.set(s.id, s.frames.map(image => {
+      const hash = `${image.width}x${image.height}:${createHash('sha256').update(image.data).digest('hex')}`;
+      if (!unique.has(hash)) unique.set(hash, { image, region: { x: 0, y: 0, width: image.width, height: image.height } });
+      return hash;
+    }));
+  }
+  const ordered = [...unique.values()].sort((a, b) => b.image.height - a.image.height || b.image.width - a.image.width);
+  const shelves:{x:number;y:number;height:number}[]=[];
+  let bottom=2,occupiedPixels=1;
+  for(const {image,region} of ordered){
+    if(image.width+4>width)throw new Error('Sprite exceeds atlas width');
+    // Reuse remaining row space before opening a new shelf. Stable height/width
+    // ordering and first-match ties keep the content-addressed build deterministic.
+    let shelf:typeof shelves[number]|undefined,best=Infinity;
+    for(const row of shelves){
+      const remaining=width-row.x-image.width-2;
+      if(row.height>=image.height&&remaining>=0&&remaining<best){shelf=row;best=remaining;}
+    }
+    if(!shelf){shelf={x:2,y:bottom,height:image.height};shelves.push(shelf);bottom+=image.height+2;}
+    region.x=shelf.x;region.y=shelf.y;shelf.x+=image.width+2;
+    occupiedPixels+=image.width*image.height;
+  }
+  const height=Math.ceil(bottom/4)*4;
+  if (height > maxHeight) throw new Error(`Atlas requires ${width} × ${height}; budget is ${width} × ${maxHeight}. Split pages or review frames.`);
+  const data = new Uint8Array(width * height * 4); data.fill(255, 0, 4);
+  for (const { image, region } of ordered) for (let row = 0; row < image.height; row++)
+    data.set(image.data.subarray(row * image.width * 4, (row + 1) * image.width * 4), ((region.y + row) * width + region.x) * 4);
+  const manifest: PackedAtlas['manifest'] = { version: 2, width, height, sprites: {},
+    stats: { frames: sprites.reduce((n, s) => n + s.frames.length, 0), uniqueFrames: unique.size, rgbaBytes: data.length, occupiedPixels } };
+  for (const s of sprites) manifest.sprites[s.id] = { width: s.frames[0]!.width, height: s.frames[0]!.height, anchor: s.anchor,
+    frames: keys.get(s.id)!.map(key => unique.get(key)!.region) };
+  return { image: { width, height, data }, manifest };
+}
