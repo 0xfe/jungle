@@ -1,4 +1,5 @@
 import { patchRoots, isGrove, isGroundPatch } from './patches';
+import { crownBands, rustleWeight } from './landscape-wind';
 import { CONFIG } from '../config';
 import { LandscapePatchAgent } from './agents/patch';
 import { SNAKE_MODEL_TO_TILE, SNAKE_SUPPORT_OFFSET } from './snake-pose';
@@ -88,7 +89,7 @@ function prepareTerrain(tile: TerrainTile, atlas: AtlasManifest, seed: number): 
   const shade = 255;
   const result = { atlas, surfaces, bounds: quadBounds(corners), corners, shade }; terrainCache.set(tile, result); return result;
 }
-export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view: InfiniteView, alpha = 1): Frame {
+export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view: InfiniteView, alpha = 1, windDetail = 1): Frame {
   const scale = cameraScale(view), commands: DrawCommand[] = [], rendered: TerrainTile[] = [];
   const time = lerp(world.previousTime, world.time, alpha);
   const screen = (x: number, y: number, height = world.heightAt(x, y)): Vec2 => {
@@ -178,23 +179,46 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
           const offset=root?project(root,TILE):{x:0,y:0};
           const ground=underlay||isGroundPatch(style)||(isGrove(style)&&part===3);
           const cycle=(phase+part*1.73)*Math.PI*2/CONFIG.world.patches.windPeriod;
-          const lean=(ground?(style==='water'?CONFIG.world.patches.sway*.25:0):CONFIG.world.patches.sway)*(Math.sin(cycle)+.22*Math.sin(cycle*1.71));
-          for(const foliage of [false,true]){
-            const name=`patch-${style}-${piece.variant}-${part}-${foliage?'leaves':'base'}`,s=atlas.sprites[name];
+          const breeze=Math.sin(cycle)+.28*Math.sin(cycle*.63+piece.x*.2+piece.y*.14);
+          const lean=(ground?(style==='water'?CONFIG.world.patches.sway*.25:0):CONFIG.world.patches.sway)*breeze;
+          const weight=root?rustleWeight(hash(index,part,Math.floor(piece.phase*1e6)),CONFIG.world.patches.rustleCoverage,windDetail):0;
+          const flutter=weight*CONFIG.world.patches.rustlePixels*(Math.sin(cycle*3.1)+.3*Math.sin(cycle*5.3));
+          // Ground masks share the lowest visible foliage row as their stem base.
+          // This moves flower heads with stems, while the soil mask stays still.
+          const leaves=atlas.sprites[`patch-${style}-${piece.variant}-${part}-leaves`];
+          if(!leaves)throw new Error(`Missing landscape foliage: ${style}/${piece.variant}/${part}`);
+          const groundFoot=leaves.height-leaves.anchor[1];
+          // A flower carpet is wide, so ordinary plant shear exaggerates its
+          // motion. Bound travel in pixels and use a slower, gentler breeze.
+          // The grass fringe follows the same calm rhythm instead of sliding
+          // visibly behind the flowers. Trees keep their existing wind.
+          const flowerBed=piece.style==='flowers';
+          const petals=style==='flowers'?atlas.sprites[`patch-${style}-${piece.variant}-${part}-petals`]:undefined;
+          const flowerHeight=Math.max(1,leaves.height,(petals?.anchor[1]??0)+groundFoot);
+          const flowerCycle=phase*Math.PI*2/CONFIG.world.patches.flowerWindPeriod;
+          const flowerLean=CONFIG.world.patches.flowerSwayPixels/flowerHeight*(.8*Math.sin(flowerCycle)+.2*Math.sin(flowerCycle*.61));
+          for(const mask of (style==='flowers'?['base','leaves','petals']:['base','leaves'])){
+            const foliage=mask==='leaves';
+            const name=`patch-${style}-${piece.variant}-${part}-${mask}`,s=atlas.sprites[name];
             if(!s)throw new Error(`Missing landscape patch mask: ${name}`);
             const z=scale*size;
             // Both masks share one continuous transform about this tree's actual
             // foot, even though their independently trimmed rectangles differ.
-            const corners=lean?rootedQuad({x:point.x+offset.x*z,y:point.y+offset.y*z+correction},s.width,s.height,
-              [s.anchor[0]+offset.x,s.anchor[1]+offset.y],z,z,lean):undefined;
+            const groundMotion=ground&&style!=='water'&&((foliage)||(mask==='petals'));
+            const motion=groundMotion?(flowerBed?flowerLean:CONFIG.world.patches.groundSway*breeze*(style==='grass'?.5:style==='mud'?.35:1)):lean;
+            const foot=groundMotion?groundFoot:offset.y;
+            const corners=(motion||root)?rootedQuad({x:point.x+offset.x*z,y:point.y+foot*z+correction},s.width,s.height,
+              [s.anchor[0]+offset.x,s.anchor[1]+foot],z,z,motion):undefined;
             const box=corners?quadBounds(corners):{x:point.x-s.anchor[0]*z,y:point.y-s.anchor[1]*z+correction,width:s.width*z,height:s.height*z};
             if(!visible(box,view.width,view.height))continue;
             const tint=CONFIG.world.patches.foliage[piece.tint]!;
             // Registered soil is translucent; connected ground cover supplies the
             // border instead of an opaque little diamond around every tree group.
             const alpha=opacity*(!foliage&&ground&&style!=='water'&&style!=='flowers'&&style!=='mud'?.38:1);
-            commands.push({...box,corners,id:`${a.id}:${index}:${style}:${part}:${foliage?'leaves':'base'}`,region:s.frames[0],
-              color:foliage?[tint[0],tint[1],tint[2],Math.round(alpha*255)]:[255,255,255,Math.round(alpha*255)],layer:ground?(style==='water'?.9:.6):2,depth:rx+ry});
+            const command:DrawCommand={...box,corners,id:`${a.id}:${index}:${style}:${part}:${mask}`,region:s.frames[0],
+              color:foliage?[tint[0],tint[1],tint[2],Math.round(alpha*255)]:[255,255,255,Math.round(alpha*255)],layer:underlay?.55:ground?(style==='water'?.9:.6):2,depth:rx+ry};
+            if(root&&weight>0)commands.push(...crownBands(command,s.anchor[1]+offset.y,s.height,z,flutter));
+            else commands.push(command);
           }
         };
         // A wide, porous grass fringe joins compatible neighboring artwork. It is

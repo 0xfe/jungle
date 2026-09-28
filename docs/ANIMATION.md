@@ -126,3 +126,6 @@ Study 15 adds shared multi-tile landscape groups, tint masks and static trunk te
 Compound landscape wind now uses continuous root-anchored shear at presentation cadence. One registered pose replaces the former four-pose, two-FPS loop; paired wood/leaf masks stay aligned, every trunk foot remains fixed, and water plants sway gently. Legacy finite-fixture foliage retains its existing 32-frame loops. See [landscape groups](LANDSCAPE-PATCHES.md).
 
 Recurring colorful regions, canopy population/perch changes, new generated source provenance and black bear type 58 behavior/rig/codecs are documented in [regional variety](REGIONAL-VARIETY.md). Current world/agent schemas are **15/12**.
+
+
+Compound ground foliage and flower petals now sway above stationary soil; stronger broad tree motion accompanies optional crown ripples. Base and foliage bands share root-relative registration and contiguous atlas rows. Load feedback changes only ripple coverage, preserving the broad breeze and fixed simulation cadence. See [landscape motion and its limits](LANDSCAPE-PATCHES.md#lively-ground-and-adaptive-crown-detail).

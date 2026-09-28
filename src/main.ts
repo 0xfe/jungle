@@ -1,4 +1,8 @@
-import { mobileDevice } from './platform';
+import { mobileDevice, startupSeed } from './platform';
+import { AnimationBudget } from './iso/animation-budget';
+import atlasManifestUrl from '../public/assets/jungle.json?url';
+import atlasImageUrl from '../public/assets/jungle.png?url';
+import elephantAudioUrl from '../public/assets/audio/elephant-trumpet.wav?url';
 import { decodePcmWav, type SoundBuffer } from './audio';
 import { CONFIG } from './config';
 import { DEFAULT_SETTINGS, normalizeSettings, type WorldSettings } from './jungle/settings';
@@ -20,7 +24,10 @@ import { type AtlasManifest } from './jungle/scene';
 
 const el = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const params = new URLSearchParams(location.search);
-const initialSeed = Number(params.get('seed') ?? CONFIG.startup.seed) >>> 0;
+// Choose entropy once at the browser boundary; world generation stays deterministic.
+const initialSeed = startupSeed(params.get('seed'), () => CONFIG.startup.randomizeSeed
+  ? crypto.getRandomValues(new Uint32Array(1))[0]!
+  : CONFIG.startup.seed);
 let settings=normalizeSettings();
 let world = new InfiniteWorld(initialSeed,CONFIG.startup.habitat,undefined,settings);
 const recordings:Partial<Record<'elephant',SoundBuffer>>={};
@@ -191,8 +198,8 @@ function bindCanvas(): void {
   canvas.addEventListener('wheel', e => { e.preventDefault(); pauseDrift(); zoom(e.deltaY > 0 ? -CONFIG.camera.wheelZoomStep : CONFIG.camera.wheelZoomStep); }, { passive: false });
 }
 async function loadAtlas(): Promise<PixelImage> {
-  const response = await fetch('./assets/jungle.json'); if (!response.ok) throw new Error('Cannot load sprite manifest'); atlas = await response.json() as AtlasManifest;
-  const image = new Image(); image.src = './assets/jungle.png'; await image.decode();
+  const response = await fetch(new URL(atlasManifestUrl, import.meta.url)); if (!response.ok) throw new Error('Cannot load sprite manifest'); atlas = await response.json() as AtlasManifest;
+  const image = new Image(); image.src = new URL(atlasImageUrl, import.meta.url).href; await image.decode();
   const surface = document.createElement('canvas'); surface.width = image.width; surface.height = image.height;
   const ctx = surface.getContext('2d', { willReadFrequently: true })!; ctx.drawImage(image, 0, 0);
   return { width: image.width, height: image.height, data: new Uint8Array(ctx.getImageData(0, 0, image.width, image.height).data) };
@@ -206,6 +213,7 @@ function resize(): void {
 const resizeObserver = new ResizeObserver(resize); resizeObserver.observe(el('stage')); resize();
 const stageSamples = Array.from({length:4},()=>new Float64Array(CONFIG.interface.statsSamples));
 const cpuSamples = new Float64Array(CONFIG.interface.statsSamples); let sampleCursor = 0, sampleCount = 0;
+const animationBudget = new AnimationBudget(CONFIG.rendering.animationBudget);
 function loop(now: number): void {
   const cpuStart = performance.now();
   const elapsed = last ? (now - last) / 1000 : 0;
@@ -224,10 +232,11 @@ function loop(now: number): void {
   const streamed = performance.now();
   if (!paused && !document.hidden) clock.advance(dt, step => world.update(step));
   const simulated = performance.now();
-  const frame = composeInfinite(world, atlas, view, clock.alpha);
+  const frame = composeInfinite(world, atlas, view, clock.alpha, animationBudget.detail);
   const composed = performance.now();
   renderer.render(frame);
   const submitted = performance.now();
+  if (!paused && !document.hidden) animationBudget.record(submitted - cpuStart, elapsed);
   [streamed-cpuStart, simulated-streamed, composed-simulated, submitted-composed].forEach((value,i)=>stageSamples[i]![sampleCursor%CONFIG.interface.statsSamples]=value);
   audioElapsed+=dt;if(audioElapsed>=CONFIG.audio.updateInterval){updateAudio(audioElapsed);audioElapsed=0;}
   cpuSamples[sampleCursor++ % cpuSamples.length] = performance.now() - cpuStart; sampleCount = Math.min(sampleCount + 1, cpuSamples.length);
@@ -251,7 +260,7 @@ function updateStats(quads: number): void {
 async function start(): Promise<void> {
   const pixels = await loadAtlas();
   if(CONFIG.audio.sounds.elephant.enabled){
-    const response=await fetch('./assets/audio/elephant-trumpet.wav');
+    const response=await fetch(new URL(elephantAudioUrl,import.meta.url));
     if(!response.ok)throw new Error('Cannot load elephant recording; run npm run build');
     recordings.elephant=decodePcmWav(new Uint8Array(await response.arrayBuffer()));
   }

@@ -14,7 +14,7 @@
     "assets": "tsx scripts/prepare-assets.ts",
     "assets:preview": "tsx scripts/art/preview-deer.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test tests/*.test.ts",
+    "test": "tsx --test tests/*.test.ts tests/*.test.mjs",
     "snapshot": "tsx scripts/snapshot.ts",
     "check": "npm run build && npm test && npm run snapshot",
     "benchmark": "tsx scripts/benchmark.ts",
@@ -24,7 +24,12 @@
     "snakes:preview": "tsx scripts/snake-preview.ts",
     "rivers:preview": "tsx scripts/river-preview.ts",
     "elephants:preview": "tsx scripts/elephant-preview.ts",
-    "patches:preview": "tsx scripts/patch-preview.ts"
+    "patches:preview": "tsx scripts/patch-preview.ts",
+    "build:verify": "node scripts/verify-build.mjs",
+    "upload": "bash upload.sh",
+    "upload:dev": "bash upload.sh dev",
+    "upload:prod": "bash upload.sh prod",
+    "serve:cached": "node scripts/serve.mjs --cache"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

@@ -111,14 +111,18 @@ test('compound wind moves between simulation ticks with fixed, registered trunk 
  for(const alpha of [0,.25,.5,.75,1]){
   const frame=composeInfinite(w,atlas,view,alpha);
   for(let part=0;part<3;part++)for(const mask of ['base','leaves']){
-   const c=frame.commands.find(c=>c.id===`${group.id}:${index}:grove:${part}:${mask}`)!;
+   const id=`${group.id}:${index}:grove:${part}:${mask}`;
+   const bands=frame.commands.filter(c=>c.id===id||c.id.startsWith(`${id}:wind`));
+   const c=bands.reduce((a,b)=>a.region!.y>b.region!.y?a:b);
    const s=atlas.sprites[`patch-grove-${piece.variant}-${part}-${mask}`],root=patchRoots(piece.variant)[part]!;
-   const u=(s.anchor[0]+(root.x-root.y)*96)/s.width,v=(s.anchor[1]+(root.x+root.y)*48)/s.height;
+   const u=(s.anchor[0]+(root.x-root.y)*96)/s.width;
+   const row=(s.anchor[1]+(root.x+root.y)*48)*s.frames[0].height/s.height;
+   const v=(row-(c.region!.y-s.frames[0].y))/c.region!.height;
    const q=c.corners!;assert.ok(q);
    const foot={x:q[0].x+u*(q[1].x-q[0].x)+v*(q[2].x-q[0].x),y:q[0].y+u*(q[1].y-q[0].y)+v*(q[2].y-q[0].y)};
    const old=feet.get(`${part}`);if(old){assert.ok(Math.abs(old.x-foot.x)<1e-9);assert.ok(Math.abs(old.y-foot.y)<1e-9);}else feet.set(`${part}`,foot);
-   assert.deepEqual(c.region,s.frames[0]);
-   if(part===0&&mask==='leaves')tops.push(q[0].x);
+   assert.equal(bands.reduce((sum,b)=>sum+b.region!.height,0),s.frames[0].height);
+   if(part===0&&mask==='leaves')tops.push(bands[0]!.corners![0].x);
   }
  }
  assert.equal(new Set(tops).size,5,'presentation must change between fixed ticks');

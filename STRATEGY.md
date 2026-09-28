@@ -154,3 +154,7 @@ These are compound sprites assembled from shared generated art, not unique baked
 ## Recurring variety and bear families
 
 Implemented: independent world-space open, flower, fruit and wet-region fields continue beyond the seed-anchored opening. Sixteen new retained ImageGen variants provide colorful groves, fruit/vines, wildflower carpets and muddy gaps inside compound arrangements. Canopy bird candidates are increased, crown perches are registered per trunk, and ecological placement uses per-species RNG. Type 58 black bears forage alone or in mother–cub families, with waiting/following behavior and an authored directional rig. World/agent schemas are 15/12; the single atlas remains below 64 MiB. Sleeping agents resume, expired populations regenerate; migration, persistent ecology, bear reproduction and hibernation remain future work. See [regional variety](docs/REGIONAL-VARIETY.md).
+
+## Liveliness after landscape consolidation
+
+Implemented: stronger continuous tree sway, registered crown ripples on a bounded subset, moving flower heads/stems and grass above stationary soil. CPU feedback gradually reduces optional ripples under load; all broad breeze motion remains. Rendering uses available animation callbacks, while simulation retains fixed 60 Hz and interpolation. No per-leaf simulation, new texture pages, changing plant populations or schema changes are involved. GPU-based budgeting and asynchronous chunk generation remain future work. See [landscape motion](docs/LANDSCAPE-PATCHES.md).

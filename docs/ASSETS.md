@@ -143,3 +143,6 @@ Five woodland/river rigs and the denser packing contract are documented in [RIVE
 Study 15 adds shared multi-tile landscape groups, tint masks and static trunk templates. Current world/agent schemas are **15/12**; see [landscape groups](LANDSCAPE-PATCHES.md) for source provenance, animation, navigation and memory details.
 
 Recurring colorful regions, canopy population/perch changes, new generated source provenance and black bear type 58 behavior/rig/codecs are documented in [regional variety](REGIONAL-VARIETY.md). Current world/agent schemas are **15/12**.
+
+
+The landscape wind pass separates four original flower-carpet petal masks from the existing neutral base. No new generated source is needed: the exact original artwork/prompts remain retained. Petals keep source RGB, stems retain tint masks, and soil stays stationary. Runtime crown bands reuse atlas subregions. The rebuilt atlas has 11,589 logical / 9,844 unique frames at 4096×4064 (63.50 MiB decoded), within the existing budget. The existing landscape-baker fingerprint covers this mask change.

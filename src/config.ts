@@ -10,7 +10,9 @@ import type { SoundTuning } from './audio/synthesis';
  */
 export const CONFIG = {
   startup: {
-    /** Procedural world seed; a ?seed= URL parameter takes precedence. */
+    /** Choose a fresh browser seed on each load unless ?seed= supplies an integer. */
+    randomizeSeed: true,
+    /** Deterministic headless default; browser fallback when randomizeSeed is false. */
     seed: 2718,
     /** Initial vegetation preset: rainforest, flowering or wetland. */
     habitat: 'rainforest' as Habitat,
@@ -105,8 +107,18 @@ export const CONFIG = {
       /** Canopy reduction at the heart of occasional grassy glades, from 0 to 1. */
       clearingAmount: .9,
       /** Rooted shear amplitude (screen units per unit height) and wind cycle seconds. */
-      sway: .012,
+      sway: .026,
       windPeriod: 5,
+      /** Maximum fraction of tree crowns with extra local rustling (all trees sway). */
+      rustleCoverage: .45,
+      /** Additional crown displacement in logical pixels; no new sprite frames. */
+      rustlePixels: 1.6,
+      /** Low foliage bends around its lower edge; soil stays still. */
+      groundSway: .045,
+      /** Flower beds and their grass fringe: maximum tip travel in logical pixels. */
+      flowerSwayPixels: .75,
+      /** Slow flower breeze cycle in seconds, independent of tree wind. */
+      flowerWindPeriod: 9,
       /** RGB foliage palettes multiply a luminance mask; wood/soil retain their color.
        * Change these to red/brown for seasonal leaves; there are only three shared tints. */
       foliage: [[110,184,49],[96,166,48],[128,192,60]] as readonly (readonly [number,number,number])[],
@@ -192,6 +204,8 @@ export const CONFIG = {
     canvasTintEntries: 512,
     /** Accounted byte limit for cached tinted Canvas sprites. */
     canvasTintBytes: 8 * 1024 * 1024,
+    /** Optional crown detail fades under CPU load; complete scenes still render at rAF cadence. */
+    animationBudget: { targetMs: 14, minimum: .3, responseSeconds: 1.5 },
   },
   interface: {
     /** Delay after moving a world slider before rebuilding the landscape, milliseconds. */
@@ -295,6 +309,9 @@ export function validateConfig(c:typeof CONFIG=CONFIG):void {
   require(c.world.opening.plants<=1&&c.world.opening.animals<=1,'opening density fractions must be <=1');
   require(c.world.regions.scale>0&&c.world.regions.openCanopy<=1&&c.world.population.bearFamilyChance<=1,'regions need a positive scale and canopy/family fractions <=1');
   require(c.world.patches.clearingScale>0&&c.world.patches.clearingAmount<=1&&c.world.patches.windPeriod>0,'patches need positive clearingScale/windPeriod and clearingAmount <=1');
+  require(c.world.patches.rustleCoverage<=1,'patch rustleCoverage must be <=1');
+  require(c.world.patches.flowerWindPeriod>0,'flowerWindPeriod must be positive');
+  require(c.rendering.animationBudget.targetMs>0&&c.rendering.animationBudget.minimum<=1&&c.rendering.animationBudget.responseSeconds>0,'animation budget needs positive timing and minimum <=1');
   for(const n of [c.interface.statsSamples,c.world.maxActiveChunks,c.world.cache.maxEntries,c.audio.maxVoices,c.audio.maxEmitters,c.audio.maxEvents])require(Number.isInteger(n)&&n>0,'sample, chunk and voice limits must be positive integers');
   require(c.world.maxActiveChunks<=c.world.cache.maxEntries,'maxActiveChunks must fit cache.maxEntries');
   for(const n of [c.audio.updateInterval,c.audio.radius,c.audio.canopyTrees,c.interface.statsInterval,c.rendering.canvasPixelRatio,c.rendering.webglPixelRatio])require(n>0,'update intervals, radii and pixel ratios must be positive');

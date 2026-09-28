@@ -8,6 +8,7 @@ import {project} from '../src/iso/math';
 import {TILE} from '../src/jungle/world';
 import {InfiniteWorld} from '../src/jungle/infinite';
 import {cameraBounds,composeInfinite} from '../src/jungle/infinite-scene';
+import {LandscapePatchAgent} from '../src/jungle/agents/patch';
 const atlas:AtlasManifest=JSON.parse(await readFile('public/assets/jungle.json','utf8'));
 const pixels=await sharp('public/assets/jungle.png').ensureAlpha().raw().toBuffer({resolveWithObject:true});
 const renderer=new MemoryRenderer({width:pixels.info.width,height:pixels.info.height,data:pixels.data});
@@ -15,7 +16,7 @@ const renderer=new MemoryRenderer({width:pixels.info.width,height:pixels.info.he
  const commands:DrawCommand[]=[];
  for(const [row,style] of PATCH_KINDS.entries())for(let variant=0;variant<4;variant++){
   const ax=200+variant*390,ay=260+row*285;
-  for(let part=0;part<(isGrove(style)?4:1);part++)for(const mask of ['base','leaves']){
+  for(let part=0;part<(isGrove(style)?4:1);part++)for(const mask of (style==='flowers'?['base','leaves','petals']:['base','leaves'])){
    const s=atlas.sprites[`patch-${style}-${variant}-${part}-${mask}`];if(!s)continue;
    const tint=CONFIG.world.patches.foliage[variant%3]!;
    commands.push({id:`${style}:${variant}:${part}:${mask}`,x:ax-s.anchor[0],y:ay-s.anchor[1],width:s.width,height:s.height,region:s.frames[0],color:mask==='leaves'?[...tint,255]:[255,255,255,255],layer:1,depth:part});
@@ -39,6 +40,20 @@ for(const [name,offset] of [['opening',0],['mature',38]] as const){
  }
 }
 console.log('Landscape group contact sheets, roots and opening/mature scenes → artifacts/');
+
+// Isolate motion from camera/animal changes: columns sample the same shared art.
+// Flowers keep their source colors while their soil and each grove's roots hold.
+{
+ const width=380,height=280,world=new InfiniteWorld(2718),panels=[];
+ const view={width,height,pixelRatio:1,zoom:1,grid:false,cameraX:0,cameraY:-.6};
+ for(const [row,style] of (['bloom','flowers','grass'] as const).entries())for(let column=0;column<4;column++){
+  const phase=.2+column*.6;
+  world.agents=[new LandscapePatchAgent('wind-preview',0,0,[{style,variant:0,tint:0,trees:isGrove(style)?7:0,x:0,y:0,scale:.85,opacity:1,phase:0}],phase)];
+  renderer.render(composeInfinite(world,atlas,view));
+  panels.push({input:await sharp(renderer.pixels.data,{raw:{width,height,channels:4}}).png().toBuffer(),left:column*width,top:row*height});
+ }
+ await sharp({create:{width:width*4,height:height*3,channels:4,background:'#587843'}}).composite(panels).png().toFile('artifacts/landscape-wind-strip.png');
+}
 
 // Reproducible stops along a long diagonal journey demonstrate recurring regions.
 for(const [name,x,y] of [['flowers',64,-64],['fruit',112,-112],['open',144,-144],['wet',80,-80]] as const){

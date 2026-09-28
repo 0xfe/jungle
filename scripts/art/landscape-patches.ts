@@ -22,7 +22,8 @@ export async function bakeLandscapePatches():Promise<BakeSprite[]> {
    // faint sub-32 alpha fringe, so resampling does not produce colored rectangles.
    for(let i=0;i<decoded.length;i+=4)if(decoded[i+3]!<32)decoded.fill(0,i,i+4);
    const parts=grove?4:1;
-   for(let part=0;part<parts;part++)for(const foliage of [false,true]){
+   for(let part=0;part<parts;part++)for(const mask of (style==='flowers'?['base','leaves','petals']:['base','leaves'])){
+    const foliage=mask==='leaves';
     const pixels=new Uint8Array(width*height*4),roots=GROVE_ROOTS[variant]!;
     for(let y=0;y<height;y++)for(let x=0;x<width;x++){
      const i=(y*width+x)*4;if(!decoded[i+3])continue;
@@ -35,7 +36,12 @@ export async function bakeLandscapePatches():Promise<BakeSprite[]> {
      }
      const r=decoded[i]!,g=decoded[i+1]!,b=decoded[i+2]!;
      const leaf=g>r*1.06&&g>b*1.15;
-     if(leaf!==foliage)continue;
+     // Colorful flower heads move with their stems; earthy pixels retain a
+     // stationary base. Keep the source colors rather than tinting petals green.
+     const petal=style==='flowers'&&!leaf&&r>110&&(
+      (r>g*1.12&&b>g*.72)||(r>150&&r>g*1.3&&r>b*1.3)||
+      (r>g*.9&&g>100&&g>b*1.8)||Math.min(r,g,b)>165);
+     if(mask!==(leaf?'leaves':petal?'petals':'base'))continue;
      if(foliage){const value=Math.min(255,Math.round(g*255/174));pixels.set([value,value,value,decoded[i+3]!],i);}
      else pixels.set(decoded.subarray(i,i+4),i);
     }
@@ -43,7 +49,7 @@ export async function bakeLandscapePatches():Promise<BakeSprite[]> {
     // Keep one registered pose. Display-time rooted shear supplies smooth wind
     // at any refresh rate, without the former two-poses-per-second pixel jumps.
     const frames=[{width,height,data:pixels}];
-    inputs.push({id:`patch-${style}-${variant}-${part}-${foliage?'leaves':'base'}`,anchor,frames});
+    inputs.push({id:`patch-${style}-${variant}-${part}-${mask}`,anchor,frames});
    }
   }
  }

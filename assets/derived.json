@@ -1,6 +1,6 @@
 {
   "pipeline": 6,
-  "fingerprint": "076671a6cccbadf03950efd1ce9ba2779453e360d18685b7c743bddb37ce96bf",
+  "fingerprint": "19b99009afbd6b31214ab5e6c18170d323772c984ad39dbb0d46f5f19d8420b2",
   "sources": {
     "scripts/art/black-bear-model.ts": "346a2ef95a5b6f3762d64d4de1b3da9d566a430884d94e595d396055c6a1a9a6",
     "src/jungle/agents/black-bear.ts": "5797e3d9b8e0c8c58312730433e8267baa5a3a939a31c412194fc8126cc1f0f0",
@@ -8,7 +8,7 @@
     "assets/source/landscape-color-groves.png": "688147a735c7875eaebd62336f18ca69e3857985d33d9777247746f00870508b",
     "assets/source/landscape-color-ground.png": "49274d1bc553ff3e485f6594fcdaf46eb71bb68014d3793bba3206f28adfb48e",
     "assets/variety-prompts.json": "8daa0a2a288b85c01fa183e0c66ec179796c7a8161b280464fea8d6888e41f89",
-    "scripts/art/landscape-patches.ts": "39222f75bad202171b215891e2a0f256253241ed1bc7efa3ab7f4de472fd54c0",
+    "scripts/art/landscape-patches.ts": "8fec0551b062fd7bf737dff58bf7efc9c1caf545e16a6a2080c7f5f5ed647209",
     "src/jungle/patches.ts": "085dbf57dabe879c79816e98f76e45046a0a365ba350d1889262629bfecb3795",
     "src/jungle/geometry.ts": "d48165376fa11893691cd6383a5944312d74db4bcf1ece4dca936bbc851e6688",
     "assets/source/landscape-groves.png": "7e4049aea5ca7946de98e5a119799acf12093480450da10498d05bae17db70ec",
@@ -58,8 +58,8 @@
     "assets/source/plants.png": "5d3ed79bf3dc8f41965560a67c01a884ff7fefb81ba2133de884e3e1129752af",
     "package-lock.json": "d29825da6fa7d8bae4afa0e1fd29f4a3cb0c77740895f2fcd7c39cb2c9ce1115"
   },
-  "atlas": "7eb9bad7bddca1dcbccf95a6a28fcef098424885fc6c77fe690f366c1cb1123b",
-  "manifest": "71b98281b38b4b59596c35c50fd6ee643007aea8b839ff8f79bb6005aae8c6d2",
+  "atlas": "00ad8aec4a538829e89fc0d83e94d7d39da34c9b714b4cc0cb16f17b92db21e7",
+  "manifest": "c6212ab9626594883b6dce611b7cb189c98a43cd686c9d52fed37c6bf6e8c9d0",
   "model": "0d0cd2882702f54381c800ec39e3213e6068ee8bbd18c075fb93c29856df3d3d",
   "models": {
     "toucan": "bb6af94ed9486cfc6aa0a018fa94f7727091e63f59819570abe12b80b3d2f57f",
@@ -85,12 +85,12 @@
     "blackBear": "dbead30013814ab4b53d4e1efc919e8315cf1af1caf8c45d90c5768ab971dc14"
   },
   "stats": {
-    "frames": 11585,
-    "uniqueFrames": 9840,
-    "rgbaBytes": 66519040,
-    "occupiedPixels": 15311716,
-    "pngBytes": 3205849,
+    "frames": 11589,
+    "uniqueFrames": 9844,
+    "rgbaBytes": 66584576,
+    "occupiedPixels": 15334493,
+    "pngBytes": 3216456,
     "width": 4096,
-    "height": 4060
+    "height": 4064
   }
 }

@@ -4,7 +4,7 @@ Edit **[`src/config.ts`](../src/config.ts)**, run `npm run build`, then refresh 
 
 | Group | What to change |
 | --- | --- |
-| `startup` | Seed, preset, weather, pause/reduced-motion handling, initial menu visibility and regrowth seed increment |
+| `startup` | Randomize seed on browser load, deterministic fallback seed, preset, weather, pause/reduced-motion handling, initial menu visibility and regrowth seed increment |
 | `camera` | Initial/min/max zoom, zoom steps, automatic drift and its idle resume delay, keyboard speeds, easing and grid overlay |
 | `world.settings` / `limits` | Landscape/animal slider defaults and maximum values |
 | `world.opening` | Sparse-start plant/animal fractions and transition radii |
@@ -17,6 +17,10 @@ Edit **[`src/config.ts`](../src/config.ts)**, run `npm run build`, then refresh 
 | `audio` | Desktop/mobile initial enabled states, mix levels, proximity, polyphony, call timing/pitch ranges, fades, PCM rate/seed and individual sounds |
 
 A URL seed/position override still takes precedence, and `?renderer=canvas` can force Canvas. Sliders and keyboard controls override defaults for the current page only. Resetting world settings restores `CONFIG.world.settings`. Home restores configured zoom/drift at the seeded opening. `camera.driftResumeSeconds` defaults to 3: navigation delays drift without overriding P or Pause. Pinch zoom shares the same zoom bounds as buttons and the wheel. The config is build-time source, not a live settings store.
+
+## Startup seeds
+
+Browser loads choose a fresh unsigned 32-bit seed using Web Crypto by default. A valid integer `?seed=` overrides this choice (including `0`); empty, fractional or invalid values use the configured startup policy. Explicit integers retain unsigned 32-bit normalization. Set `startup.randomizeSeed` to `false` to use `startup.seed` on ordinary loads. Headless world constructors retain that deterministic default regardless of the browser policy. Entropy is selected once before world creation; terrain, animals, regrowth and checkpoints still use seeded randomness. Refresh does not save or reuse the previous random seed.
 
 ## Every sound can be tuned
 
@@ -50,3 +54,6 @@ World checkpoints store slider values, but not a copy of this entire source conf
 `world.patches` controls canopy fullness, clearing wavelength (`clearingScale`, tiles), maximum local thinning (`clearingAmount`, 0–1), continuous rooted wind (`sway`, shear amplitude; `windPeriod`, seconds), and three leaf-tint palettes. `audio.mobileEnabled` defaults to false and is only a startup choice; explicit mute/unmute remains authoritative. Arrangement planning follows density/opening and river geometry settings, with temporary bounded terrain probes. Changing generator controls requires a new world, as before. See [landscape groups](LANDSCAPE-PATCHES.md).
 
 `population.canopyBirdBoost` increases colorful flocks in dense cover; `blackBear` and `bearFamilyChance` tune solitary versus mother–cub candidates. Species placement uses independent seeded streams. See [regional variety](REGIONAL-VARIETY.md).
+
+
+Landscape motion uses `world.patches.groundSway` for low foliage, `flowerSwayPixels` and `flowerWindPeriod` for a separate, restrained flower-bed breeze, `sway` for trees, and `rustleCoverage`/`rustlePixels` for optional crown detail. `rendering.animationBudget` averages CPU submission cost with `responseSeconds`, fades crown detail toward `minimum` above `targetMs`, and restores it below 70% of that target. It never changes simulation speed, populations or broad wind. Rendering follows browser animation callbacks rather than a fixed FPS cap; the fixed 60 Hz clock belongs to simulation. See [landscape motion](LANDSCAPE-PATCHES.md).

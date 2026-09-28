@@ -184,3 +184,24 @@ These are fresh measurements, not a controlled before/after speed claim. More wi
 Live browser samples: flowering WebGL at 100% sampled 60 FPS / 5.0 ms CPU p95 with 3,841 quads; 65% sampled 60 FPS / 8.9 ms with 7,787 quads. A dense riverside fruiting Canvas scene sampled 10 FPS / 53.0 ms with 8,508 quads, and a 390×844 Canvas scene sampled 27 FPS / 22.0 ms with 815 quads. Different locations and timing windows are not renderer/device comparisons; Canvas remains a slower fallback, and synchronous generation still causes occasional travel spikes.
 
 Inspected flowering/fruiting/open/wet headless scenes, the new source sheets and bear contact sheets/habitat snapshot, plus actual WebGL/Canvas appearance, 65% zoom, Shift travel, landscape navigation, pause/menu, and mobile-size drag/zoom/guide layout. Physical mobile hardware/pinch was not retested. Full check: 138 passing tests. Population samples, behavioral scope and source provenance are in [regional variety](REGIONAL-VARIETY.md).
+
+## Livelier landscapes with bounded crown detail
+
+The wind pass retains one source pose per mask and adds four small flower-petal masks: 11,589 logical / 9,844 unique frames, 4096×4064, 63.50 MiB decoded and about 3.07 MiB PNG. Full detail adds at most three extra affine bands per selected mask; no agents, simulation updates or atlas copies are added. All trees and ground foliage keep broad breeze motion, while a stable subset of crowns receives optional local ripples.
+
+Rendering was already driven by available requestAnimationFrame callbacks, without a fixed render-rate cap. It continues to submit complete painter-ordered scenes. The fixed 60 Hz clock governs simulation, and interpolation supplies presentation samples. A new CPU-cost average fades optional ripple coverage toward 30% of its configured maximum under sustained load (14 ms target, 1.5-second response), restoring it below 70% of the target. Broad motion and wildlife do not stop. This feedback measures CPU submission, not GPU completion; it cannot guarantee 30 or 60 FPS or eliminate synchronous chunk-generation spikes.
+
+CPU-only benchmark after closing previews and completing checks, at full wind detail:
+
+| Scenario | Agents | Max quads | Sim p95 ms | Compose p95 ms | Stream p95 / max ms |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| forest | 257 | 2017 | 1.001 | 2.500 | 0.005 / 0.021 |
+| outer-forest | 301 | 3319 | 0.973 | 3.089 | 0.003 / 0.007 |
+| wide-rain | 754 | 8281 | 2.717 | 7.197 | 0.005 / 0.082 |
+| travel | 308 | 7514 | 0.680 | 3.919 | 1.655 / 21.849 |
+
+These timings are not a controlled speedup claim. Added quads are the explicit cost of crown bands and separate flower color; agent counts and cache allowances remain unchanged. `artifacts/benchmark.json` contains the full results.
+
+Desktop WebGL in the seed-2718 flowering region sampled 60 FPS / 5.8 ms CPU p95 at 100% (4,293 quads), and 60 FPS / 12.1 ms at 65% after settling (9,061 quads). Canvas showed correct geometry but remained slow: the dense flowering sample was 8–9 FPS / roughly 49–55 ms CPU p95, around 3,950 quads. That Canvas sampling overlapped the headless checks and is not an isolated renderer comparison. The CPU benchmark above was run separately. No minimum-FPS claim is made for Canvas or physical mobile devices.
+
+Inspected the new fixed-camera wind strip and regenerated scenes, live WebGL/Canvas foliage, 65% zoom, Pause/Resume, a 390×844 viewport, drag, Shift-arrow input and landscape navigation. Actual phone hardware and physical pinch were not tested. `npm run check` passes 143 tests, including shared-band registration, root anchoring, stationary soil, petal/stem motion, grass-skirt depth, pause redraws and budget recovery. See [landscape motion](LANDSCAPE-PATCHES.md#lively-ground-and-adaptive-crown-detail).
