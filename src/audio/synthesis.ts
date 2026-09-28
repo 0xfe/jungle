@@ -1,25 +1,73 @@
 /** Pure PCM synthesis: usable in Node, a worker, Web Audio or an offline exporter. */
-export type SoundKind='leaves'|'water'|'rain'|'insects'|'step'|'bird';
+export const BIRD_KINDS=['bird','trill','warble','woodpecker','chatter','gull'] as const;
+export type BirdKind=typeof BIRD_KINDS[number];
+export type SoundKind='leaves'|'water'|'rain'|'insects'|'step'|BirdKind;
+/** Shared controls for every sound; values in src/config.ts are the application's defaults. */
+export interface SoundTuning {
+ /** False removes this sound from playback and the browser's buffer bank. */
+ enabled:boolean;
+ /** Linear volume multiplier (0 silences it, 1 preserves the authored level). */
+ gain:number;
+ /** Playback speed multiplier; changes both pitch and duration (1 is normal). */
+ speed:number;
+ /** Synthesized length in seconds; looping beds must exceed the 0.5-second crossfade. */
+ duration:number;
+ /** Pitch/brightness multiplier independent of clip length; positive, 1 is authored pitch. */
+ pitch:number;
+ /** Internal pulse/gust/modulation speed multiplier; positive, 1 is authored rhythm. */
+ rhythm:number;
+ /** Noise/rasp multiplier; 0 removes noise, 1 preserves it; tonal-only sounds ignore this. */
+ texture:number;
+ /** Bird call-gap multiplier; >1 is less frequent. Also scales step spacing; beds ignore it. */
+ intervalScale:number;
+}
 export interface SoundBuffer { sampleRate:number; channels:Float32Array[]; loop:boolean }
-export function synthesize(kind:SoundKind, sampleRate=24000, seed=123):SoundBuffer {
- const loop=!['step','bird'].includes(kind),seconds=loop?12:kind==='step'?.22:.65;
+export function synthesize(kind:SoundKind, sampleRate=24000, seed=123, tuning:Partial<SoundTuning>={}):SoundBuffer {
+ const loop=['leaves','water','rain','insects'].includes(kind);
+ const durations:Record<string,number>={step:.22,bird:1.25,trill:1.8,warble:2.1,woodpecker:1.4,chatter:1.35,gull:1.7};
+ const seconds=tuning.duration??(loop?11:durations[kind]!),pitch=tuning.pitch??1,rhythm=tuning.rhythm??1,texture=tuning.texture??1;
+ if(!Number.isFinite(seconds)||seconds<=(loop?.5:0)||!Number.isFinite(pitch)||pitch<=0||!Number.isFinite(rhythm)||rhythm<=0||!Number.isFinite(texture)||texture<0)throw new Error(`Invalid sound tuning: ${kind}`);
  const length=Math.round(seconds*sampleRate),channels:Float32Array[]=[];
  for(let channel=0;channel<2;channel++){
   let state=(seed+channel*7591)>>>0,low=0,mid=0,phase=0;
   const samples=new Float32Array(length);
   for(let i=0;i<length;i++){
-   state=(Math.imul(state,1664525)+1013904223)>>>0;const noise=state/2147483648-1,t=i/sampleRate;
-   low+=(noise-low)*.013;mid+=(noise-mid)*.16;
-   const slow=.65+.2*Math.sin(t*Math.PI*2/seconds*3+channel)+.15*Math.sin(t*Math.PI*2/seconds*7);
+   state=(Math.imul(state,1664525)+1013904223)>>>0;const noise=(state/2147483648-1)*texture,t=i/sampleRate,rt=t*rhythm;
+   low+=(noise-low)*Math.min(1,.013*pitch);mid+=(noise-mid)*Math.min(1,.16*pitch);
+   const slow=.65+.2*Math.sin(rt*Math.PI*2/seconds*3+channel)+.15*Math.sin(rt*Math.PI*2/seconds*7);
    let value=0;
    if(kind==='leaves')value=(mid-low)*.7*slow+low*.35;
    if(kind==='water')value=low*1.5*slow+(noise-mid)*.04;
-   if(kind==='rain')value=(mid*.55+noise*.14)*(.8+.2*Math.sin(t*Math.PI*2/seconds*2));
-   if(kind==='insects')value=Math.sin(t*Math.PI*2*3600)*Math.pow(Math.max(0,Math.sin(t*Math.PI*2*2)),12)*.025;
-   if(kind==='step'){const envelope=Math.sin(Math.PI*t/seconds)**2*Math.exp(-t*22);value=(low*4+mid)*envelope;}
+   if(kind==='rain')value=(mid*.55+noise*.14)*(.8+.2*Math.sin(rt*Math.PI*2/seconds*2));
+   if(kind==='insects')value=Math.sin(t*Math.PI*2*3600*pitch)*Math.pow(Math.max(0,Math.sin(rt*Math.PI*2*2)),12)*.025;
+   if(kind==='step'){const envelope=Math.sin(Math.PI*t/seconds)**2*Math.exp(-rt*22);value=(low*4+mid)*envelope;}
+   const envelope=Math.sin(Math.PI*t/seconds)**2;
    if(kind==='bird'){
-    const pulse=Math.max(0,Math.sin(t/seconds*Math.PI*3))**3,envelope=Math.sin(Math.PI*t/seconds)**2;
-    phase+=Math.PI*2*(1700+650*Math.sin(t*17)+channel*12)/sampleRate;value=Math.sin(phase)*pulse*envelope*.18;
+    const syllable=Math.max(0,Math.sin(rt/seconds*Math.PI*5))**2;
+    phase+=Math.PI*2*(1600+850*Math.sin(rt*12)+channel*8)*pitch/sampleRate;
+    value=(Math.sin(phase)+.12*Math.sin(phase*2))*syllable*envelope*.21;
+   }
+   if(kind==='trill'){
+    phase+=Math.PI*2*(2600+380*Math.sin(rt*31)+250*t)*pitch/sampleRate;
+    value=Math.sin(phase)*(.3+.7*Math.max(0,Math.sin(rt*87))) *envelope*.17;
+   }
+   if(kind==='warble'){
+    phase+=Math.PI*2*(1000+380*Math.sin(rt*9)+160*Math.sin(rt*29))*pitch/sampleRate;
+    value=(Math.sin(phase)+.18*Math.sin(phase*2))*(.45+.55*Math.sin(rt*13)**2)*envelope*.21;
+   }
+   if(kind==='woodpecker'){
+    // Accelerating, then relaxing wooden taps; damped resonances plus a noisy attack.
+    const clock=rt*15+1.1*Math.sin(rt*2),tap=clock%1;
+    const decay=Math.exp(-tap*16),attack=Math.min(1,tap*70);
+    value=(Math.sin(t*2*Math.PI*760*pitch)*.28+Math.sin(t*2*Math.PI*1280*pitch)*.12+noise*.24)*decay*attack*envelope;
+   }
+   if(kind==='chatter'){
+    phase+=Math.PI*2*(1250+500*Math.sin(rt*42))*pitch/sampleRate;
+    value=(Math.sin(phase)*.16+(noise-mid)*.09)*Math.max(0,Math.sin(rt*35))**2*envelope;
+   }
+   if(kind==='gull'){
+    phase+=Math.PI*2*(650+500*Math.sin(t/seconds*Math.PI)+85*Math.sin(rt*24))*pitch/sampleRate;
+    value=(Math.sin(phase)*.18+Math.sin(phase*2)*.06+mid*.12)*envelope*(.4+.6*Math.sin(rt*7)**2);
    }
    samples[i]=value;
   }

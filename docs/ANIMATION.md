@@ -82,7 +82,7 @@ Historical comparison (Study 01/02), recorded on this development Mac:
 
 The Study 02 clean bake was approximately 0.9 seconds locally; Study 03 takes about 2.6 seconds. A normal build fingerprints source images, geometry/bake code, relevant constants and lockfile, then validates output hashes before reusing them. Generated files that are missing or modified force a rebuild. `npm run assets -- --force` bypasses the cache.
 
-The packer trims the **union** of each clip, preserving registration, and shares byte-identical frames. It uses stable best-fit shelves and two-pixel gutters, without rotation or mipmaps. Study 04 used 1,866 frames at 26.06 MiB decoded. Study 05 had 3,854 logical frames, including three new animal rigs and twelve new structural tree forms. Atlas allocation stays below an explicit 4096 × 4096 / 64 MiB budget; exceeding it fails with an actionable message rather than silently growing memory.
+The packer trims the **union** of each clip, preserving registration, and shares byte-identical frames. It uses stable best-fit shelves and one-pixel transparent gutters, without rotation or mipmaps. Study 04 used 1,866 frames at 26.06 MiB decoded. Study 05 had 3,854 logical frames, including three new animal rigs and twelve new structural tree forms. Atlas allocation stays below an explicit 4096 × 4096 / 64 MiB budget; exceeding it fails with an actionable message rather than silently growing memory.
 
 Study 03 adds fixed-step presentation interpolation, native-resolution positioning, cached static scene data and spatial culling/collision. See [performance measurements](PERFORMANCE.md). Other runtime optimizations remain: no per-vertex temporary arrays, retained CPU/GPU vertex capacity, bufferSubData uploads, cached uniform locations, full-rectangle culling, and ResizeObserver instead of per-frame layout reads. No workers, ECS, compression format, multi-page batching or live 3D dependency has been introduced.
 
@@ -117,3 +117,12 @@ Wolf running adds 320 authored directional frames; jaguar free runs reuse the ch
 Elephants have 16 headings × (8 rest + 20 walk + 24 drink + 16 spray) frames. Walk phase follows distance with a 0.175-tile stride at nominal 0.12 tiles/second; body scale also scales stride. The long four-beat stance gives deliberate weight instead of fast cycling feet. Drink/spray phases are normalized one-shot actions with inclusive endpoints; interpolation resets on state changes so an idle loop cannot jump into a later water pose.
 
 The shared cubic trunk curve dips to water, curls toward the mouth, or raises for a short spray. Ear flaps, tail motion and small trunk sway accompany the rebuilt body. Geometry and runtime effect registration are documented in [ELEPHANTS.md](ELEPHANTS.md).
+
+Five woodland/river rigs and the denser packing contract are documented in [RIVERS.md](RIVERS.md). Their authored mesh sources, OBJ exports and build dependencies are retained.
+
+Study 15 adds shared multi-tile landscape groups, tint masks and static trunk templates. Current world/agent schemas are **15/12**; see [landscape groups](LANDSCAPE-PATCHES.md) for source provenance, animation, navigation and memory details.
+
+
+Compound landscape wind now uses continuous root-anchored shear at presentation cadence. One registered pose replaces the former four-pose, two-FPS loop; paired wood/leaf masks stay aligned, every trunk foot remains fixed, and water plants sway gently. Legacy finite-fixture foliage retains its existing 32-frame loops. See [landscape groups](LANDSCAPE-PATCHES.md).
+
+Recurring colorful regions, canopy population/perch changes, new generated source provenance and black bear type 58 behavior/rig/codecs are documented in [regional variety](REGIONAL-VARIETY.md). Current world/agent schemas are **15/12**.

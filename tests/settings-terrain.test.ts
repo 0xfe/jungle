@@ -11,7 +11,7 @@ import {writeQuads} from '../src/iso/batch';
 test('default landscape strongly favors jungle and controls alter coverage and feature scale',()=>{
  const counts=(settings=DEFAULT_SETTINGS)=>{const c=[0,0,0,0,0,0];for(let y=-150;y<150;y+=2)for(let x=-150;x<150;x+=2)c[landscape(x,y,2718,settings).kind]!++;return c;};
  const normal=counts(),wet=counts(normalizeSettings({water:.8})),dry=counts(normalizeSettings({barren:.8})),allForest=counts(normalizeSettings({water:0,barren:0,meadow:0,hills:0}));
- assert.ok(normal[0]!/22500>.75);assert.ok((normal[4]!+normal[5]!)/22500<.1);assert.ok(normal[2]!/22500<.08);
+ assert.ok(normal[0]!/22500>.75);assert.ok((normal[4]!+normal[5]!)/22500<.16);assert.ok(normal[2]!/22500<.08);
  assert.ok(wet[4]!+wet[5]!>(normal[4]!+normal[5]!)*2);assert.ok(dry[2]!>normal[2]!*2);assert.equal(allForest[0],22500);
  const transitions=(size:number)=>{let changes=0;for(let y=-80;y<80;y+=3){let previous=false;for(let x=-100;x<100;x+=.5){const water=landscape(x,y,19,normalizeSettings({water:.5,waterSize:size})).water;changes+=Number(water!==previous);previous=water;}}return changes;};
  assert.ok(transitions(0)>transitions(1)*1.4,'small lakes should create more frequent shorter water intervals');

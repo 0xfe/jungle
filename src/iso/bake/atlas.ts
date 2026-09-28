@@ -29,7 +29,7 @@ export function trimClip(sprite: BakeSprite): BakeSprite {
   }) };
 }
 
-/** Deterministic shelf packer, two-pixel gutters, exact RGBA frame deduplication. */
+/** Deterministic shelf packer, one-pixel transparent gutters, exact RGBA frame deduplication. */
 export function packAtlas(inputs: BakeSprite[], width = 2048, maxHeight = 2048): PackedAtlas {
   const sprites = inputs.map(trimClip);
   const unique = new Map<string, { image: PixelImage; region: Region }>();
@@ -47,15 +47,15 @@ export function packAtlas(inputs: BakeSprite[], width = 2048, maxHeight = 2048):
   let bottom=2,occupiedPixels=1;
   for(const {image,region} of ordered){
     if(image.width+4>width)throw new Error('Sprite exceeds atlas width');
-    // Reuse remaining row space before opening a new shelf. Stable height/width
-    // ordering and first-match ties keep the content-addressed build deterministic.
+    // Nearest-neighbor sampling without mipmaps needs one fully transparent gutter.
+    // Keep original artwork/poses at full resolution while sharing one texture page.
     let shelf:typeof shelves[number]|undefined,best=Infinity;
     for(const row of shelves){
       const remaining=width-row.x-image.width-2;
       if(row.height>=image.height&&remaining>=0&&remaining<best){shelf=row;best=remaining;}
     }
-    if(!shelf){shelf={x:2,y:bottom,height:image.height};shelves.push(shelf);bottom+=image.height+2;}
-    region.x=shelf.x;region.y=shelf.y;shelf.x+=image.width+2;
+    if(!shelf){shelf={x:2,y:bottom,height:image.height};shelves.push(shelf);bottom+=image.height+1;}
+    region.x=shelf.x;region.y=shelf.y;shelf.x+=image.width+1;
     occupiedPixels+=image.width*image.height;
   }
   const height=Math.ceil(bottom/4)*4;

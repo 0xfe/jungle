@@ -1,15 +1,22 @@
+import { patchRoots, isGrove, isGroundPatch } from './patches';
+import { CONFIG } from '../config';
+import { LandscapePatchAgent } from './agents/patch';
+import { SNAKE_MODEL_TO_TILE, SNAKE_SUPPORT_OFFSET } from './snake-pose';
+import { riverParticle } from './rivers';
+import { groundBlend, GROUND_STEPS } from './ground-blend';
 import {elephantTrunk,ELEPHANT_MODEL_TO_TILE,ELEPHANT_SPRAY_SECONDS} from './elephant-pose';
 import { rootedQuad } from '../iso/sprite-geometry';
+import type { PointerTransform } from '../iso/navigation';
 import { clipField, type FieldVertex } from '../iso/contour';
 import { clamp, hash, lerp, project, unproject, type Vec2 } from '../iso/math';
 import { color, sortCommands, visible, type DrawCommand, type Frame, type Region } from '../iso/render';
 import { quadBounds, type QuadCorners } from '../iso/quad';
 import type { AtlasManifest } from './scene';
 import { sampleDeer } from './scene';
-import { ElephantAgent, MonkeyAgent, EcologicalAgent, DeerAgent, WildlifeAgent, sampleWildlife, PlantAgent, MoteAgent, WaterAgent } from './agents';
+import { SnakeAgent, ElephantAgent, MonkeyAgent, EcologicalAgent, DeerAgent, WildlifeAgent, sampleWildlife, PlantAgent, MoteAgent, WaterAgent } from './agents';
 import { DEER_CLIPS, directionIndex, HEAD_SECONDS, PLANT_FPS, PLANT_FRAMES } from './animation';
 import { InfiniteWorld, type WorldBounds } from './infinite';
-import { TerrainTile, TerrainKind, fieldKind, coordinateHash } from './terrain';
+import { TerrainTile, TerrainKind, coordinateHash } from './terrain';
 import { ECO_SPECS, ecoDirection } from './ecology';
 import { TILE } from './world';
 export interface InfiniteView { width: number; height: number; pixelRatio: number; zoom: number; grid: boolean; cameraX: number; cameraY: number }
@@ -22,6 +29,16 @@ export function cameraBounds(view: InfiniteView): WorldBounds {
 export function panCamera(view: InfiniteView, screenDX: number, screenDY: number): void {
   const scale = cameraScale(view), delta = unproject({ x: screenDX / scale, y: screenDY / scale }, TILE);
   view.cameraX += delta.x; view.cameraY += delta.y;
+}
+/** Apply a gesture in backing pixels, keeping its old midpoint beneath its new midpoint. */
+export function gestureCamera(view: InfiniteView, gesture: PointerTransform, minZoom: number, maxZoom: number): void {
+  const oldScale = cameraScale(view);
+  view.zoom = clamp(view.zoom * gesture.zoomRatio, minZoom, maxZoom);
+  const ratio = cameraScale(view) / oldScale;
+  // Use the actual projection scale, including the wide-screen floor and clamped zoom.
+  panCamera(view,
+    (gesture.from.x - view.width / 2) * ratio - (gesture.to.x - view.width / 2),
+    (gesture.from.y - view.height / 2) * ratio - (gesture.to.y - view.height / 2));
 }
 interface Surface { uvCorners?:QuadCorners; corners: QuadCorners; bounds: ReturnType<typeof quadBounds>; region: Region; suffix: string }
 interface PreparedTerrain { atlas: AtlasManifest; surfaces: Surface[]; bounds: ReturnType<typeof quadBounds>; corners: QuadCorners; shade: number }
@@ -38,29 +55,37 @@ function prepareTerrain(tile: TerrainTile, atlas: AtlasManifest, seed: number): 
     const r = texture.frames[0]!, points: QuadCorners = [point(x, y), point(x + size, y), point(x, y + size), point(x + size, y + size)];
     surfaces.push({ corners: points, bounds: quadBounds(points), suffix: `${x}-${y}`, region: { x: r.x + x * r.width, y: r.y + y * r.height, width: r.width * size, height: r.height * size } });
   };
-  if(tile.uniform)add(tile.materialAt(tile.x+.5,tile.y+.5),0,0,1);
-  else if(tile.fields){
-    const emit=(polygon:FieldVertex[],kind:TerrainKind)=>{
-      const texture=atlas.sprites[`terrain-${kind}-${coordinateHash(tile.x,tile.y,seed)%4}`];
-      if(!texture)throw new Error('Missing terrain material');
-      for(let i=1;i<polygon.length-1;i++){
-        const a=polygon[0]!,b=polygon[i]!,c=polygon[i+1]!;
-        if(Math.abs((b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x))<1e-10)continue;
-        const uvCorners:QuadCorners=[a,b,c,c],corners=uvCorners.map(p=>point(p.x,p.y)) as unknown as QuadCorners;
-        surfaces.push({corners,uvCorners,bounds:quadBounds(corners),region:texture.frames[0]!,suffix:String(surfaces.length)});
-      }
+  if(tile.fields){
+    const values=tile.fields.map((f,i)=>groundBlend(f,tile.x+i%3/2,tile.y+Math.floor(i/3)/2,seed)*8);
+    const band=(v:number)=>Math.max(0,Math.min(GROUND_STEPS,Math.round(v)));
+    const texture=(step:number)=>{
+      const name=`ground-blend-${step}-${coordinateHash(tile.x,tile.y,seed)%2}`;
+      const sprite=atlas.sprites[name];if(!sprite)throw new Error(`Missing terrain material: ${name}`);return sprite.frames[0]!;
     };
-    for(let y=0;y<2;y++)for(let x=0;x<2;x++)for(const tri of [[0,1,3],[4,3,1]]){
-      let polygon:FieldVertex[]=tri.map(j=>{const i=y*3+x+j;return{x:(i%3)/2,y:Math.floor(i/3)/2,fields:tile.fields![i]!};});
-      // Each stage consumes one disjoint band; shared crossing points preserve seams.
-      for(const [field,threshold,below,kind] of [[0,-.065,true,TerrainKind.Deep],[0,0,true,TerrainKind.Shallow],[0,.024,true,TerrainKind.Dry],[2,0,false,TerrainKind.Dry],[3,0,false,TerrainKind.Meadow]] as const){
-        emit(clipField(polygon,field,threshold,below),kind);polygon=clipField(polygon,field,threshold,!below);
-        if(!polygon.length)break;
+    if(values.every(v=>band(v)===band(values[0]!))){
+      surfaces.push({corners,bounds:quadBounds(corners),region:texture(band(values[0]!)),suffix:'uniform'});
+    }else for(let y=0;y<2;y++)for(let x=0;x<2;x++)for(const tri of [[0,1,3],[4,3,1]]){
+      let polygon:FieldVertex[]=tri.map(j=>{const i=y*3+x+j;return{x:(i%3)/2,y:Math.floor(i/3)/2,fields:[values[i]!]};});
+      const low=band(Math.min(...polygon.map(p=>p.fields[0]!))),high=band(Math.max(...polygon.map(p=>p.fields[0]!)));
+      for(let step=low;step<=high;step++){
+        const cut=clipField(polygon,0,step+.5,true);
+        for(let i=1;i<cut.length-1;i+=2){
+          const a=cut[0]!,b=cut[i]!,c=cut[i+1]!,d=cut[i+2];
+          const area=(p:Vec2,q:Vec2,r:Vec2)=>Math.abs((q.x-p.x)*(r.y-p.y)-(q.y-p.y)*(r.x-p.x));
+          if(area(a,b,c)+(d?area(a,c,d):0)<1e-10)continue;
+          // Two fan triangles share one painter-ordered quad. UV order b,c,a,d
+          // produces b/c/a and a/c/d under the common renderer triangle contract.
+          const uvCorners:QuadCorners=d?[b,c,a,d]:[a,b,c,c],corners=uvCorners.map(p=>point(p.x,p.y)) as unknown as QuadCorners;
+          surfaces.push({corners,uvCorners,bounds:quadBounds(corners),region:texture(step),suffix:String(surfaces.length)});
+        }
+        polygon=clipField(polygon,0,step+.5,false);
       }
-      emit(polygon,TerrainKind.Forest);
     }
   }else for(let y=0;y<4;y++)for(let x=0;x<4;x++)add(tile.materials[y*4+x]!,x/4,y/4,.25);
-  const h = tile.heights, shade = Math.round(Math.round(clamp(1 + (h[0] - h[3]) / 60 + (h[2] - h[1]) / 100, .72, 1) * 10) / 10 * 255);
+  // The shared gradient textures supply ground color. Flat per-tile slope tints
+  // created sharp diamond bands across otherwise continuous shores and clearings.
+  // Heights still shape the ground; removing those tints also avoids Canvas cache churn.
+  const shade = 255;
   const result = { atlas, surfaces, bounds: quadBounds(corners), corners, shade }; terrainCache.set(tile, result); return result;
 }
 export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view: InfiniteView, alpha = 1): Frame {
@@ -70,11 +95,11 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
     const p = project({ x: x - view.cameraX, y: y - view.cameraY }, TILE);
     return { x: view.width / 2 + p.x * scale, y: view.height / 2 + (p.y - height) * scale };
   };
-  const sprite = (id: string, name: string, x: number, y: number, size: number, frame: number, layer: number, opacity = 1, tint = 255, altitude = 0) => {
+  const sprite = (id: string, name: string, x: number, y: number, size: number, frame: number, layer: number, opacity = 1, tint = 255, altitude = 0, depth = x + y) => {
     const s = atlas.sprites[name]; if (!s) throw new Error(`Unknown sprite: ${name}`);
     const p = screen(x, y, world.heightAt(x,y)+altitude), z = scale * size;
     const command: DrawCommand = { id, x: p.x - s.anchor[0] * z, y: p.y - s.anchor[1] * z, width: s.width * z, height: s.height * z,
-      region: s.frames[frame % s.frames.length], color: [255, tint, tint, Math.round(opacity * 255)], layer, depth: x + y };
+      region: s.frames[frame % s.frames.length], color: [255, tint, tint, Math.round(opacity * 255)], layer, depth };
     if (visible(command, view.width, view.height)) commands.push(command);
   };
   const rect = (id: string, x: number, y: number, w: number, h: number, hex: string, opacity: number, layer: number) => {
@@ -110,11 +135,85 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
     const box=quadBounds(corners);if(box.x+box.width<0||box.x>view.width||box.y+box.height<0||box.y>view.height)continue;
     commands.push({...box,corners,id:`litter:${cover.x}:${cover.y}`,region:atlas.sprites[`litter-${cover.variant}`]!.frames[0],color:[255,255,255,Math.round(cover.opacity*255)],layer:.5,depth:cover.x+cover.y});
   }
+  // Feathered mud follows narrow channel banks; shared texture and ground heights
+  // let it dissolve into soil and shallow water without straight tile-wide borders.
+  for(const p of world.bankCover){
+    const {x,y}=p,anchor=screen(x,y);
+    if(anchor.x<-160*scale||anchor.x>view.width+160*scale||anchor.y<-100*scale||anchor.y>view.height+100*scale)continue;
+    const tangent={x:Math.cos(p.heading)*.65,y:Math.sin(p.heading)*.65},normal={x:-Math.sin(p.heading)*.26,y:Math.cos(p.heading)*.26};
+    const corners:QuadCorners=[screen(x-tangent.x-normal.x,y-tangent.y-normal.y),screen(x+tangent.x-normal.x,y+tangent.y-normal.y),screen(x-tangent.x+normal.x,y-tangent.y+normal.y),screen(x+tangent.x+normal.x,y+tangent.y+normal.y)];
+    const box=quadBounds(corners);if(!visible(box,view.width,view.height))continue;
+    commands.push({...box,corners,id:p.id,region:atlas.sprites['river-mud']!.frames[0],color:[255,255,255,255],layer:.3,depth:x+y});
+  }
+  // Shared solid quads carry foam and woody debris downstream; no per-river textures/agents.
+  for(const path of world.rivers)for(let i=0;i<48;i++){
+    const p=riverParticle(path,time,i/48),wood=i%12===0;
+    const side=(hash(i,0,world.seed)-.5)*path.width*.6;
+    const x=p.x-Math.sin(p.heading)*side,y=p.y+Math.cos(p.heading)*side;
+    const length=wood?.10+hash(i,1,world.seed)*.16:.05+path.speed*.12;
+    const line=(suffix:string,ax:number,ay:number,bx:number,by:number,width:number)=>{
+      if((world.tileAt(ax,ay)?.materialAt(ax,ay)??0)<TerrainKind.Shallow||(world.tileAt(bx,by)?.materialAt(bx,by)??0)<TerrainKind.Shallow)return;
+      const a=screen(ax,ay),b=screen(bx,by),dx=b.x-a.x,dy=b.y-a.y,n=Math.hypot(dx,dy)||1,w=width*scale;
+      const corners:QuadCorners=[{x:a.x-dy/n*w,y:a.y+dx/n*w},{x:a.x+dy/n*w,y:a.y-dx/n*w},{x:b.x-dy/n*w,y:b.y+dx/n*w},{x:b.x+dy/n*w,y:b.y-dx/n*w}];
+      const box=quadBounds(corners);if(!visible(box,view.width,view.height))return;
+      commands.push({...box,corners,id:`river:${path.id}:${i}:${suffix}`,layer:1.2,depth:x+y,color:wood?[104,77,42,Math.round(230*p.fade)]:[201,235,211,Math.round((80+path.speed*160)*p.fade)]});
+    };
+    const bx=x+Math.cos(p.heading)*length,by=y+Math.sin(p.heading)*length;
+    line('main',x,y,bx,by,wood?1.2:.7);
+    if(wood)line('twig',lerp(x,bx,.6),lerp(y,by,.6),bx+Math.cos(p.heading+.8)*.07,by+Math.sin(p.heading+.8)*.07,.65);
+  }
   for (const a of world.agents) {
     // Ground-anchor rejection includes a conservative canopy margin before frame selection.
     const point = screen(a.x, a.y);
-    if (point.x < -140 * scale || point.x > view.width + 140 * scale || point.y < -50 * scale || point.y > view.height + 190 * scale) continue;
-    if (a instanceof PlantAgent) {
+    if (!(a instanceof LandscapePatchAgent) && (point.x < -220 * scale || point.x > view.width + 220 * scale || point.y < -180 * scale || point.y > view.height + 300 * scale)) continue;
+    if(a instanceof LandscapePatchAgent){
+      const timePhase=a.animationPhase(alpha);
+      for(const [index,piece] of a.pieces.entries()){
+        const point=screen(piece.x,piece.y),phase=timePhase+piece.phase;
+        if(point.x<-280*scale||point.x>view.width+280*scale||point.y<-170*scale||point.y>view.height+300*scale)continue;
+        const drawPiece=(style:typeof piece.style,part:number,size:number,opacity:number,underlay=false)=>{
+          const root=isGrove(style)&&part<3?patchRoots(piece.variant)[part]:undefined;
+          const rx=piece.x+(root?.x??0)*size,ry=piece.y+(root?.y??0)*size;
+          const correction=root?(world.heightAt(piece.x,piece.y)-world.heightAt(rx,ry))*scale:0;
+          const offset=root?project(root,TILE):{x:0,y:0};
+          const ground=underlay||isGroundPatch(style)||(isGrove(style)&&part===3);
+          const cycle=(phase+part*1.73)*Math.PI*2/CONFIG.world.patches.windPeriod;
+          const lean=(ground?(style==='water'?CONFIG.world.patches.sway*.25:0):CONFIG.world.patches.sway)*(Math.sin(cycle)+.22*Math.sin(cycle*1.71));
+          for(const foliage of [false,true]){
+            const name=`patch-${style}-${piece.variant}-${part}-${foliage?'leaves':'base'}`,s=atlas.sprites[name];
+            if(!s)throw new Error(`Missing landscape patch mask: ${name}`);
+            const z=scale*size;
+            // Both masks share one continuous transform about this tree's actual
+            // foot, even though their independently trimmed rectangles differ.
+            const corners=lean?rootedQuad({x:point.x+offset.x*z,y:point.y+offset.y*z+correction},s.width,s.height,
+              [s.anchor[0]+offset.x,s.anchor[1]+offset.y],z,z,lean):undefined;
+            const box=corners?quadBounds(corners):{x:point.x-s.anchor[0]*z,y:point.y-s.anchor[1]*z+correction,width:s.width*z,height:s.height*z};
+            if(!visible(box,view.width,view.height))continue;
+            const tint=CONFIG.world.patches.foliage[piece.tint]!;
+            // Registered soil is translucent; connected ground cover supplies the
+            // border instead of an opaque little diamond around every tree group.
+            const alpha=opacity*(!foliage&&ground&&style!=='water'&&style!=='flowers'&&style!=='mud'?.38:1);
+            commands.push({...box,corners,id:`${a.id}:${index}:${style}:${part}:${foliage?'leaves':'base'}`,region:s.frames[0],
+              color:foliage?[tint[0],tint[1],tint[2],Math.round(alpha*255)]:[255,255,255,Math.round(alpha*255)],layer:ground?(style==='water'?.9:.6):2,depth:rx+ry});
+          }
+        };
+        // A wide, porous grass fringe joins compatible neighboring artwork. It is
+        // part of the compound sprite, sharing its clock and immutable layout.
+        if(isGrove(piece.style)||piece.style==='bush'||piece.style==='flowers')drawPiece('grass',0,1.04,piece.opacity*.65,true);
+        for(let part=0;part<(isGrove(piece.style)?4:1);part++){
+          if(isGrove(piece.style)&&part<3&&!(piece.trees&(1<<part)))continue;
+          drawPiece(piece.style,part,piece.scale,piece.opacity);
+        }
+      }
+      // Fireflies belong to the compound presentation, retaining the old quiet
+      // glints without reintroducing a separately simulated mote on each tile.
+      for(let i=0;i<3&&a.pieces.length;i++){
+        const p=a.pieces[(i*3)%a.pieces.length]!;if(p.style==='water')continue;
+        const point=screen(p.x,p.y),t=timePhase+p.phase;
+        rect(`${a.id}~mote:${i}`,point.x+Math.sin(t*.7)*20*scale,point.y-(20+Math.cos(t*.4)*13)*scale,
+          scale,scale,'#eff4aa',(world.weather==='dusk'?.9:.4)*(.6+.4*Math.sin(t)**2),3);
+      }
+    } else if (a instanceof PlantAgent) {
       sprite(`${a.id}-shadow`, 'shadow', a.x, a.y, a.kind === 'tree' ? a.scale*1.35 : .35, 0, 1, .24);
       const name=`${a.kind}-${a.variant}${a.morphology?`-form-${a.morphology}`:''}`,s=atlas.sprites[name];
       if(!s)throw new Error(`Unknown plant sprite: ${name}`);
@@ -143,7 +242,22 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
       sprite(a.id, `deer-${clip}-${directionIndex(d.heading)}`, d.x, d.y, 1.05*a.size, frame, 2, 1, [255,247,237][a.coat]);
     } else if (a instanceof EcologicalAgent) {
       const d=sampleWildlife(a,alpha),spec=ECO_SPECS[a.kind];
-      const clip=a.kind==='whale'?(d.state==='surface'?'surface':'travel'):d.state;
+      const submerged=spec.mode==='amphibious'&&world.tileAt(d.x,d.y)?.materialAt(d.x,d.y)!>=TerrainKind.Shallow;
+      const clip=a.kind==='whale'?(d.state==='surface'?'surface':'travel'):submerged&&['beaver','crocodile'].includes(a.kind)&&d.state==='travel'?'swim':d.state;
+      if(a instanceof SnakeAgent && ['wrap','coil','unwrap'].includes(d.state)){
+        const action=d.state==='coil'?'coil':'wrap',heading=ecoDirection(a.kind,a.supportHeading);
+        const name=`boa-${action}-${heading}`,count=atlas.sprites[`${name}-front`]!.frames.length;
+        const phase=d.state==='unwrap'?1-d.gait:d.state==='coil'?0:d.gait;
+        const pose=Math.round(phase*(count-1));
+        const angle=heading/spec.directions*Math.PI*2,offset=SNAKE_SUPPORT_OFFSET*SNAKE_MODEL_TO_TILE*a.size;
+        const blend=action==='coil'?1:phase*phase*(3-2*phase);
+        const x=lerp(d.x,a.supportX+Math.cos(angle)*offset,blend),y=lerp(d.y,a.supportY+Math.sin(angle)*offset,blend);
+        const altitude=(world.heightAt(a.supportX,a.supportY)-world.heightAt(x,y))*blend;
+        // The supporting tree remains between the two transparent body sections.
+        for(const front of [false,true])sprite(`${a.id}-${front?'front':'back'}`,`${name}-${front?'front':'back'}`,
+          x,y,a.size*spec.displayScale,pose,2,1,[255,250,243][a.coat],altitude,a.supportX+a.supportY+(front?.001:-.001));
+        continue;
+      }
       if(a instanceof MonkeyAgent && d.state==='swing'){
         const root=screen(a.routeX,a.routeY,world.heightAt(a.routeX,a.routeY)+a.routeHeight+a.gripHeight+24*a.size);
         const hand=screen(d.x,d.y,world.heightAt(d.x,d.y)+d.altitude+a.gripHeight);
@@ -156,12 +270,12 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
       }
       const name=`${a.kind}-${clip}-${ecoDirection(a.kind,d.heading)}`,count=atlas.sprites[name]?.frames.length;
       if(!count)throw new Error(`Unknown ecology sprite ${name}`);
-      const oneShot=d.state==='drink'||d.state==='spray';
+      const oneShot=d.state==='drink'||d.state==='spray'||d.state==='hop';
       const pose=oneShot?Math.min(count-1,Math.floor(d.gait*(count-1))):Math.min(count-1,Math.floor((d.state==='swing'?d.gait:d.gait%1)*count));
       const water=spec.mode==='water',visibility=a.kind==='whale'?clamp((d.altitude+12)/12,0,1):1;
       const heading=a.kind==='crab'?d.heading+Math.PI/2:d.heading;
       if(!water)sprite(`${a.id}-shadow`,'shadow',d.x,d.y,(spec.mode==='air'?.18:.4)*a.size,0,1,.16);
-      sprite(a.id,name,d.x,d.y,a.size*spec.displayScale,pose,water?.8:2,a.kind==='fish'?.65:visibility,[255,250,243][a.coat],d.altitude);
+      sprite(a.id,name,d.x,d.y,a.size*spec.displayScale,pose,water?.8:2,a.kind==='fish'?.65:submerged?.78:visibility,[255,250,243][a.coat],d.altitude);
       if(a instanceof ElephantAgent&&d.state==='spray'&&a.loaded){
         const tip=elephantTrunk('spray',pose/(count-1))[3]!,heading=ecoDirection('elephant',d.heading)/spec.directions*Math.PI*2;
         const factor=ELEPHANT_MODEL_TO_TILE*a.size,nx=d.x+(tip[0]*Math.cos(heading)-tip[1]*Math.sin(heading))*factor,ny=d.y+(tip[0]*Math.sin(heading)+tip[1]*Math.cos(heading))*factor;

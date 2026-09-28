@@ -1,3 +1,4 @@
+import { CONFIG } from '../config';
 import { SpatialGrid } from '../iso/spatial';
 import { clamp, hash, noise, random, type Vec2 } from '../iso/math';
 import { AgentSystem } from '../agents';
@@ -10,7 +11,8 @@ export interface Climate { moisture: number; sunlight: number; wind: number }
 export interface Tile { x: number; y: number; climate: Climate }
 export interface Plant extends Vec2 { id: string; kind: 'tree' | 'plant'; variant: number; phase: number; scale: number }
 export interface World { seed: number; habitat: Habitat; weather: Weather; tiles: Tile[]; plants: Plant[]; deer: Deer[]; time: number; previousTime: number; windTime: number; previousWindTime: number; layoutVersion: number; rng: () => number }
-export const TILE = { width: 192, height: 96 };
+import { TILE } from './geometry';
+export { TILE } from './geometry';
 export const WORLD_SIZE = { width: 4, height: 4 };
 export const HABITATS: Habitat[] = ['rainforest', 'flowering', 'wetland'];
 export function climateAt(x: number, y: number, seed: number): Climate {
@@ -38,11 +40,11 @@ export function walkable(world: World, x: number, y: number): boolean {
   return x > .12 && x < WORLD_SIZE.width - .12 && y > .12 && y < WORLD_SIZE.height - .12 && waterAt(x, y, world.habitat) < -.12 &&
     !blocked;
 }
-export function createWorld(seed = 2718, habitat: Habitat = 'rainforest'): World {
+export function createWorld(seed = CONFIG.startup.seed, habitat: Habitat = CONFIG.startup.habitat): World {
   const rng = random(seed);
   const tiles: Tile[] = [];
   for (let y = 0; y < WORLD_SIZE.height; y++) for (let x = 0; x < WORLD_SIZE.width; x++) tiles.push({ x, y, climate: climateAt(x, y, seed) });
-  const world: World = { seed, habitat, weather: 'sun', tiles, plants: [], deer: [], time: 0, previousTime: 0, windTime: 0, previousWindTime: 0, layoutVersion: 0, rng };
+  const world: World = { seed, habitat, weather: CONFIG.startup.weather, tiles, plants: [], deer: [], time: 0, previousTime: 0, windTime: 0, previousWindTime: 0, layoutVersion: 0, rng };
   const trees = [[.23, .25], [.74, .17], [1.57, .23], [.23, .9], [.22, 1.52], [1.75, 1.12], [2.2, .22], [2.96, .23], [3.65, .27], [2.04, 1.58], [3.65, 1.58], [.25, 2.22], [1.12, 2.18], [2.25, 2.32], [3.6, 2.35], [.23, 3.15], [1.42, 3.45], [2.62, 3.5], [3.67, 3.35]];
   trees.forEach(([x, y], i) => {
     const px = x! + (rng() - .5) * .13, py = y! + (rng() - .5) * .13;

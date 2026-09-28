@@ -27,6 +27,15 @@ npm run serve
 
 For visual changes, inspect `artifacts/*.png` and the running site. For rendering/input changes, check WebGL plus `?renderer=canvas`, keyboard/menu controls, and mobile layout. Keep error messages actionable. Do not silently suppress missing sprite/asset errors.
 
+## Coding Style
+
+- I like my code to be human readable. Comment important things like interfaces, globals, constants, funct
+ion declarations etc. lightly. Complex or long function bodies should be better commented. Generally, I sh
+ould be able to look at the code and figure out what's going on.
+
+- In general, try to write code that is decoupled, cohesive, and testable. Try and minimize duplication an
+d build and maintain reusable components.
+
 ## Assets and documentation
 
 - Read `docs/ASSETS.md` and `docs/ANIMATION.md` before adding sprites. Use image generation for new organic bitmap artwork; for directional animals, prefer an articulated model baked to sprite frames. Preserve generated source art as reference.
@@ -74,7 +83,7 @@ No license has been selected for the project's original source/art yet. Don't ad
 - Body scale must also scale stride length. Validate model margins in every heading/action and inspect species contact sheets.
 - New generated tree forms live in `assets/source/tree-forms.png`; exact prompt is in `assets/prompts.json`. Forms are structural variants, not animation poses. Keep rooted wind motion and shared terrain-following litter decals.
 - The scene fills the screen; all tools belong in the bottom overlay. Check mobile safe area, guide scrolling and drag/input behavior.
-- Current jungle agent schema is 7; world checkpoint schema is 8. Old records fail explicitly.
+- Current jungle agent schema is 12; world checkpoint schema is 15. Old records fail explicitly.
 
 - New species specifications live in `src/jungle/ecology.ts`; each has its own class, habitat rules, shared immutable sprites and an exact continuation test. Keep coastal animals on rendered shoreline materials, fish schools cohesive, and whales rare/deep-water only.
 - Trees should cluster by species/form and mostly stand upright. Preserve subtle, sparse root litter; avoid large opaque mud disks.
@@ -84,7 +93,7 @@ No license has been selected for the project's original source/art yet. Don't ad
 - Read `docs/SETTINGS.md` and `docs/AUDIO.md` before altering generator controls, shoreline geometry or sound. Preserve jungle-heavy defaults and the increased 2.5× animal population unless instructed otherwise.
 - Terrain fields, contour crossings and animal habitat checks must agree at positive/negative boundaries. `uvCorners` must work identically in Memory, Canvas and GL; degenerate triangles are intentional.
 - Settings regenerate the same seed and reset scrollback; checkpoint the normalized values. Terrain chunks are now 986 bytes.
-- `src/audio/` core must run without a browser. Browser audio starts only on an explicit gesture; keep smooth ramps, bounded voices/history, shared PCM, pause/visibility muting and disposal. Audio never drives simulation RNG.
+- `src/audio/` core must run without a browser. Sound is enabled by default; attempt startup and retry on a gesture if autoplay is blocked; keep smooth ramps, bounded voices/history, shared PCM, pause/visibility muting and disposal. Audio never drives simulation RNG.
 - Original procedural audio needs no third-party license. Add provenance for any future recording. `npm run audio:preview` exports audition files.
 
 ## Botanical variety
@@ -92,7 +101,7 @@ No license has been selected for the project's original source/art yet. Don't ad
 - Read `docs/FOREST.md` before changing forest placement, plant morphology or vines. Keep mostly upright species stands while varying individuals, and preserve the cross-chunk tree spacing guarantee.
 - `assets/source/forest-forms.png` has reviewed unequal row gutters, recorded in the baker and exact prompt provenance. Do not assume a square grid. Use `npm run plants:preview` to check full silhouettes, floating fragments and roots.
 - `rootedQuad()` mirrors the anchor as well as the image. Keep Memory/Canvas/WebGL equivalent; Canvas uses an affine fast path for these quads.
-- Plant genotypes add two bytes per plant. Vines are shared baked visual components of tree agents; avoid per-leaf runtime objects. Current world/agent schemas are 8/7.
+- Plant genotypes add two bytes per plant. Vines are shared baked visual components of tree agents; avoid per-leaf runtime objects. Current world/agent schemas are 15/12.
 
 ## Animal motion invariants
 
@@ -113,4 +122,39 @@ No license has been selected for the project's original source/art yet. Don't ad
 - Read `docs/ELEPHANTS.md` before modifying the elephant rig or water behavior. Bake shared `elephant-pose.ts` geometry; rendered spray must begin at the selected sprite's trunk tip, including quantized heading/phase.
 - Fill the trunk at reachable water before drinking or spraying. Keep feet on valid ground, water searches bounded and behavior state exactly serializable. Do not make all animals permanently flee water.
 - Local stimuli belong in the pre-update neighbor snapshot. Responses own their cooldown and use species habitat/clearance rules; never mutate another agent directly.
-- All overlays start hidden; Enter/Return toggles them, including from focused controls. Preserve an actionable visible error if loading fails. Keep canvas exploration usable while overlays are hidden.
+- The bottom menu and panels start hidden; Enter/Return toggles them, including from focused controls. The top-right mute button stays visible. Preserve an actionable visible error if loading fails. Keep canvas exploration usable while overlays are hidden.
+
+## Opening, chorus and compact controls
+
+- `journeyDensity()` is a pure world-space multiplier around `InfiniteWorld.origin`, found once from seed/settings. Never tie density to the moving camera, elapsed time or chunk visit order. The 3–22-tile transition scales plant placement and whole animal groups; keep sparse openings and dense-world benchmark coverage.
+- Keep the bottom toolbar limited to Settings, Pause/Resume, Zoom and Help. Presets, regrowth, exploration and weather remain keyboard commands; there is no logo, compass or weather overlay.
+- Audio defaults are enabled, master 60%, environment 5%, wildlife 80%. Respect autoplay blocking and explicit mute; a gesture must never undo mute. Suspended/hidden/paused audio must not queue effect bursts.
+- Bird callers have independent pitch/timing; the distant canopy chorus owns exactly three callers. Keep nearby history <=32, overlapping Web Audio effects <=12 and shared PCM <10 MiB. Original synthesis must remain independent of simulation RNG.
+
+## Central defaults
+
+- `src/config.ts` owns application defaults. Keep units/effects documented and wire each new knob into its consumer. Reusable libraries receive options instead of importing app config; generic library fallback values are separate from app defaults.
+- All sound entries share `SoundTuning`; honor enabled/gain/speed in the browser and chorus preview, and synthesis controls in both. The low wobbling warble stays disabled unless requested.
+- Preserve the 60 Hz/geometry/codec invariants; they are not arbitrary UI settings. See `docs/CONFIGURATION.md` for rebuilds, override precedence and checkpoint compatibility.
+
+## Graded terrain and snakes
+
+- Opening density spans 3–22 tiles. Shared noisy terrain gradients and vegetation thinning must stay continuous across signed chunk borders. Keep habitat water checks tied to the physical lake field; the wet-sand color transition may straddle it.
+- Read `docs/SNAKES.md` before changing snakes. Types 51/52 are boa/smallSnake; boas remain solitary, smaller snakes form loose groups. Wrap only around real supports; retain front/back painter ordering and exact support state. Distance drives travel waves and blocked animals stop.
+- Elephant audio is a retained CC0 recording. Keep source, license, conversion and hashes in `assets/source/audio/provenance.json`; normal builds stay offline. Apply mute/pause/suspension and the existing voice/history budgets.
+
+## Woodland and river extension
+
+- Read `docs/RIVERS.md` before changing stream geometry or types 53–57. Canopy biases whole groups; opening animal density is now 85% before species bias, while plants remain at 24%.
+- Rivers carve the shared water field; keep centerline connectivity and signed seam checks. Memoized geometry is capped at 128 reaches. Debris/foam use injected world time and stay on rendered water.
+- New species remain solitary; squirrels climb real supports, boar charges stay brief/non-contact, and bank animals use water/bank habitat. Preserve exact continuation in world 11 / agent 9.
+- The nearest-neighbor atlas now uses one-pixel transparent gutters, with a full pixel regression. Do not introduce filtering/mipmaps without revisiting that contract.
+
+## Landscape groups
+
+- Read `docs/LANDSCAPE-PATCHES.md` before changing shared patch art, masks or support templates. Preserve `GROVE_ROOTS` registration and per-root depth/ground height. Low vegetation is traversable.
+- New source sheets and exact prompts are retained; shared palette masks tint leaves without tinting wood. Never add per-instance textures.
+- Compound arrangements own 16 tiles plus porous overlap; temporary planning maps are discarded after generation. Do not reintroduce standalone plant placements. Preserve deterministic halo clearance, including negative borders. Current world/agent schemas are 15/12.
+- Only navigation delays auto-scroll; taps/menu/sound changes do not. Sound starts muted on mobile. Fish schools require substantial water; small ponds are excluded.
+
+- Read `docs/REGIONAL-VARIETY.md` before changing regional vegetation/water, canopy populations or black bears. Keep ecological placement streams species-local; black bears (type 58) are solitary or mother–cub families, with foraging, parent-following and mother waiting. Color accents remain components of compound landscapes, not single-tile agents.

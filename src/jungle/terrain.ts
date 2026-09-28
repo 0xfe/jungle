@@ -1,14 +1,19 @@
 import { DEFAULT_SETTINGS, type WorldSettings } from './settings';
 import { clamp, hash, lerp, noise } from '../iso/math';
+import { riverField } from './rivers';
+import { regionalWetness } from './regions';
+import { CONFIG } from '../config';
 export const CHUNK_SIZE = 4;
 export enum TerrainKind { Forest, Meadow, Dry, Stone, Shallow, Deep }
+/** Habitat moisture belongs to the rendered material at the sampled point. */
+export const terrainMoisture=(kind:TerrainKind)=>kind===TerrainKind.Forest?.72:kind===TerrainKind.Meadow?.55:kind===TerrainKind.Dry?.3:.5;
 export const TERRAIN_NAMES = ['RAINFOREST', 'OPEN MEADOW', 'DRY SCRUBLAND', 'HIGHLAND RIDGE', 'LAKESHORE', 'OPEN WATER'];
 export interface Landscape { moisture: number; elevation: number; kind: TerrainKind; water: boolean }
 export type TerrainFields=readonly [number,number,number,number];
 export function terrainFields(x:number,y:number,seed:number,settings:Readonly<WorldSettings>=DEFAULT_SETTINGS):TerrainFields{
  const size=4+settings.waterSize*14;
  const wx=x+(noise(x/5,y/5,seed+440)-.5)*1.2,wy=y+(noise(x/5,y/5,seed+441)-.5)*1.2;
- const lake=settings.water===0?1:noise(wx/size,wy/size,seed+12)*.8+noise(wx/2.7,wy/2.7,seed+72)*.2-(.15+settings.water*.42);
+ const lake=Math.min(riverField(x,y,seed,settings),settings.water===0?1:noise(wx/size,wy/size,seed+12)*.8+noise(wx/2.7,wy/2.7,seed+72)*.2-(.15+settings.water*(.42+CONFIG.world.regions.wetDepth*regionalWetness(x,y,seed))));
  const ridge=settings.hills===0?-1:noise(x/6,y/6,seed+271)-(.94-settings.hills*.54);
  const dry=settings.barren===0?-1:noise(x/4.5,y/4.5,seed+351)-(.93-settings.barren*.57);
  const meadow=settings.meadow===0?-1:noise(x/6,y/6,seed+91)-(.91-settings.meadow*.57);
@@ -19,16 +24,16 @@ export function fieldKind(f:readonly number[]):TerrainKind{
   f[2]!>0?TerrainKind.Dry:f[3]!>0?TerrainKind.Meadow:TerrainKind.Forest;
 }
 /** Sample the same half-tile triangulation as contours, including outside resident chunks. */
-export function interpolatedFields(x:number,y:number,seed:number,settings:Readonly<WorldSettings>=DEFAULT_SETTINGS):TerrainFields{
+export function interpolatedFields(x:number,y:number,seed:number,settings:Readonly<WorldSettings>=DEFAULT_SETTINGS,read=(px:number,py:number)=>terrainFields(px,py,seed,settings)):TerrainFields{
  const ix=Math.floor(x*2)/2,iy=Math.floor(y*2)/2,u=(x-ix)*2,v=(y-iy)*2;
  const points=u+v<=1?[[ix,iy],[ix+.5,iy],[ix,iy+.5]]:[[ix+.5,iy+.5],[ix,iy+.5],[ix+.5,iy]];
- const samples=points.map(p=>terrainFields(p[0]!,p[1]!,seed,settings)),a=u+v<=1?u:1-u,b=u+v<=1?v:1-v;
+ const samples=points.map(p=>read(p[0]!,p[1]!)),a=u+v<=1?u:1-u,b=u+v<=1?v:1-v;
  return samples[0]!.map((n,j)=>n+(samples[1]![j]!-n)*a+(samples[2]![j]!-n)*b) as unknown as TerrainFields;
 }
 export function landscape(x:number,y:number,seed:number,settings:Readonly<WorldSettings>=DEFAULT_SETTINGS):Landscape{
  const f=interpolatedFields(x,y,seed,settings),kind=fieldKind(f),water=kind>=TerrainKind.Shallow;
  const elevation=Math.max(0,Math.min(f[0]*110,7+Math.max(0,f[1]+.15)*100));
- const moisture=kind===TerrainKind.Forest?.72:kind===TerrainKind.Meadow?.55:kind===TerrainKind.Dry?.3:.5;
+ const moisture=terrainMoisture(kind);
  return {moisture,elevation,kind,water};
 }
 /** Compact immutable tile view into chunk bytes; corner heights are shared with neighbors. */
@@ -42,7 +47,7 @@ export class TerrainTile {
   }
   get uniform(): boolean { return this.uniformKind!==undefined; }
   fieldAt(x:number,y:number,field:number):number {
-    const u=clamp((x-this.x)*2,0,1.999999999),v=clamp((y-this.y)*2,0,1.999999999),ix=Math.floor(u),iy=Math.floor(v),a=u-ix,b=v-iy;
+    const u=clamp((x-this.x)*2,0,2),v=clamp((y-this.y)*2,0,2),ix=Math.min(1,Math.floor(u)),iy=Math.min(1,Math.floor(v)),a=u-ix,b=v-iy;
     const i=iy*3+ix,f=this.fields!,first=a+b<=1,p=f[first?i:i+4]![field]!,q=f[first?i+1:i+3]![field]!,r=f[first?i+3:i+1]![field]!;
     return p+(q-p)*(first?a:1-a)+(r-p)*(first?b:1-b);
   }
@@ -79,7 +84,7 @@ export class TerrainChunk {
     const chunk=new TerrainChunk(x,y,data);
     for(let ty=0;ty<4;ty++)for(let tx=0;tx<4;tx++){
       const i=ty*4+tx,tile=chunk.tile(tx,ty),kind=tile.materialAt(tile.x+.5,tile.y+.5);
-      data[i]=kind;data[16+i]=Math.round((kind===TerrainKind.Forest?.72:kind===TerrainKind.Meadow?.55:kind===TerrainKind.Dry?.3:.5)*255);
+      data[i]=kind;data[16+i]=Math.round(terrainMoisture(kind)*255);
       for(let sy=0;sy<4;sy++)for(let sx=0;sx<4;sx++)data[82+i*16+sy*4+sx]=tile.materialAt(tile.x+(sx+.5)/4,tile.y+(sy+.5)/4);
     }
     return chunk;
@@ -99,5 +104,5 @@ export const coordinateHash = (x: number, y: number, seed: number) => Math.floor
 export function terrainEnvironment(x:number,y:number,seed:number,settings:Readonly<WorldSettings>=DEFAULT_SETTINGS) {
  const point=landscape(x,y,seed,settings),f=interpolatedFields(x,y,seed,settings);
  return {moisture:point.moisture,light:.8,wind:1,elevation:point.elevation,water:point.water,
-   depth:point.kind===TerrainKind.Deep?1:point.water?.25:0,beach:f[0]>=0&&f[0]<.024};
+   depth:point.kind===TerrainKind.Deep?1:point.water?.25:0,beach:f[0]>=0&&f[0]<.024,bank:f[0]>=0&&f[0]<.14};
 }

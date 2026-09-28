@@ -55,3 +55,12 @@ for(const kind of ['deer','toucan','orangutan','jaguar',...ECO_KINDS] as const){
  await writeFile(`artifacts/wildlife-${kind}.json`,JSON.stringify({seed:world.seed,view,stats:world.stats,animals:world.agents.filter(a=>a.speed!==undefined),frame},null,2));
 }
 console.log('Wildlife habitat scenes → artifacts/wildlife-*.png');
+
+// Same seed and scale: inspect the quiet opening and the mature forest beyond it.
+for(const [name,distance] of [['opening',0],['interior',64]] as const){
+ const world=new InfiniteWorld(),start=world.landmark(TerrainKind.Forest,world.origin.x+distance,world.origin.y);
+ const view={width:1000,height:650,pixelRatio:1,zoom:1,grid:false,cameraX:start.x,cameraY:start.y};
+ world.ensure(cameraBounds(view));const frame=composeInfinite(world,manifest,view,1);renderer.render(frame);
+ await sharp(renderer.pixels.data,{raw:{width:view.width,height:view.height,channels:4}}).png().toFile(`artifacts/journey-${name}.png`);
+ await writeFile(`artifacts/journey-${name}.json`,JSON.stringify({seed:world.seed,origin:world.origin,view,stats:world.stats},null,2));
+}

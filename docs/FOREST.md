@@ -57,8 +57,12 @@ npm run benchmark       # CPU stages, excluding browser/GPU rasterization
 
 To add forms: generate and inspect one stable source pose, retain prompts/source alpha, record the actual cell bounds, update the form IDs/counts, bake with a stable root and inspect the contact sheet and whole forest. To extend vines: change the offline curve grammar, preserve the attachment and transparent margin tests, then rebuild. Normal builds never invoke image generation.
 
-Study 08 introduced world schema 5 / agent schema 4. Current motion changes use **world schema 8 / agent schema 7**; see [animal motion](ANIMAL-MOTION.md). Older checkpoints fail explicitly. Settings and cache budgets are unchanged; there is still no automatic persistent save or cross-chunk growth history.
+Study 08 introduced world schema 5 / agent schema 4. Current motion and landscape changes use **world schema 15 / agent schema 12**; see [animal motion](ANIMAL-MOTION.md). Older checkpoints fail explicitly. Settings and cache budgets are unchanged; there is still no automatic persistent save or cross-chunk growth history.
 
 ## Study 10 wind registration
 
 Source leaf detail is now registered once at bake resolution before applying the wind loop. Each phase shifts existing rows; the actual crown bounds determine the moving mask, and roots remain exact. Continuous rooted shear supplies the broad sway between fixed ticks. This removes the changing high-resolution source samples that made leaves appear to redraw, while retaining nearest-neighbor pixels, 32 phases and shared vine assets. See [animation](ANIMATION.md).
+
+Study 15 adds shared multi-tile landscape groups, tint masks and static trunk templates. Current world/agent schemas are **15/12**; see [landscape groups](LANDSCAPE-PATCHES.md) for source provenance, animation, navigation and memory details.
+
+Recurring colorful regions, canopy population/perch changes, new generated source provenance and black bear type 58 behavior/rig/codecs are documented in [regional variety](REGIONAL-VARIETY.md). Current world/agent schemas are **15/12**.

@@ -41,9 +41,9 @@ The `hasStimuli` environment hint avoids extra wildlife queries when there are n
 
 ## State and budgets
 
-Agent collections are schema **7** and world checkpoints schema **8**; older checkpoints fail explicitly. The response component uses 24 bytes per mobile animal; elephant-specific water fields add 50 bytes beyond the common ecological record. The elephant record is 380 bytes plus UTF-8 identity/group/parent lengths, excluding the collection header. Exact mid-spray continuation is tested.
+Agent collections are schema **9** and world checkpoints schema **11**; older checkpoints fail explicitly. The response component uses 24 bytes per mobile animal; elephant-specific water fields add 50 bytes beyond the common ecological record. The elephant record is 380 bytes plus UTF-8 identity/group/parent lengths, excluding the collection header. Exact mid-spray continuation is tested.
 
-The shared atlas is **4096×3980, 62.19 MiB decoded**, below the existing 64 MiB ceiling. The finite fixture's soft island shadow uses fewer texels at the same displayed size to make room. No plant/animal resolution, world-cache limit or fixed simulation rate was reduced. See [performance measurements](PERFORMANCE.md).
+The shared atlas is **4096×4036, 63.06 MiB decoded**, below the existing 64 MiB ceiling. The finite fixture's soft island shadow uses fewer texels at the same displayed size to make room. No plant/animal resolution, world-cache limit or fixed simulation rate was reduced. See [performance measurements](PERFORMANCE.md).
 
 ## Reproduce and review
 
@@ -57,6 +57,6 @@ npm run serve
 
 The elephant preview writes `artifacts/elephant-water-sequence.png`, individual drink/spray PNGs and their scene-command JSON. It deliberately clears plants in a staged shoreline fixture so anatomy and trunk registration are visible; it is not a replay of naturally timed behavior. Directional contact sheets inspect all headings, while `tests/elephants.test.ts` exercises reachable drinking, loaded-trunk play, responses/blocked escapes, cooldowns, exact continuation, update order, water-biased generation and unstaged drinking/spraying in a generated world.
 
-In the browser, **Enter/Return** reveals the otherwise hidden controls. **J / Wildlife** cycles to elephant habitat; zoom in to inspect the new poses. The same frames/effects run in WebGL, Canvas and the headless memory renderer.
+In the browser, **Enter/Return** reveals the otherwise hidden controls. **J** cycles to elephant habitat; zoom in to inspect the new poses. The same frames/effects run in WebGL, Canvas and the headless memory renderer.
 
 Full skin deformation, fluid simulation, general pathfinding around obstacles, migration and durable interaction history remain future work.

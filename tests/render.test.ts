@@ -13,7 +13,7 @@ const atlas = { width: raw.info.width, height: raw.info.height, data: raw.data }
 const view = { width: 720, height: 480, panX: 0, panY: 0, zoom: 1, grid: false };
 const digest = (data: Uint8Array) => createHash('sha256').update(data).digest('hex');
 
-test('atlas frames are disjoint, in bounds, transparent and free of magenta key pixels', () => {
+test('atlas frames are disjoint, in bounds and transparent; keyed sources have no magenta leaks', () => {
   const occupied = new Set<number>();
   const shared = new Set<string>();
   for (const [name, sprite] of Object.entries(manifest.sprites)) {
@@ -26,9 +26,11 @@ test('atlas frames are disjoint, in bounds, transparent and free of magenta key 
         const p = y * atlas.width + x, i = p * 4;
         assert.ok(!occupied.has(p), `${name}: overlapping frame`); occupied.add(p);
         if (atlas.data[i + 3] === 0) transparent++; else opaque++;
-        assert.ok(!(atlas.data[i]! > 180 && atlas.data[i + 2]! > 180 && atlas.data[i + 1]! < 90 && atlas.data[i + 3]! > 0), `${name}: chroma key leaked`);
+        // Only the original tree/plant sources use a magenta key. The new
+        // alpha-authored flowers deliberately include vivid pink/purple petals.
+        if (/^(tree|plant)-/.test(name))assert.ok(!(atlas.data[i]! > 180 && atlas.data[i + 2]! > 180 && atlas.data[i + 1]! < 90 && atlas.data[i + 3]! > 0), `${name}: chroma key leaked`);
       }
-      assert.ok((transparent > 0 || name.startsWith('terrain-')) && opaque > 0, `${name}: expected isolated artwork`);
+      assert.ok((transparent > 0 || name.startsWith('terrain-') || name.startsWith('ground-blend-')) && opaque > 0, `${name}: expected isolated artwork`);
     }
   }
 });
@@ -41,6 +43,16 @@ test('all animations contain distinct frame pixels', () => {
       return digest(new Uint8Array(data));
     });
     assert.ok(new Set(hashes).size > 1, `${name}: all poses are identical`);
+  }
+});
+test('the shared atlas keeps a transparent gutter around every unique packed frame',()=>{
+  const seen=new Set<string>();
+  for(const sprite of Object.values(manifest.sprites))for(const f of sprite.frames){
+    const key=`${f.x},${f.y}`;if(seen.has(key))continue;seen.add(key);
+    let alpha=0;
+    for(let x=f.x-1;x<=f.x+f.width;x++)for(const y of [f.y-1,f.y+f.height])alpha+=atlas.data[(y*atlas.width+x)*4+3]!;
+    for(let y=f.y;y<f.y+f.height;y++)for(const x of [f.x-1,f.x+f.width])alpha+=atlas.data[(y*atlas.width+x)*4+3]!;
+    assert.equal(alpha,0,`gutter at ${key}`);
   }
 });
 test('headless scene has sixteen ground tiles, depth sorted animals, and animated output', () => {
@@ -74,4 +86,15 @@ test('offscreen content is culled and a missing sprite fails loudly', () => {
   const frame = composeScene(createWorld(), manifest, { ...view, panX: 20000 });
   assert.equal(frame.commands.length, 0);
   assert.throws(() => composeScene(createWorld(), { ...manifest, sprites: {} }, view), /Unknown sprite/);
+});
+
+test('alpha-authored flowering artwork preserves vivid petals instead of treating them as chroma key',()=>{
+ let petals=0;
+ for(const [name,sprite] of Object.entries(manifest.sprites))if(/^patch-(bloom|flowers)-.*-base$/.test(name)){
+  const f=sprite.frames[0]!;
+  for(let y=f.y;y<f.y+f.height;y++)for(let x=f.x;x<f.x+f.width;x++){
+   const i=(y*atlas.width+x)*4;if(atlas.data[i]!>130&&atlas.data[i+2]!>120&&atlas.data[i]!>atlas.data[i+1]!*1.4&&atlas.data[i+2]!>atlas.data[i+1]!*1.2&&atlas.data[i+3]!>100)petals++;
+  }
+ }
+ assert.ok(petals>30,'retain the reviewed saturated pink/purple flowers');
 });

@@ -6,7 +6,7 @@ npm run benchmark
 npm run assets:preview
 ```
 
-`check` rebuilds assets, runs strict TypeScript checking, bundles the static site, runs **50 headless tests**, and writes actual RGBA-rendered PNG/JSON snapshots. It requires no browser, display, native Canvas package, GPU or generation service. CI in `.github/workflows/check.yml` runs the check on Node 22 and uploads `artifacts/`; remote CI has not been run from this workspace.
+`check` rebuilds assets, runs strict TypeScript checking, bundles the static site, runs **121 headless tests**, and writes actual RGBA-rendered PNG/JSON snapshots. It requires no browser, display, native Canvas package, GPU or generation service. CI in `.github/workflows/check.yml` runs the check on Node 22 and uploads `artifacts/`; remote CI has not been run from this workspace.
 
 ## Coverage
 
@@ -49,7 +49,7 @@ For a reproduction, record seed, preset, weather, camera, simulation ticks, cach
 1. Build, serve, open http://localhost:4173. The canvas fills the screen and controls overlay its bottom. The jungle fills the viewport and drifts continuously; no finite soil border appears.
 2. Open `?`. World size/rendered estimates grow with travel; resident and active counts are bounded; expired totals rise after sufficient travel. GB is labeled estimated and JS heap is separate/optional.
 3. Arrows/WASD/drag pan; Shift travels faster. N/Explore visits dryland, meadow, water and forest. Home returns to the starting forest; +/- and wheel zoom.
-4. J/Wildlife cycles animal habitats and stops drift. Check fawns near adults, perched/flapping birds, tree-climbing apes and solitary cats. R changes the seed. Habitat buttons/1–3, weather/T, pause/resume and guide controls work. Reduced-motion preference starts paused.
+4. J cycles animal habitats and briefly pauses drift. Check fawns near adults, perched/flapping birds, tree-climbing apes and solitary cats. R changes the seed. Habitat keys 1–3, weather/T, pause/resume and guide controls work. Reduced-motion preference starts paused.
 5. Check `?renderer=canvas`, particularly sloping terrain/shorelines and alpha edges. Compare against WebGL and headless snapshots.
 6. Check mobile 390×844, desktop and resize. Guide statistics and keyboard-command disclosure must remain reachable. Inspect console warnings/errors.
 
@@ -112,3 +112,45 @@ Final browser QA covered the 250% limit and disabled zoom button, wolf habitat n
 `npm run elephants:preview` produces a deliberately cleared shoreline fixture with six drinking/spraying poses and individual PNG/command-JSON captures. Review this alongside `npm run assets:preview`: it exposes trunk-to-water and nozzle-to-droplet registration that dense foliage can obscure. It does not replace behavioral tests.
 
 Browser validation covers the initially unobstructed scene, Enter/Return reveal/hide, the new infinity title, settings restored after hiding, WebGL and Canvas, and the 390×844 mobile overlay layout. DOM checks verify hidden/inert controls; screenshots verify that no visible overlay remains. See [elephant design](ELEPHANTS.md) for reproduction and limitations.
+
+## Study 12 opening and soundscape validation
+
+The suite now has **93 tests**. `tests/journey.test.ts` checks smooth bounded density in eight directions, aggregate near/middle/far populations across multiple seeds, intact group IDs, generation-order independence and checkpoint continuation. The audio tests check all eleven PCM buffers, loop seams, energy/DC/headroom, repeatable independently timed phrases, multiple simultaneous call types, varying pitch, mute behavior, bounded history, shared buffers, gain ramps and the twelve-voice cap.
+
+`npm run snapshot` additionally writes `artifacts/journey-opening.png` and `journey-interior.png`, with seed/origin/view/population JSON. `npm run audio:preview` exports each sound and a 30-second `forest-chorus.wav` mix for listening; automated checks do not establish subjective sound quality. The benchmark includes mature forest and wide rain beyond the opening radius.
+
+WebGL and Canvas browser checks exercise the always-visible mute button, Enter/Return toolbar visibility, 60% / 5% / 80% audio controls, Settings, pause/resume, help and zoom. The 390×844 and 320×640 viewports keep controls in one bottom row. The top-left logo, compass, weather/caption overlays and habitat selector have been removed; the keyboard alternatives remain in Help.
+
+## Central configuration and sound controls
+
+`tests/config.test.ts` checks that application defaults feed world construction, edits to species probabilities affect spawning candidates, and opening parameters affect density. It verifies that a disabled warble cannot emit even if explicitly requested by an animal; synthesis length/pitch/rhythm/texture knobs change PCM; and injected Web Audio options omit disabled buffers, apply gain/speed and cap voices. The suite has 97 tests. Browser checks confirm clean startup, hidden-menu behavior and configured audio slider values without console errors. See [configuration](CONFIGURATION.md) for editing and rebuilding defaults.
+
+## Faster opening, graded terrain, recorded elephants and snakes
+
+`npm run check` passes **106 tests**, including the new coverage/continuity, recording/provenance, snake behavior and exact continuation cases. An additional focused rerun checks the no-tree boa navigation guard. `npm run build` validates the atlas/model cache, typechecks and checks retained audio hashes. `npm run benchmark`, `npm run audio:preview`, `npm run assets:preview` and `npm run snakes:preview` produce inspectable artifacts.
+
+Visual review included the lake gradient, both snake contact sheets and the staged wrap sequence, plus the running WebGL and Canvas scene. Browser checks covered 65% zoom, Shift-arrow input, landscape jumps, Pause/Resume, explicit mute, Enter from a focused slider, a 390×844 mobile viewport, panel scrolling and canvas dragging. Mobile safe-area styling was inspected in emulation, not on physical hardware. No browser errors/warnings were reported. WebGL sampled 60 FPS at the opening and wide view on this Mac; Canvas remains a slower fallback in contour-heavy scenes. These observations are device-specific and CPU submission is not GPU completion. Audio PCM, routing and startup state were verified; final subjective listening on target speakers remains an artistic check.
+
+## Temporary scrolling pause and mobile pinch
+
+The 111-test check includes five navigation regressions: the three-second idle delay and long stationary holds; one/two/one-finger handoff and ignored extra fingers; cancellation and coincident fingers; moving pinch anchors across negative coordinates, DPR, zoom limits and projection floors; and immediate reversal after reaching a zoom limit.
+
+Browser QA measured stationary camera coordinates during the idle delay followed by resumed movement in both WebGL and Canvas. P stayed disabled after manual navigation and more than three seconds idle. The 390×844 viewport, single-pointer drag, zoom buttons and the canvas `touch-action: none` boundary were checked. The automation surface cannot send simultaneous touch contacts: actual two-finger browser dispatch and physical iOS/Android behavior still need device QA. On a phone, pinch off-center, pan the midpoint, lift either finger and continue dragging; check both zoom limits, interrupted gestures and the three-second resume delay.
+
+## Woodland, streams and bank wildlife
+
+The full check passes 121 tests, including connected water centerlines, signed seams, zero-water settings, downstream particles and paused flow, species density bias, supported squirrel climbing, boar/deer responses, bank crossings, hopping, active-action codec continuation and transparent atlas gutters. A browser-discovered elephant-splash/toad-pose mismatch was reproduced and fixed with a regression across all five new species.
+
+Art review covers all five contact sheets and actual river/habitat snapshots. Browser checks cover WebGL and Canvas stream scenes, N's stream stop, J's squirrel stop, pause/resume, zoom, and mobile 390×844 dragging and toolbar layout. Performance figures and fallback limitations are in [PERFORMANCE.md](PERFORMANCE.md). Physical mobile multi-touch remains outside the available automation surface.
+
+After the splash regression fix, a four-minute fixed-step river simulation with repeated full composition completed without missing poses. The live mobile Canvas was reloaded and checked for matching 390×844 CSS/backing dimensions and continuing camera updates; the earlier frozen-frame symptom was gone.
+
+## Landscape group regression
+
+`tests/patches.test.ts` covers tap jitter versus navigation, mobile audio startup classification, small-pond exclusion, group object reduction, tree spacing/clearance across negative chunk borders, exact checkpoint continuation, all structural variants, per-root depth and asset fingerprint inputs. `npm run patches:preview` writes a neutral contact sheet with marked trunk feet, plus opening and mature-world scenes and a second mature wind sample. Review those together with `npm run rivers:preview` and the real browser. Current complete check: 138 tests. Mobile viewport inspection does not constitute a physical multi-touch device test.
+
+Study 16 extends these checks to compound arrangements with no single-plant agents, connected border coverage, varied non-grid positions, correlated styles, canopy audio, and unchanged layouts after overlapping chunk visit orders. Tree-associated wildlife tests now use actual arrangement supports. The full check includes 138 tests.
+
+Clearing tests retain dense stands and visible grassy pockets across three mature regions. Continuous-wind tests straddle the old half-second pose boundary, check movement at five interpolation fractions, verify fixed roots and wood/leaf registration, and assert that drawing does not change simulation state.
+
+Regional variety and black bear checks add recurrent open/flower/fruit/wet areas, negative terrain seams, species placement isolation, canopy bird rates, bear family composition, waiting/following, stride calibration, foraging and exact continuation. Pink petals in alpha-authored artwork are preserved; chroma-key rejection remains scoped to the original keyed plant sources. See [regional variety](REGIONAL-VARIETY.md).

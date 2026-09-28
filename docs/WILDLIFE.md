@@ -1,6 +1,6 @@
 # Families, flocks and individual wildlife — Study 06
 
-The jungle is now a full-screen world with a floating bottom toolbar, hidden with the other overlays until Enter/Return is pressed. **Wildlife / J** visits deer, monkey, wolf, giraffe, elephant, seagull, fish, whale, macaw, parakeet, kingfisher, toucan, orangutan and jaguar habitats in sequence, stops camera drift, and leaves simulation running. **Explore / N** still visits landscape types. The guide counts active animals separately from plants/water/motes and reports the number of deer families.
+The jungle is now a full-screen world with a floating bottom toolbar, hidden with the other overlays until Enter/Return is pressed. **J** visits deer, monkey, wolf, giraffe, elephant, seagull, fish, whale, macaw, parakeet, kingfisher, boa, small snake, squirrel, boar, beaver, crocodile, toad, toucan, orangutan and jaguar habitats in sequence, pauses camera drift for three seconds, and leaves simulation running. **N** still visits landscape types. The guide counts active animals separately from plants/water/motes and reports the number of deer families.
 
 ## Social structure
 
@@ -16,7 +16,7 @@ The common agent library knows no jungle species. The application decides which 
 
 | Species | Behavior | Visual source and movement |
 | --- | --- | --- |
-| Deer | Graze, look, follow family, catch up, flee nearby jaguars and shared alarm; fawns follow a mother | Existing 16-heading articulated model; individual size/coat, smaller juveniles; stride distance scales with body size |
+| Deer | Graze, look, follow family, catch up, flee nearby jaguars, wolves, boar and shared alarm; fawns follow a mother | Existing 16-heading articulated model; individual size/coat, smaller juveniles; stride distance scales with body size |
 | Toucan | Rest in canopy, move between perches, follow flock activity | Large bill, throat, eyes, tail, feathered wings and feet; 16-heading rest/flight loops; flight altitude rises and settles smoothly |
 | Orangutan | Long rests, slow arm-supported travel toward trees, climbing and feeding-height pauses; juvenile follows adult | Long arms, short legs, orange body, face/hands; separate travel and alternating climbing-arm poses |
 | Jaguar | Rest/patrol, detect nearby deer, occasional brief pursuit, recovery | Low muscular torso, rosettes, rounded ears, long tail, distinct four-beat walk and faster bounding chase |
@@ -39,7 +39,7 @@ Root beds are small, porous soil speckles and scattered dry leaves, rather than 
 
 ## State and boundaries
 
-Jungle agent collections are schema **7**; world checkpoints are schema **8**, including terrain fields, settings and the revised forest generator. Older checkpoints are rejected; there is no silent reinterpretation of old layouts. Records preserve group/parent links, size/coat/form, RNG, decision timers, recovery, fear, speed/acceleration, target and canopy height, plus previous presentation samples. See [AGENTS-LIBRARY.md](AGENTS-LIBRARY.md).
+Jungle agent collections are schema **12**; world checkpoints are schema **15**, including terrain fields, settings and the revised forest generator. Older checkpoints are rejected; there is no silent reinterpretation of old layouts. Records preserve group/parent links, size/coat/form, RNG, decision timers, recovery, fear, speed/acceleration, target and canopy height, plus previous presentation samples. See [AGENTS-LIBRARY.md](AGENTS-LIBRARY.md).
 
 Groups remain owned by 4×4 chunk territories. They cross internal tiles, but do not migrate across owner boundaries. Cached offscreen families sleep and resume intact; expired families regenerate their initial seeded state. No reproductive lifecycle, aging, predator nutrition, general obstacle pathfinding or full branch skeleton is simulated. Perching/climbing uses approximate tree anchors, and direction/pose changes retain pixel-art quantization.
 
@@ -92,3 +92,11 @@ Current monkey, bird and speed variation behavior is detailed in [animal motion]
 Elephant candidates now use 8.5% × density per chunk near water; inland candidates retain only 12% of that rate (1.02% × density). Other animal rates are unchanged. Valid shoreline positions are preferred, retaining the existing two-to-three adults and possible calf. These are candidate probabilities, not guaranteed populations or exact area fractions.
 
 Thirst drives a dry-footed shoreline approach, trunk filling, curling water to the mouth and lingering. Some filled-trunk actions instead spray a nearby grounded animal; that animal turns away or moves to a valid escape spot. Elephants may splash one another, while high-flying and aquatic animals ignore the stimulus. [Elephant design](ELEPHANTS.md) explains anatomy, timing and the local-territory limitation.
+
+## Constrictors and small snakes
+
+Boas are solitary tree-associated candidates (5.5% × local animal density per chunk); small snakes request varied groups of 3–5 (4.5% × density). Dry habitat and placement clearance still apply. Slow distance-driven waves, planted turns, trunk wrapping and loose-group decisions are documented in [SNAKES.md](SNAKES.md). No predation or cross-chunk migration is added.
+
+Canopy-biased placement, five additional solitary woodland/bank species and connected waterways are described in [RIVERS.md](RIVERS.md). The opening now supports extra friendly wildlife; deer perceive boar and wolves as well as jaguars.
+
+Recurring colorful regions, canopy population/perch changes, new generated source provenance and black bear type 58 behavior/rig/codecs are documented in [regional variety](REGIONAL-VARIETY.md). Current world/agent schemas are **15/12**.

@@ -1,3 +1,6 @@
+import { bakeLandscapePatches, patchLogicalScale } from './art/landscape-patches';
+import { snakeSide } from './art/snake-model';
+import { GROUND_PALETTE, GROUND_STEPS } from '../src/jungle/ground-blend';
 import sharp from 'sharp';
 import { createHash } from 'node:crypto';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
@@ -17,7 +20,7 @@ import { vineFrames } from './art/vines';
 import { isolatePlant } from './art/foliage';
 
 const sha = (data: Uint8Array | string) => createHash('sha256').update(data).digest('hex');
-const dependencies = ['scripts/art/elephant-model.ts', 'src/jungle/elephant-pose.ts', 'src/agents/startle.ts','src/agents/flight.ts', 'src/jungle/flight.ts', 'src/jungle/botany.ts', 'assets/source/forest-forms.png', 'scripts/art/vines.ts', 'scripts/art/foliage.ts', 'scripts/prepare-assets.ts', 'scripts/art/ecology-model.ts', 'src/jungle/ecology.ts', 'src/jungle/agents/ecological.ts', 'scripts/art/deer-model.ts', 'scripts/art/wildlife-model.ts', 'src/jungle/agents/wildlife.ts', 'src/agents/social.ts', 'assets/source/tree-forms.png', 'scripts/art/wind.ts',
+const dependencies = ['scripts/art/black-bear-model.ts','src/jungle/agents/black-bear.ts','src/jungle/regions.ts','assets/source/landscape-color-groves.png','assets/source/landscape-color-ground.png','assets/variety-prompts.json','scripts/art/landscape-patches.ts','src/jungle/patches.ts','src/jungle/geometry.ts','assets/source/landscape-groves.png','assets/source/landscape-ground.png','assets/landscape-prompts.json','scripts/art/river-model.ts','src/jungle/agents/river-wildlife.ts','scripts/art/snake-model.ts','src/jungle/snake-pose.ts','src/jungle/agents/snakes.ts','src/jungle/agents/ecological-base.ts','src/jungle/ground-blend.ts','scripts/art/elephant-model.ts', 'src/jungle/elephant-pose.ts', 'src/agents/startle.ts','src/agents/flight.ts', 'src/jungle/flight.ts', 'src/jungle/botany.ts', 'assets/source/forest-forms.png', 'scripts/art/vines.ts', 'scripts/art/foliage.ts', 'scripts/prepare-assets.ts', 'scripts/art/ecology-model.ts', 'src/jungle/ecology.ts', 'src/jungle/agents/ecological.ts', 'scripts/art/deer-model.ts', 'scripts/art/wildlife-model.ts', 'src/jungle/agents/wildlife.ts', 'src/agents/social.ts', 'assets/source/tree-forms.png', 'scripts/art/wind.ts',
   'src/iso/bake/mesh.ts', 'src/iso/bake/rasterize.ts', 'src/iso/bake/atlas.ts', 'src/iso/math.ts',
   'src/iso/spatial.ts', 'src/jungle/animation.ts', 'src/jungle/world.ts', 'src/jungle/agents/deer.ts', 'src/jungle/agents/fixed.ts', 'src/jungle/agents/index.ts', 'src/agents/core.ts', 'src/agents/motion.ts', 'src/agents/system.ts', 'src/agents/index.ts', 'assets/source/trees.png', 'assets/source/plants.png',
   'package-lock.json'];
@@ -36,7 +39,7 @@ try {
   }
 } catch { /* First build, changed dependencies or missing generated outputs: rebuild. */ }
 const started = performance.now();
-const inputs: BakeSprite[] = [];
+const inputs: BakeSprite[] = await bakeLandscapePatches();
 for (const spec of [
   { file: 'trees', prefix: 'tree' as const, w: 128, h: 96, anchor: [64, 93] as [number, number] },
   { file: 'plants', prefix: 'plant' as const, w: 96, h: 64, anchor: [48, 58] as [number, number] },
@@ -113,8 +116,13 @@ for(const kind of ['toucan','orangutan','jaguar'] as WildlifeKind[]){
 for(const kind of ECO_KINDS){
  const spec=ECO_SPECS[kind],camera={width:112,height:112,anchor:[56,87] as [number,number],scale:spec.cameraScale};
  for(const [clip,count] of Object.entries(ecoClips(kind))){
-  const poses=Array.from({length:count},(_,i)=>ecologyMesh(kind,clip,i/(clip==='drink'||clip==='spray'?count-1:count)));
-  for(let d=0;d<spec.directions;d++)inputs.push({id:`${kind}-${clip}-${d}`,anchor:camera.anchor,frames:poses.map(mesh=>bakeMesh(mesh,d/spec.directions*TAU,camera))});
+  const poses=Array.from({length:count},(_,i)=>ecologyMesh(kind,clip,i/(clip==='drink'||clip==='spray'||clip==='wrap'||clip==='hop'?count-1:count)));
+  for(let d=0;d<spec.directions;d++){
+   const heading=d/spec.directions*TAU;
+   if(kind!=='boa'||(clip!=='wrap'&&clip!=='coil'))inputs.push({id:`${kind}-${clip}-${d}`,anchor:camera.anchor,frames:poses.map(mesh=>bakeMesh(mesh,heading,camera))});
+   if(kind==='boa'&&(clip==='wrap'||clip==='coil'))for(const front of [false,true])
+    inputs.push({id:`${kind}-${clip}-${d}-${front?'front':'back'}`,anchor:camera.anchor,frames:poses.map(mesh=>bakeMesh(snakeSide(mesh,heading,front),heading,camera))});
+  }
  }
 }
 // Small porous root-bed textures: localized soil flecks and recognizable leaves, not broad mud disks.
@@ -131,6 +139,14 @@ for(let variant=0;variant<4;variant++){
   for(let dy=-1;dy<=1;dy++)for(let dx=-2;dx<=2;dx++)if(Math.abs(dx)+Math.abs(dy)<3){const x=cx+dx,y=cy+dy+(i%2?Math.sign(dx):0);if(x>0&&x<63&&y>0&&y<63)data.set(tint,(y*width+x)*4);}
  }
  inputs.push({id:`litter-${variant}`,anchor:[32,32],frames:[{width,height,data}]});
+}
+{
+ const width=48,height=48,data=new Uint8Array(width*height*4);
+ for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+  const u=(x-23.5)/24,v=(y-23.5)/24,grain=hash(x,y,901),edge=Math.max(0,1-u*u-v*v);
+  if(edge>0)data.set([53+grain*12,64+grain*14,40+grain*8,Math.round(edge*edge*(100+grain*120))],(y*width+x)*4);
+ }
+ inputs.push({id:'river-mud',anchor:[24,24],frames:[{width,height,data}]});
 }
 function rgb(hex: string): number[] { const n = parseInt(hex, 16); return [n >> 16 & 255, n >> 8 & 255, n & 255, 255]; }
 const palettes = [
@@ -170,7 +186,8 @@ for (const [biome, habitat] of HABITATS.entries()) {
       }
       if (rgba) data.set(rgba, (py * w + px) * 4);
     }
-    inputs.push({ id: `ground-${biome}-${tx}-${ty}`, anchor: [96, 0], trim: false, frames: [{ width: w, height: h, data }] });
+    const compact=await sharp(data,{raw:{width:w,height:h,channels:4}}).resize(w/2,h/2,{kernel:'nearest'}).raw().toBuffer();
+    inputs.push({ id: `ground-${biome}-${tx}-${ty}`, anchor: [48, 0], trim: false, frames: [{ width: w/2, height: h/2, data:compact }] });
   }
 }
 // Reusable opaque surface textures, mapped onto sloping terrain quads at runtime.
@@ -186,6 +203,18 @@ for (let material = 0; material < terrainColors.length; material++) for (let var
   }
   inputs.push({ id: `terrain-${material}-${variant}`, anchor: [0, 0], trim: false, frames: [{ width: size, height: size, data }] });
 }
+// Shared dithered ecotone textures; fixed bank, never one texture per world tile.
+for(let step=0;step<=GROUND_STEPS;step++)for(let variant=0;variant<2;variant++){
+ const size=32,data=new Uint8Array(size*size*4),value=step/8,lo=Math.min(3,Math.floor(value)),t=value-lo;
+ for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+  const grain=hash(x,y,variant+1701),patch=hash(x>>2,y>>2,variant+2701);
+  const mix=Math.max(0,Math.min(1,t+(patch-.5)*.18));
+  const a=GROUND_PALETTE[lo]!,b=GROUND_PALETTE[lo+1]!;
+  const c=a.map((v,i)=>Math.round((v+(b[i]!-v)*mix)*(.91+grain*.18)));
+  data.set([...c,255],(y*size+x)*4);
+ }
+ inputs.push({id:`ground-blend-${step}-${variant}`,anchor:[0,0],trim:false,frames:[{width:size,height:size,data}]});
+}
 for (const [id, width, height, anchor] of [
   ['shadow', 64, 24, [32, 12]], ['island-shadow', 400, 190, [200, 75]],
 ] as const) {
@@ -197,6 +226,10 @@ for (const [id, width, height, anchor] of [
   inputs.push({ id, anchor: [...anchor], frames: [{ width, height, data }] });
 }
 const { image, manifest } = packAtlas(inputs, 4096, 4096);
+for(const [id,s] of Object.entries(manifest.sprites)){
+ const scale=id.startsWith('patch-')?patchLogicalScale(id):/^ground-\d/.test(id)?2:1;
+ if(scale!==1){s.width*=scale;s.height*=scale;s.anchor=[s.anchor[0]*scale,s.anchor[1]*scale];}
+}
 // The broad, soft legacy-island shadow needs fewer texels, with the same logical bounds.
 const islandShadow=manifest.sprites['island-shadow']!;islandShadow.width*=2;islandShadow.height*=2;islandShadow.anchor=[islandShadow.anchor[0]*2,islandShadow.anchor[1]*2];
 // Preserve world-space source sizing while economizing texels, not animation cadence.

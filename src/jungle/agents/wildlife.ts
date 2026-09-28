@@ -4,8 +4,8 @@ import { clamp, lerp, type Vec2 } from '../../iso/math';
 import { angleDelta, TAU } from '../animation';
 import type { EcoKind } from '../ecology';
 export type WildlifeKind = EcoKind | 'toucan' | 'orangutan' | 'jaguar';
-export type WildlifeState = 'rest' | 'travel' | 'chase' | 'climb' | 'swing' | 'surface' | 'run' | 'drink' | 'spray';
-const states: WildlifeState[] = ['rest','travel','chase','climb','swing','surface','run','drink','spray'];
+export type WildlifeState = 'rest' | 'travel' | 'chase' | 'climb' | 'swing' | 'surface' | 'run' | 'drink' | 'spray' | 'wrap' | 'coil' | 'unwrap' | 'descend' | 'swim' | 'hop' | 'forage';
+const states: WildlifeState[] = ['rest','travel','chase','climb','swing','surface','run','drink','spray','wrap','coil','unwrap','descend','swim','hop','forage'];
 export interface WildlifeSample extends Vec2 { heading: number; gait: number; altitude: number; state: WildlifeState }
 /** Common mechanics only; species decisions stay in concrete subclasses. */
 export abstract class WildlifeAgent implements Agent {

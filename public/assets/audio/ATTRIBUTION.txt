@@ -1,0 +1,5 @@
+Elephant voice - trumpeting (2011-02-01)
+Author: தகவலுழவன் (Info-farmer)
+Source: https://commons.wikimedia.org/wiki/File:Elephant_voice_-_trumpeting.ogg
+License: CC0 1.0 Universal — https://creativecommons.org/publicdomain/zero/1.0/
+Adaptation: mono 24 kHz PCM, endpoint fades and reduced gain.

@@ -115,3 +115,42 @@ Implemented: larger wolf families with occasional smaller cubs, live parent/lead
 Implemented: a dedicated articulated elephant mesh with a continuous tapered trunk; 16-direction walking, drinking and spraying clips; shared pose geometry for nozzle registration; bounded shoreline seeking, thirst, trunk loading and occasional social splashes; snapshot-based reusable local stimuli with species-specific escape behavior. All overlays start hidden and Enter/Return reveals them; the site is now **∞ infinite jungle**. The 62.19 MiB atlas and existing cache limits remain bounded. See [elephant design](docs/ELEPHANTS.md) and [measurements](docs/PERFORMANCE.md).
 
 These are stylized anatomical and behavioral improvements. Full skeletal/skin deformation, fluid simulation, obstacle-routing around complex shores, herd migration and durable interaction history are future work.
+
+## Study 12: a journey into the forest
+
+Implemented: a sparse seed-anchored opening with smoothly increasing plant and whole-family probabilities in every direction, saturating 22 tiles from the start. Existing noisy groves, little clearings, shores and social encounters provide contrast within the denser forest. The envelope is independent of camera/visit order and adds no stored per-tile data. Mature forest remains a separate benchmark case.
+
+Sound is enabled at 60% master / 5% environment / 80% wildlife, subject to browser autoplay policy. Independent species/distant-canopy callers overlap six synthesized bird/drumming voices with varying pitch and timing, within bounded buffers/history/voices. Enter reveals one bottom toolbar; a top-right mute button is always available. See [opening design](docs/SETTINGS.md) and [audio architecture](docs/AUDIO.md). Deliberately authored discoveries and fuller ecological migration remain future ideas.
+
+## Centralized application tuning
+
+Implemented: documented `src/config.ts` groups startup, camera, landscape, population, opening progression, cache/rendering/UI limits and all sound controls. Reusable audio/rendering components receive options rather than importing application content. The low wobbling warble is disabled in the default bank; individual audio previews remain available for later tuning. See [configuration](docs/CONFIGURATION.md).
+
+## Faster openings, graded terrain, elephant recordings and snakes
+
+Implemented: the sparse envelope now spans 3–22 tiles; 32-step noisy ground gradients and matching vegetation thinning soften sand/grass/forest transitions. A retained CC0 elephant trumpet recording plays infrequently near elephant agents. Solitary boas approach real trunks and wrap/rest/unwrap; small striped snakes use loose, varied groups. Eight-heading articulated rigs share the existing atlas, including painter-ordered front/back coils. World/agent schemas are 10/8. See [snake design](docs/SNAKES.md) and [sound provenance](assets/source/audio/provenance.json).
+
+Future: detailed branch geometry, anatomical snake contact/path solving, cross-chunk migration and durable history. Sleeping cached animals still resume; expired chunks regenerate initial populations.
+
+## Living clearings and connected waterways
+
+Implemented: canopy-biased whole-group generation makes thin woodland livelier and dense cover more favorable to wolves/jaguars/boar. Five new classes add solitary squirrels with real tree supports, non-contact boar dashes and independently fleeing deer, bank-foraging beavers, basking/swimming crocodiles and hopping toads. Seeded connected pond/stream geometry shares terrain contours with habitat rules; varied downstream flow carries foam and branches. One shared atlas still fits below 64 MiB using full-resolution artwork and one-pixel transparent gutters. World/agent schemas are 11/9. See [river design and limits](docs/RIVERS.md).
+
+Future: downhill hydrology, erosion, dam building, debris collisions and durable cross-chunk animal migration. The implemented cached-sleep/expired-regeneration semantics are unchanged; there is no automatic persistence.
+
+## Study 15 · shared landscape artwork
+
+Implemented: 20 ImageGen structural group variants, shared rooted loops, configurable leaf masks, multi-tile grass/water and grove ownership, explicit tree supports and per-root painter ordering. One clock replaces many plant/water objects; source art stays out of the browser bundle and the single atlas remains below 64 MiB. Narrow streams have feathered mud and wet vegetation, fish schools skip small ponds, mobile sound starts muted, and only navigation temporarily suppresses drift. World/agent schemas are 12/10. See [landscape patches](docs/LANDSCAPE-PATCHES.md).
+
+Future: arbitrary view rotation, reconstructed 3D canopies, connected branch geometry, worker-based generation and durable offscreen ecological history. The current structural views and semantic masks do not claim those capabilities.
+
+## Study 16 · connected landscape arrangements
+
+Implemented: one compound landscape per 16-tile ownership area, with overlapping border vegetation and no standalone plants in the streamed world. A warped staggered pattern and correlated habitat/stand fields join compatible pieces into larger surfaces. Bushes adjoin, grove soil is subdued, grass skirts bridge edges, and aquatic plants form colonies. Shared components retain individual trunk depth, land checks, deterministic neighbor clearance and animal supports without independent simulation clocks. The generated sources and atlas are reused, so larger arrangements add no texture pages or per-chunk images. Occasional smoothly graded glades preserve dense stands, and display-time rooted wind replaces coarse landscape pose steps. World/agent schemas are 15/12. See [arrangement design](docs/LANDSCAPE-PATCHES.md).
+
+These are compound sprites assembled from shared generated art, not unique baked images for every visited chunk. Arbitrary camera rotation and reconstructed 3D branch geometry remain future work.
+
+
+## Recurring variety and bear families
+
+Implemented: independent world-space open, flower, fruit and wet-region fields continue beyond the seed-anchored opening. Sixteen new retained ImageGen variants provide colorful groves, fruit/vines, wildflower carpets and muddy gaps inside compound arrangements. Canopy bird candidates are increased, crown perches are registered per trunk, and ecological placement uses per-species RNG. Type 58 black bears forage alone or in mother–cub families, with waiting/following behavior and an authored directional rig. World/agent schemas are 15/12; the single atlas remains below 64 MiB. Sleeping agents resume, expired populations regenerate; migration, persistent ecology, bear reproduction and hibernation remain future work. See [regional variety](docs/REGIONAL-VARIETY.md).

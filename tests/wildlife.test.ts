@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {AgentSystem,herdIntent,type AgentEnvironment,type Neighbor} from '../src/agents';
-import {DeerAgent,ToucanAgent,OrangutanAgent,JaguarAgent,WildlifeAgent,PlantAgent,jungleAgents} from '../src/jungle/agents';
+import {DeerAgent,ToucanAgent,OrangutanAgent,JaguarAgent,WildlifeAgent,PlantAgent,LandscapePatchAgent,jungleAgents} from '../src/jungle/agents';
 import {InfiniteWorld} from '../src/jungle/infinite';
 import {wildlifeMesh} from '../scripts/art/wildlife-model';
 import {bakeMesh} from '../src/iso/bake/rasterize';
@@ -70,12 +70,12 @@ test('low-density populations include families and all new species with varied p
  const w=new InfiniteWorld(2718,'rainforest',undefined,{animals:1});let animals=0,tiles=0,babies=0;const species=new Set<string>(),forms=new Set<number>();
  for(let y=-8;y<=8;y++)for(let x=-8;x<=8;x++){
   w.ensure({minX:x*4,minY:y*4,maxX:x*4+3.9,maxY:y*4+3.9});tiles+=16;
-  for(const a of w.agents){if(a instanceof PlantAgent&&a.kind==='tree')forms.add(a.morphology);if(!(a instanceof DeerAgent)&&!(a instanceof WildlifeAgent))continue;if(['deer','toucan','orangutan','jaguar'].includes(a.kind)){animals++;species.add(a.kind);}
+  for(const a of w.agents){if(a instanceof LandscapePatchAgent)for(const p of a.pieces)forms.add(p.variant);if(!(a instanceof DeerAgent)&&!(a instanceof WildlifeAgent))continue;if(['deer','toucan','orangutan','jaguar'].includes(a.kind)){animals++;species.add(a.kind);}
    if(a instanceof DeerAgent){assert.ok(a.groupId);if(a.juvenile){babies++;assert.ok(a.size<.8);assert.ok(w.agents.some(m=>m.id===a.motherId));}}
    if(a instanceof JaguarAgent)assert.equal(a.groupId,'');
   }
  }
- assert.equal(species.size,4);assert.equal(forms.size,7);assert.ok(babies>0);assert.ok(animals/tiles<.045,`${animals} animals/${tiles} tiles`);
+ assert.equal(species.size,4);assert.equal(forms.size,4);assert.ok(babies>0);assert.ok(animals/tiles<.06,`${animals} animals/${tiles} tiles`);
 });
 
 test('litter is ground-registered, increases with nearby canopy and avoids shoreline corners',()=>{

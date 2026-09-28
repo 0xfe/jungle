@@ -42,11 +42,11 @@ Wolves now have a dedicated running rig; species that only have walking rigs kee
 
 ## Removals, state and costs
 
-Crabs no longer spawn, appear in Wildlife navigation, or occupy runtime atlas frames. Their source rig/class and numeric type ID 44 are retained dormant for possible reuse. There are **14 active animal species**.
+Crabs no longer spawn, appear in Wildlife navigation, or occupy runtime atlas frames. Their source rig/class and numeric type ID 44 are retained dormant for possible reuse. There are **22 active animal species**.
 
 The gray areas were stone ridge materials. The ridge scalar now contributes only to elevation: hills carry normal forest/meadow/dry cover. The settings label is **Hills**; Explore visits dry scrub, meadow, lake and forest. Small authored decorative mushroom rocks remain individual plants, rather than gray terrain patches.
 
-Current schemas are **world 8 / agents 7**. Flight powered state, remaining timer, cadence and lift, plus trip pace, serialize with wildlife. Existing route fields store monkey swing origin/progress/duration. Checkpoints preserve exact continuation and reject earlier layouts explicitly. The active-world/cache budgets stay unchanged.
+Current schemas are **world 15 / agents 12**. Flight powered state, remaining timer, cadence and lift, plus trip pace, serialize with wildlife. Existing route fields store monkey swing origin/progress/duration. Checkpoints preserve exact continuation and reject earlier layouts explicitly. The active-world/cache budgets stay unchanged.
 
 Tests verify powered/glide alternation, climb cadence, rising/falling flight, individual pace, exact continuation, short fixed-length swings with real support, low swing occupancy, and absence of crabs/stone materials even at maximum settings. `npm run assets:preview` shows all headings and motion phases. The articulated rigs and branch anchors remain stylized; more detailed anatomy and physically modeled branches are future work.
 
@@ -62,4 +62,6 @@ Jaguars remain solitary. In addition to brief non-contact deer pursuits, an elig
 
 ## Study 11 elephants and splash response
 
-Elephants now use a dedicated anatomical rig, distance-driven four-beat walk and aligned one-shot drinking/spraying clips. A reusable local stimulus response gives recipients an away heading and bounded retreat/cooldown while respecting habitat and clearance. All state, including thirst and trunk load, resumes exactly through the current world 8 / agent 7 codecs. See [ELEPHANTS.md](ELEPHANTS.md).
+Elephants now use a dedicated anatomical rig, distance-driven four-beat walk and aligned one-shot drinking/spraying clips. A reusable local stimulus response gives recipients an away heading and bounded retreat/cooldown while respecting habitat and clearance. All state, including thirst and trunk load, resumes exactly through the current world 9 / agent 7 codecs. See [ELEPHANTS.md](ELEPHANTS.md).
+
+Snake travel, tree-supported wrapping and exact codecs are described in [SNAKES.md](SNAKES.md).

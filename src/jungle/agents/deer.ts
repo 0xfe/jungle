@@ -107,7 +107,7 @@ export class DeerAgent implements Agent, DeerSample {
       this.target={x:this.x+Math.cos(this.startle.heading)*.01,y:this.y+Math.sin(this.startle.heading)*.01};
       this.locomotion='walk';this.motor.stop();this.enter('turn',3);return;
     }
-    const predator = neighbors.filter(n => n.kind === 'jaguar').sort((a, b) => Math.hypot(a.x-this.x,a.y-this.y)-Math.hypot(b.x-this.x,b.y-this.y)||a.id.localeCompare(b.id))[0];
+    const predator = neighbors.filter(n => n.kind === 'jaguar' || n.kind === 'wolf' || n.kind === 'boar').sort((a, b) => Math.hypot(a.x-this.x,a.y-this.y)-Math.hypot(b.x-this.x,b.y-this.y)||a.id.localeCompare(b.id))[0];
     const danger = predator && Math.hypot(predator.x-this.x,predator.y-this.y) < 2.5;
     const social = herdIntent(this, neighbors);
     if (danger || (social && social.urgency > .5)) {

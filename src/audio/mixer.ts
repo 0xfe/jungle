@@ -1,39 +1,66 @@
-import type { SoundKind } from './synthesis';
+import { BIRD_KINDS, type BirdKind, type SoundTuning, type SoundKind } from './synthesis';
+export type AudioKind=SoundKind|'elephant';
 export type BedKind='leaves'|'water'|'rain'|'insects';
-export interface AudioEvent { kind:'step'|'bird'; gain:number; pan:number; rate:number }
+export interface AudioEvent { kind:'step'|BirdKind|'elephant'; gain:number; pan:number; rate:number }
 export interface SoundFrame { beds:Record<BedKind,number>; events:AudioEvent[]; master:number }
 export interface AudioSink { apply(frame:SoundFrame):void; dispose():void }
-export interface SoundEmitter { id:string; x:number;y:number;speed:number;phase:number;bird:boolean }
+export interface SoundEmitter { id:string; x:number;y:number;speed:number;phase:number;bird:boolean;call?:BirdKind|'elephant' }
 export interface SoundScene { x:number;y:number;water:number;rain:number;canopy:number;night:number;emitters:readonly SoundEmitter[] }
 export interface AudioSettings { master:number; ambience:number; wildlife:number }
-export const DEFAULT_AUDIO:Readonly<AudioSettings>=Object.freeze({master:.5,ambience:.7,wildlife:.55});
+export const DEFAULT_AUDIO:Readonly<AudioSettings>=Object.freeze({master:.6,ambience:.05,wildlife:.8});
 const clamp=(n:number,a=0,b=1)=>Math.max(a,Math.min(b,n));
-/** Content-independent listener and event planner; bounded history, no DOM or audio nodes. */
+interface Caller { phase:number;remaining:number;random:number }
+function seed(id:string):number {let n=2166136261;for(const c of id)n=Math.imul(n^c.charCodeAt(0),16777619);return n>>>0;}
+function random(c:Caller):number {c.random=(Math.imul(c.random,1664525)+1013904223)>>>0;return c.random/4294967296;}
+function caller(id:string):Caller {const c={phase:0,remaining:0,random:seed(id)};c.remaining=.3+random(c)*3.5;return c;}
+const CHOIR_PALETTES:readonly (readonly BirdKind[])[]=[['bird','warble'],['trill','chatter'],['woodpecker','bird']];
+export interface SoundscapeOptions {
+ radius?:number; maxEmitters?:number; maxEvents?:number; callGapMin?:number; callGapMax?:number;
+ pitchMin?:number; pitchMax?:number; chorus?:boolean; sounds?:Partial<Record<AudioKind,SoundTuning>>;
+}
+/** Independent callers share bounded PCM, never simulation RNG or an unbounded event history. */
 export class Soundscape {
- private phase=new Map<string,number>();private chirp=4;private eventClock=0;
+ constructor(private readonly options:SoundscapeOptions={}){}
+ private voices=new Map<string,Caller>();private choir=[caller('canopy-low'),caller('canopy-trill'),caller('canopy-drum')];private eventClock=0;
  update(scene:SoundScene,dt:number,settings:AudioSettings=DEFAULT_AUDIO,active=true):SoundFrame{
-  const events:AudioEvent[]=[];this.chirp-=dt;this.eventClock=Math.max(0,this.eventClock-dt);
-  const nearby=scene.emitters.filter(a=>Math.hypot(a.x-scene.x,a.y-scene.y)<5).sort((a,b)=>Math.hypot(a.x-scene.x,a.y-scene.y)-Math.hypot(b.x-scene.x,b.y-scene.y)).slice(0,32);
-  const next=new Map<string,number>();
+  const o=this.options,radius=o.radius??5;
+  const events:AudioEvent[]=[],step=active?clamp(dt,0,.5):0;this.eventClock=Math.max(0,this.eventClock-step);
+  const nearby=scene.emitters.filter(a=>Math.hypot(a.x-scene.x,a.y-scene.y)<radius).sort((a,b)=>Math.hypot(a.x-scene.x,a.y-scene.y)-Math.hypot(b.x-scene.x,b.y-scene.y)||a.id.localeCompare(b.id)).slice(0,o.maxEmitters??32);
+  const next=new Map<string,Caller>(),wildlife=clamp(settings.wildlife);
+  const emit=(c:Caller,kind:BirdKind|'elephant',gain:number,pan:number)=>{
+   const rate=kind==='elephant'?.92+random(c)*.16:(o.pitchMin??.8)+random(c)*((o.pitchMax??1.24)-(o.pitchMin??.8));
+   if(o.sounds?.[kind]?.enabled!==false)events.push({kind,gain:gain*wildlife,pan,rate});
+   // Different pauses and pitches on every phrase; rain/dusk leave more space.
+   c.remaining=(kind==='elephant'?18+random(c)*24:(o.callGapMin??1.5)+random(c)*((o.callGapMax??6)-(o.callGapMin??1.5)))*(1+scene.rain*.45+scene.night*.55)*(o.sounds?.[kind]?.intervalScale??1);
+  };
   for(const a of nearby){
-   const phase=Math.floor(a.phase*2),old=this.phase.get(a.id),distance=Math.hypot(a.x-scene.x,a.y-scene.y);
-   next.set(a.id,phase);
-   const step=!a.bird&&a.speed>.03&&old!==undefined&&phase!==old&&this.eventClock<=0;
-   const bird=a.bird&&this.chirp<=0;
-   if(active&&(step||bird)&&events.length<2){
-    const gain=(1-distance/5)**2*clamp(settings.wildlife)*(bird?.7:.5);
-    events.push({kind:bird?'bird':'step',gain,pan:clamp(((a.x-scene.x)-(a.y-scene.y))/6,-1,1),rate:bird?.85+(a.id.length%7)*.05:1});
-    if(bird)this.chirp=4+(a.id.length%7);else this.eventClock=.18;
+   const phase=Math.floor(a.phase*2),old=this.voices.get(a.id),c=old??caller(a.id),distance=Math.hypot(a.x-scene.x,a.y-scene.y);
+   const gain=(1-distance/radius)**2,pan=clamp(((a.x-scene.x)-(a.y-scene.y))/6,-1,1);
+   c.remaining-=step;
+   if(active&&events.length<(o.maxEvents??4)&&wildlife>0){
+    if((a.bird||a.call==='elephant')&&c.remaining<=0)emit(c,a.call??BIRD_KINDS[Math.floor(random(c)*4)]!,gain*.55,pan);
+    else if(!a.bird&&a.speed>.03&&old&&phase!==old.phase&&this.eventClock<=0){if(o.sounds?.step?.enabled!==false)events.push({kind:'step',gain:gain*wildlife*.5,pan,rate:.92+random(c)*.16});this.eventClock=.18*(o.sounds?.step?.intervalScale??1);}
+   }
+   c.phase=phase;next.set(a.id,c);
+  }
+  this.voices=next;
+  // Three distant canopy callers add a sparse chorus even when visible animals are scarce.
+  // They are sound layers, not invisible animal agents, and do not accumulate with travel.
+  for(let i=0;i<(o.chorus===false?0:this.choir.length);i++){
+   const c=this.choir[i]!;if(scene.canopy>.06)c.remaining-=step;
+   if(active&&scene.canopy>.06&&wildlife>0&&c.remaining<=0&&events.length<(o.maxEvents??4)){
+    const choices=CHOIR_PALETTES[i]!.filter(kind=>o.sounds?.[kind]?.enabled!==false);if(!choices.length)continue;
+    emit(c,choices[Math.floor(random(c)*choices.length)]!, (.12+.2*scene.canopy)*(.8+random(c)*.4), (i-1)*.65+(random(c)-.5)*.3);
+    c.remaining*=1.25-.35*clamp(scene.canopy);
    }
   }
-  this.phase=next;
   const g=clamp(settings.ambience);
   return {master:active?clamp(settings.master)*.75:0,beds:{leaves:g*(.3+.55*clamp(scene.canopy)),water:g*.65*clamp(scene.water),rain:g*.8*clamp(scene.rain),insects:g*.5*clamp(scene.night)},events};
  }
- get trackedEmitters(){return this.phase.size;}
- reset(){this.phase.clear();this.chirp=4;this.eventClock=0;}
+ get trackedEmitters(){return this.voices.size;}
+ reset(){this.voices.clear();this.choir=[caller('canopy-low'),caller('canopy-trill'),caller('canopy-drum')];this.eventClock=0;}
 }
 /** In-memory sink useful for application tests; keeps only the latest frame. */
 export class MemoryAudioSink implements AudioSink {frame?:SoundFrame;apply(frame:SoundFrame){this.frame=structuredClone(frame);}dispose(){this.frame=undefined;}}
 export const BED_KINDS:readonly BedKind[]=['leaves','water','rain','insects'];
-export const SOUND_KINDS:readonly SoundKind[]=[...BED_KINDS,'step','bird'];
+export const SOUND_KINDS:readonly SoundKind[]=[...BED_KINDS,'step',...BIRD_KINDS];

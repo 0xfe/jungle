@@ -1,4 +1,4 @@
-# Performance and resource budgets — Study 11
+# Performance and resource budgets — Woodland and rivers
 
 The browser now streams a world instead of drawing a fixed 16-tile island. Performance is bounded by the active viewport and cache policies, not distance traveled. See [streaming](STREAMING.md) for exact counter/memory semantics.
 
@@ -17,23 +17,24 @@ npm run benchmark
 
 The benchmark warms up for 120 frames, then measures 360 frames. `artifacts/benchmark.json` records median/p95/max streaming, simulation, composition and quad-encoding times, plus population/cache statistics. The travel case moves rapidly across chunk boundaries; its worst generation frame is reported separately. There are no machine-dependent pass/fail thresholds.
 
-A Study 11 local macOS arm64 / Node 26.9.0 run recorded:
+A local macOS arm64 / Node 26.9.0 run with the woodland/river extension recorded:
 
 | Scenario | Active tiles | Agents | Max quads | Stream p95 / max | Simulation p95 | Compose p95 | Encode p95 |
 | --- | ---: | ---: | ---: | --- | ---: | ---: | ---: |
-| Forest | 576 | 1,893 | 1,692 | 0.002 / 0.005 ms | 1.289 ms | 1.706 ms | 0.391 ms |
-| Wide rain | 1,296 | 4,175 | 4,355 | 0.003 / 0.005 ms | 3.260 ms | 4.145 ms | 1.259 ms |
-| Fast travel | 576 | 2,018 | 2,920 | 1.650 / 16.187 ms | 1.094 ms | 1.934 ms | 0.644 ms |
+| Opening forest | 576 | 1,077 | 1,267 | 0.004 / 0.130 ms | 1.425 ms | 1.367 ms | 0.411 ms |
+| Mature forest | 576 | 1,982 | 2,915 | 0.002 / 0.006 ms | 1.397 ms | 2.295 ms | 0.764 ms |
+| Wide rain (mature) | 1,296 | 4,246 | 7,962 | 0.003 / 0.006 ms | 4.524 ms | 6.836 ms | 2.552 ms |
+| Fast travel | 576 | 2,026 | 7,701 | 1.784 / 7.506 ms | 1.306 ms | 3.308 ms | 1.877 ms |
 
-These are an implementation-time sample, not universal performance promises or exact permanent population counts. Generative-rule changes may change populations slightly. The travel run expired 864 tile records and retained about 0.59 MiB of accounted cache data. Browser rendering, GPU upload/completion, pixel rasterization and display scheduling are **excluded** from these CPU timings.
+The travel run expired 864 tile records and retained about 0.66 MiB of accounted cache data. Opening wildlife is now more abundant; mature/wide scenarios still measure dense-world costs. These are local observations, not universal promises. Browser rasterization, GPU work, audio planning and display scheduling are excluded.
 
-In Study 04, caching immutable terrain geometry/regions reduced the forest composition p95 from approximately 2.0 to 1.0 ms in this local pass. Uniform ground tiles use one quad; only material boundaries subdivide. Viewport culling happens before transforming offscreen surfaces. WebGL retains one painter-ordered batch and one atlas. Terrain shading uses a small set of brightness levels. Canvas keeps tinted regions in an LRU capped at 512 entries / 8 MiB accounted bytes; continuously varying foliage tint was removed to prevent per-frame image-cache churn. Local plant vigor instead affects scale slightly. Static terrain and trunk indices rebuild on active-region changes, not camera subpixel motion. Only active agents tick; sleeping chunks are byte arrays.
+In Study 04, caching immutable terrain geometry/regions reduced the forest composition p95 from approximately 2.0 to 1.0 ms in this local pass. Uniform ground tiles use one quad; only material boundaries subdivide. Viewport culling happens before transforming offscreen surfaces. WebGL retains one painter-ordered batch and one atlas. Ground gradients use shared untinted textures; removing flat tile slope tints avoids sharp diamond bands and Canvas tint-cache churn. Canvas keeps tinted regions in an LRU capped at 512 entries / 8 MiB accounted bytes; continuously varying foliage tint was removed to prevent per-frame image-cache churn. Local plant vigor instead affects scale slightly. Static terrain and trunk indices rebuild on active-region changes, not camera subpixel motion. Only active agents tick; sleeping chunks are byte arrays.
 
 For browser checks, use the default scene, zoom out, travel with Shift + arrows, and press N to cross several landscape types. Compare `?renderer=canvas`. Press Enter/Return to reveal overlays; the `?` guide shows FPS and CPU p95 over the last 120 frames, including renderer submission but excluding asynchronous GPU completion. Canvas uses clipped affine triangles for sloping ground and can be slower than WebGL. Check actual target devices before promising a frame-rate floor.
 
 ## Memory costs
 
-- **Atlas:** 4096 × 3980 = **62.19 MiB decoded**, 9,806 logical / 8,151 unique frames, approximately 2.05 MiB PNG. The cap remains 4096 × 4096 / 64 MiB. Twenty-two tree forms, ten understory forms, four vine patterns and fourteen active animal rigs share this texture; additional instances reuse it.
+- **Atlas:** 4096 × 4036 = **63.06 MiB decoded**, 11,184 logical / 9,487 unique frames, approximately 2.35 MiB PNG. The cap remains 4096 × 4096 / 64 MiB. Twenty-two tree forms, ten understory forms, four vine patterns and twenty-one active animal rigs share this texture; additional instances reuse it.
 - **Terrain:** 986 bytes per 16-tile chunk, plus compact species records and a bookkeeping allowance.
 - **Cold cache:** 4 MiB accounted bytes and 256 chunks maximum, with distance expiry. Active-region requests also have a hard count limit.
 - **Exploration counters:** 8 KiB fixed, regardless of travel distance.
@@ -92,6 +93,94 @@ Browser checks covered WebGL and Canvas, the wolf pack view, zoom bounds, rain, 
 
 ## Study 11: bounded elephant interactions
 
-`artifacts/benchmark-before-elephants.json` retains the previous baseline; the table above and `artifacts/benchmark.json` are the updated run. Atlas growth buys 704 additional elephant frames; no per-animal texture is allocated. Each mobile response adds 24 serialized bytes, and elephant water state adds another 50. Cache/count limits are unchanged.
+`artifacts/benchmark-before-elephants.json` retains the previous baseline; the Study 11 run preceded the current table and `artifacts/benchmark.json`. Atlas growth buys 704 additional elephant frames; no per-animal texture is allocated. Each mobile response adds 24 serialized bytes, and elephant water state adds another 50. Cache/count limits are unchanged.
 
 A thirsty elephant scans at most 81 candidate shore positions × 8 headings at intervals of 8–16 seconds. Route/footprint checks stay bounded by its local territory. Wildlife skips additional splash queries when the system snapshot contains no active stimuli. A spray renders at most 16 analytically positioned droplets, with no particle simulation, per-frame textures or event history. These choices contain costs; wider scenes and synchronous chunk generation still need profiling on target devices.
+
+## Study 12: density progression and polyphonic birds
+
+The distance envelope is calculated during chunk generation; existing terrain/agent caches retain the result, with no new per-frame density scan or saved per-tile field. Full population density is bounded at its previous configured level. Shared atlas dimensions and texture count are unchanged. Audio planning remains at 10 Hz with a nearest-32 emitter history, exactly three distant canopy callers and a twelve-effect Web Audio cap. The expanded bank uses 9.49 MiB; shortening the bed loops to 10.5 seconds retains the previous <10 MiB allocation target.
+
+## Graded terrain costs
+
+The wider 32-step ground gradients add geometry along transition regions. Adjacent fan triangles share a quad when possible: measured maximum draw counts dropped from 1,470 / 3,670 / 10,750 / 12,214 to 1,166 / 2,853 / 7,828 / 7,595 across opening / mature / wide rain / travel. This is a geometry-count comparison; timings from separate runs are not a controlled speedup claim. Ground color remains deterministic, registered to world-space fields and cached per immutable tile. No new texture pages, instance textures or visited-coordinate collections were added.
+
+Final local browser sampling showed Canvas at about 23 FPS / 24.4 ms CPU p95 in a moving lakeshore view with roughly 6,500 quads, versus the sampled WebGL opening/wide views at 60 FPS. These are different scenes and observations, not a direct renderer benchmark. The browser fallback remains visibly slower on dense contour geometry.
+
+## Woodland and river browser observations
+
+The desktop WebGL stream view sampled 60 FPS / 8.2 ms CPU p95 at 6,727 quads on this Mac. Canvas sampled 14 FPS / 33.0 ms CPU p95 at about 6,582 quads; scheduling and fixed-step catch-up contribute beyond the per-frame CPU sample. Canvas remains the slower fallback on shoreline-heavy views. These are device/scene-specific observations and CPU submission is not GPU completion.
+
+Reach geometry has a bounded 128-entry memo and active lists rebuilt only at streamed membership changes. The memory estimate reserves 512 KiB for that memo plus 4 KiB per active reach. Spawn habitat queries reuse generated tile fields to avoid repeating hydrology work. Flow adds at most 48 main segments and four twig forks per active reach, culled to the viewport and rendered water. All artwork remains at its existing resolution and cadence; one-pixel transparent atlas gutters reclaim space under the nearest-neighbor texture contract.
+
+After the toad/splash correction, the narrower 390×844 Canvas stream view sampled 50 FPS. That smaller viewport is not directly comparable to the desktop Canvas measurement.
+
+## Shared landscape group measurements
+
+Study 15, same local Node 26 / Apple Silicon benchmark. This replaces much of the per-plant population with grouped art, so these are resulting scene costs, not an identical-geometry microbenchmark. `artifacts/benchmark.json` contains the current run.
+
+| Scenario | Active agents | Maximum quads | Sim p95 ms | Compose p95 ms | Stream p95 / max ms | Cache MiB |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Opening | 861 | 1,157 | 1.219 | 1.579 | .004 / .029 | .162 |
+| Mature forest | 875 | 2,197 | 1.065 | 1.759 | .003 / .011 | .170 |
+| Wide rain | 2,275 | 6,502 | 3.192 | 5.267 | .004 / .008 | .427 |
+| Travel | 899 | 7,472 | .996 | 2.976 | .975 / 13.003 | .440 |
+
+The previous mature scene had 1,982 active agents; the new scene has about 56% fewer. The wide scene previously had 4,246 agents and simulation/composition p95 of 4.524 / 6.836 ms. Draw count falls less than object count because tree sections keep separate painter depths and tint masks. Atlas decoding falls from 63.06 to 62.19 MiB despite the new art. PNG transfer size is about 2.54 MiB. A 256-entry planning memo has a 64 KiB estimate; prepared bank anchors have a 128-byte allowance each. Neither grows with travel history.
+
+School eligibility uses globally aligned bounded water probes; repeated chunk-local probes share a temporary map. This reduced the measured worst travel generation spike from about 33 ms to 13 ms during this implementation. Generation still runs synchronously and occasional spikes remain possible.
+
+Browser observations on this Mac: desktop WebGL sampled 60 FPS / 7.2 ms CPU p95 at 5,891 quads; a 65% view sampled 58 FPS / 10.0 ms at 12,804 quads. Desktop Canvas sampled 18 FPS / 24.9 ms at 5,795 quads. A 390×844 Canvas view sampled 52 FPS / 9.1 ms at 1,549 quads. These are different views/timing windows, not a cross-device FPS promise or GPU-completion measurement.
+
+Actual browser checks covered grouped art, river banks, menu/mute, drag, zoom, keyboard navigation, Shift travel, landscape jumps, and the mobile-sized guide/toolbar. Mobile mute detection and pinch geometry have deterministic tests; physical two-finger hardware gestures and audio startup on an actual phone were not exercised by this desktop browser tool.
+
+## Connected arrangements (Study 16)
+
+The current arrangement benchmark reduces mature active agents from 875 to 294 and wide-view agents from 2,275 to 741. Static components/supports still occupy memory and have explicit allowances; this is a reduction in simulated objects, not a claim that all memory falls by the same percentage. No atlas pixels or texture pages were added: the generated art now forms larger compound landscapes.
+
+The final local CPU run, including compound-owned fireflies:
+
+| Scenario | Active agents | Max quads | Sim p95 ms | Compose p95 ms | Stream p95 / max ms |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| forest | 220 | 1705 | 0.633 | 1.44 | 0.002 / 0.008 |
+| outer-forest | 294 | 2778 | 0.876 | 2.089 | 0.002 / 0.006 |
+| wide-rain | 741 | 7634 | 2.384 | 6.012 | 0.003 / 0.014 |
+| travel | 311 | 7612 | 0.611 | 3.11 | 1.827 / 19.786 |
+
+Denser overlapping foliage raises draw/composition work despite fewer simulated agents. Generation remains synchronous, with temporary vertex/probe caches and fixed candidate halos; there is no growing arrangement-history map. `artifacts/benchmark.json` contains the full run.
+
+Browser QA sampled 60 FPS / 6.1 ms CPU p95 at 4,025 quads in the connected WebGL forest. Desktop Canvas near the stream sampled 18 FPS / 23.4 ms at 5,919 quads. A 390×844 Canvas view sampled 52 FPS / 8.2 ms at 1,805 quads. Different scenes and timing windows are not a controlled cross-renderer comparison. Checked 65% zoom, Shift travel, landscape jumps, mobile drag/zoom controls and guide layout. Physical multi-touch hardware was not tested. Source art, contact sheets and whole-scene images were inspected alongside the running site.
+
+## Clearings and continuous wind
+
+Occasional glades reduce visible trunks by 14–23% across three uniform mature forest samples, while retaining dense stands. Continuous rooted transforms replace the compound art's two-FPS pose changes. Removing those redundant baked poses reduces the atlas from 62.19 to 61.13 MiB decoded (4096×3912, about 2.51 MiB PNG); no extra texture pages or simulation clocks are needed.
+
+The local CPU benchmark after these changes:
+
+| Scenario | Agents | Max quads | Sim p95 ms | Compose p95 ms | Stream p95 / max ms |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| forest | 220 | 1695 | 0.746 | 1.628 | 0.002 / 0.017 |
+| outer-forest | 264 | 2730 | 0.845 | 2.258 | 0.002 / 0.004 |
+| wide-rain | 686 | 7326 | 2.401 | 6.692 | 0.007 / 0.013 |
+| travel | 284 | 7509 | 0.612 | 3.095 | 1.531 / 21.486 |
+
+Continuous geometry adds a little composition work; this is principally a motion-cadence improvement, not a claim of universally faster rendering. Browser samples on this Mac: normal WebGL 60 FPS / 4.8 ms CPU p95 (4,370 quads), wide 65% WebGL 60 FPS / 13.6 ms (13,174 quads), desktop Canvas 20 FPS / 17.5 ms (3,436 quads), and 390×844 Canvas 44 FPS / 8.0 ms (1,296 quads). A landscape-jump sample dipped to 45 FPS; synchronous generation and Canvas rasterization remain limits. Different scenes and sampling windows are not controlled renderer comparisons or mobile-device benchmarks.
+
+Checked live WebGL/Canvas appearance, 65% zoom, Shift travel, landscape jumps, mobile-size menu/layout, drag and zoom controls. The headless check passes 130 tests, including fixed trunk anchors, matching wood/leaf motion, interpolation across old pose boundaries and exact continuation. Physical multi-touch was not exercised.
+
+## Recurring regions and bears
+
+The latest CPU-only run includes 16 new landscape variants, recurring regional fields, more canopy birds and black bears. The atlas remains one page at 63.44 MiB decoded / about 3.06 MiB PNG. Component/support memory allowances remain explicit (224 / 104 bytes respectively).
+
+| Scenario | Agents | Max quads | Sim p95 ms | Compose p95 ms | Stream p95 / max ms |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| forest | 257 | 1674 | 1.355 | 3.334 | 0.007 / 0.087 |
+| outer-forest | 301 | 2782 | 1.455 | 4.965 | 0.015 / 0.034 |
+| wide-rain | 754 | 7355 | 3.047 | 8.115 | 0.007 / 0.012 |
+| travel | 308 | 7375 | 0.703 | 3.575 | 1.595 / 21.681 |
+
+These are fresh measurements, not a controlled before/after speed claim. More wildlife increases simulation work; regional water can change terrain contour draw counts substantially. Host timing also varied during this session (the same asset bake ranged from roughly 13 to 69 seconds). The benchmark ran after closing the browser previews and finishing tests; `artifacts/benchmark.json` contains the full result.
+
+Live browser samples: flowering WebGL at 100% sampled 60 FPS / 5.0 ms CPU p95 with 3,841 quads; 65% sampled 60 FPS / 8.9 ms with 7,787 quads. A dense riverside fruiting Canvas scene sampled 10 FPS / 53.0 ms with 8,508 quads, and a 390×844 Canvas scene sampled 27 FPS / 22.0 ms with 815 quads. Different locations and timing windows are not renderer/device comparisons; Canvas remains a slower fallback, and synchronous generation still causes occasional travel spikes.
+
+Inspected flowering/fruiting/open/wet headless scenes, the new source sheets and bear contact sheets/habitat snapshot, plus actual WebGL/Canvas appearance, 65% zoom, Shift travel, landscape navigation, pause/menu, and mobile-size drag/zoom/guide layout. Physical mobile hardware/pinch was not retested. Full check: 138 passing tests. Population samples, behavioral scope and source provenance are in [regional variety](REGIONAL-VARIETY.md).

@@ -1,9 +1,15 @@
+import { blackBearMesh } from './black-bear-model';
+import { snakeMesh } from './snake-model';
+import { riverAnimalMesh } from './river-model';
 import {elephantMesh} from './elephant-model';
 import { bone, ellipsoid, rotateZ, type Mesh, type RGB, type V3 } from '../../src/iso/bake/mesh';
 import { MONKEY_GRIP_Z, type EcoKind } from '../../src/jungle/ecology';
 const TAU=Math.PI*2,black:RGB=[35,39,37],cream:RGB=[241,225,181];
 /** Small authored rigs: mesh coordinates face +X, same projection/root convention as deer. */
 export function ecologyMesh(kind:EcoKind,clip:string,p:number):Mesh {
+ if(kind==='blackBear')return blackBearMesh(clip,p);
+ if(['squirrel','boar','beaver','crocodile','toad'].includes(kind))return riverAnimalMesh(kind,clip,p);
+ if(kind==='boa'||kind==='smallSnake')return snakeMesh(kind,clip,p);
  if(kind==='elephant')return elephantMesh(clip,p);
  const m:Mesh=[],moving=clip==='travel'||clip==='swing'||clip==='run',wave=Math.sin(p*TAU);
  if(['macaw','parakeet','kingfisher','seagull'].includes(kind)){

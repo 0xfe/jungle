@@ -40,3 +40,20 @@ test('Web Audio adapter starts only on enable, shares loops, ramps gains and cap
  sources[4]!.onended?.();assert.equal(sink.voiceCount,11);sink.apply({...frame,master:0,events:[]});assert.equal(ramps.at(-1),0);
  sink.dispose();assert.equal(closed,1);assert.equal(sink.voiceCount,0);assert.equal(sink.bytes,0);assert.ok(disconnected>12);
 });
+
+test('independent bird phrases overlap with varied pitch, rhythm and bounded caller history',()=>{
+ const planner=new Soundscape(),copy=new Soundscape(),kinds=new Set<string>(),rates=new Set<number>(),live:{end:number;kind:string}[]=[];
+ let overlaps=0,calls=0;
+ const forest={...scene,emitters:[{id:'parakeet-a',x:1,y:0,speed:0,phase:0,bird:true,call:'trill' as const},{id:'toucan-b',x:-1,y:1,speed:0,phase:0,bird:true,call:'warble' as const}]};
+ const duration=new Map<string,number>(SOUND_KINDS.map(k=>{const s=synthesize(k,1000);return [k,s.channels[0]!.length/s.sampleRate];}));
+ for(let tick=0;tick<600;tick++){
+  const frame=planner.update(forest,.1);assert.deepEqual(frame,copy.update(forest,.1));assert.ok(frame.events.length<=4);
+  for(const e of frame.events){kinds.add(e.kind);rates.add(e.rate);calls++;live.push({end:tick*.1+duration.get(e.kind)!/e.rate,kind:e.kind});}
+  const sounding=live.filter(v=>v.end>tick*.1);if(new Set(sounding.map(v=>v.kind)).size>1)overlaps++;
+ }
+ assert.ok(kinds.has('woodpecker')&&kinds.has('trill')&&kinds.has('warble')&&kinds.size>=5,[...kinds].join(','));
+ assert.ok(calls>50&&rates.size>40);assert.ok(overlaps>120,`only ${overlaps} overlapping ticks`);
+ assert.equal(planner.trackedEmitters,2);
+ const muted=planner.update(forest,.1,{master:.6,ambience:.05,wildlife:0});assert.equal(muted.events.length,0);
+ planner.reset();copy.reset();assert.deepEqual(planner.update(forest,.1),copy.update(forest,.1));
+});

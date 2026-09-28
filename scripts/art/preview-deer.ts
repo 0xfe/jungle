@@ -53,7 +53,7 @@ for(const kind of ECO_KINDS){
  }
  await sharp({create:{width:spec.directions*112,height:clips.length*112,channels:4,background:'#dce6ce'}}).composite(panels).png().toFile(`artifacts/${kind}-directions.png`);
  for(const [clip,count] of clips){const panels:sharp.OverlayOptions[]=[];
-  for(let frame=0;frame<count;frame++){const pixels=bakeMesh(ecologyMesh(kind,clip,frame/(clip==='drink'||clip==='spray'?count-1:count)),Math.PI/4,camera);panels.push({input:Buffer.from(pixels.data),raw:{width:112,height:112,channels:4},left:frame*112,top:0});}
+  for(let frame=0;frame<count;frame++){const pixels=bakeMesh(ecologyMesh(kind,clip,frame/(clip==='drink'||clip==='spray'||clip==='wrap'||clip==='hop'?count-1:count)),Math.PI/4,camera);panels.push({input:Buffer.from(pixels.data),raw:{width:112,height:112,channels:4},left:frame*112,top:0});}
   await sharp({create:{width:count*112,height:112,channels:4,background:'#dce6ce'}}).composite(panels).png().toFile(`artifacts/${kind}-${clip}-strip.png`);
  }
 }

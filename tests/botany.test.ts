@@ -6,7 +6,7 @@ import { rootedQuad } from '../src/iso/sprite-geometry';
 import { quadUV } from '../src/iso/quad';
 import { plantAppearance, TREE_FORMS, PLANT_FORMS } from '../src/jungle/botany';
 import { InfiniteWorld } from '../src/jungle/infinite';
-import { PlantAgent, jungleAgents } from '../src/jungle/agents';
+import { PlantAgent, LandscapePatchAgent, jungleAgents } from '../src/jungle/agents';
 import { isolatePlant } from '../scripts/art/foliage';
 import { vineFrames } from '../scripts/art/vines';
 
@@ -32,13 +32,12 @@ test('plant geometry preserves asymmetric roots through mirroring, lean and scal
 
 test('forest individuals vary within stands and retain exact appearance after sleeping/checkpoints',()=>{
  const w=new InfiniteWorld(2718),bounds={minX:-4,minY:-4,maxX:4,maxY:4};w.ensure(bounds);
- const plants=w.agents.filter((a):a is PlantAgent=>a instanceof PlantAgent),trees=plants.filter(a=>a.kind==='tree');
- assert.ok(trees.length>15);
- assert.ok(new Set(trees.map(a=>a.morphology)).size>=5);
- assert.ok(new Set(trees.map(a=>a.scale.toFixed(2))).size>15);
- assert.ok(plants.some(a=>a.kind==='plant'&&a.morphology>0));
- const original=jungleAgents.encode(plants),copy=jungleAgents.decode(original) as PlantAgent[];
- assert.deepEqual(copy.map(a=>a.appearance),plants.map(a=>a.appearance));
+ const plants=w.agents.filter((a):a is LandscapePatchAgent=>a instanceof LandscapePatchAgent),pieces=plants.flatMap(a=>[...a.pieces]);
+ assert.ok(plants.length>1);assert.ok(!w.agents.some(a=>a instanceof PlantAgent));
+ assert.ok(new Set(pieces.map(p=>p.variant)).size===4);
+ assert.ok(new Set(pieces.map(p=>p.scale.toFixed(2))).size>15);
+ const original=jungleAgents.encode(plants),copy=jungleAgents.decode(original) as LandscapePatchAgent[];
+ assert.deepEqual(copy.map(a=>a.pieces),plants.map(a=>a.pieces));
  assert.deepEqual(jungleAgents.encode(copy),original);
  w.update(1/60);const saved=w.checkpoint(),restored=InfiniteWorld.restore(saved);restored.ensure(bounds);
  for(let i=0;i<60;i++){w.update(1/60);restored.update(1/60);}

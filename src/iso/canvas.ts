@@ -7,7 +7,7 @@ export class CanvasRenderer implements Renderer {
   private tintBytes = 0;
   get auxiliaryBytes(): number { return this.tintBytes; }
   private tinted = new Map<string, HTMLCanvasElement>();
-  constructor(private canvas: HTMLCanvasElement, private atlas: PixelImage) {
+  constructor(private canvas: HTMLCanvasElement, private atlas: PixelImage, private tintBudget={maxEntries:512,maxBytes:8*1048576}) {
     const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('Canvas 2D unavailable');
     this.ctx = ctx; this.sheet = document.createElement('canvas');
     this.sheet.width = atlas.width; this.sheet.height = atlas.height;
@@ -25,12 +25,12 @@ export class CanvasRenderer implements Renderer {
     }
     sheet.getContext('2d')!.putImageData(new ImageData(pixels, region.width, region.height), 0, 0);
     const cost = region.width * region.height * 4 + 256;
-    while (this.tinted.size && (this.tinted.size >= 512 || this.tintBytes + cost > 8 * 1048576)) {
+    while (this.tinted.size && (this.tinted.size >= this.tintBudget.maxEntries || this.tintBytes + cost > this.tintBudget.maxBytes)) {
       const oldest = this.tinted.keys().next().value!, removed = this.tinted.get(oldest)!;
       this.tintBytes -= removed.width * removed.height * 4 + 256; this.tinted.delete(oldest);
       removed.width = removed.height = 0;
     }
-    if (cost <= 8 * 1048576) { this.tinted.set(key, sheet); this.tintBytes += cost; }
+    if (cost <= this.tintBudget.maxBytes) { this.tinted.set(key, sheet); this.tintBytes += cost; }
     return sheet;
   }
   render(frame: Frame): void {

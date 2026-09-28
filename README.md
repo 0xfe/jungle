@@ -1,6 +1,6 @@
 # ∞ Infinite jungle
 
-An endlessly scrolling isometric pixel-art jungle.
+An endlessly scrolling isometric pixel-art jungle. See it live at: [https://mo.town/jungle](https://mo.town/jungle).
 
 Built in TypeScript with **no runtime dependencies**, using WebGL, Canvas fallback and a real headless RGBA renderer. Independent agent classes and bounded procedural-world libraries sit alongside the reusable isometric components. Everything runs as a static site.
 
@@ -15,7 +15,7 @@ npm ci
 npm run dev
 ```
 
-Open **http://localhost:4173** for the full-screen jungle. **All overlays start hidden; press Enter / Return to show or hide them.** This builds assets/code and starts a local static server. It doesn't watch files: rebuild and refresh after edits. Use `PORT=8080 npm run serve` for another port.
+Open **http://localhost:4173** for the full-screen jungle. **Press Enter / Return to show or hide the compact bottom menu.** Only the mute button is visible initially, in the top right. This builds assets/code and starts a local static server. It doesn't watch files: rebuild and refresh after edits. Use `PORT=8080 npm run serve` for another port.
 
 ```sh
 npm run build          # deterministic assets, typecheck, bundle → dist/
@@ -27,19 +27,22 @@ npm run plants:preview # all tree and understory forms
 npm run motion:preview # close-up supported monkey swing sequence
 npm run elephants:preview # staged drinking / spraying pose review
 npm run audio:preview  # generated stereo sound previews
+npm run patches:preview # generated landscape groups and their trunk templates
 ```
 
 Copy `dist/` to any static host, including a subdirectory. Source artwork is included; normal builds need no image-generation service, API key, CDN, external font or backend. Development dependencies are TypeScript, esbuild, tsx, sharp and Node types.
+
+To change application defaults, edit [src/config.ts](src/config.ts), then rebuild. It covers startup, camera, density, wildlife probabilities, audio (including every individual sound), rendering and cache limits. See [configuration details](docs/CONFIGURATION.md).
 
 ## Explore
 
 | Key / gesture | Action |
 | --- | --- |
-| `Enter` / `Return` | Show or hide all overlays (hidden by default) |
-| Arrows / WASD / drag | Travel without an island boundary; takes over from drift |
+| `Enter` / `Return` | Show or hide the bottom menu (hidden by default) |
+| Arrows / WASD / drag | Travel without an island boundary; drift resumes 3 seconds after navigation ends |
 | Shift + arrows / WASD | Travel faster |
-| `J` / Wildlife | Cycle all 14 animal habitats; stop camera drift (whales surface intermittently) |
-| `N` / Explore | Visit dry scrub, a meadow, a lake, then a forest |
+| `J` | Cycle all 21 animal habitats; briefly pause camera drift (whales surface intermittently) |
+| `N` | Visit dry scrub, meadow, lake, forest, then a stream |
 | `O` / Settings | With overlays visible: adjust vegetation, wildlife, water, lake size, clearings, hills and sound |
 | `?` | With overlays visible: FPS, per-stage CPU timing, world/cache/memory statistics and keyboard guide |
 | `R` | Generate a new seeded world |
@@ -47,14 +50,24 @@ Copy `dist/` to any static host, including a subdirectory. Source artwork is inc
 | `T` | Sun / rain / dusk |
 | `Space` | Pause or resume simulation and automatic travel |
 | `P` | Toggle slow one-way camera drift |
-| `+` / `−` / mouse wheel | Zoom from 65% to 250% |
+| `+` / `−` / mouse wheel / pinch | Zoom from 65% to 250% |
 | `Home` / `0` | Return to the seeded starting forest |
 | `G` | Show tile seams |
 | `Esc` | Close settings or the field guide |
 
-**Sound:** Settings → Enable sound starts layered leaves, water, rain and nearby animal sounds. Volume sliders mix environment and wildlife independently. Sound fades when muted, paused or hidden.
+**Sound starts off on mobile and on for desktop:** master 60%, environment 5%, animals 80%. On mobile, tap the speaker to enable it. Desktop browsers may wait for your first click or keypress before starting audio. The top-right speaker button always toggles mute, including with the menu hidden. Independent whistles, trills, chatter and woodpecker-like taps overlap, with occasional recorded elephant trumpets nearby; settings adjust the layers separately. Sound fades when muted, paused or the page is hidden.
 
-World sliders regrow the current seed around your camera and reset scrollback. Default animal density is 2.5× the previous version; landscape sliders control relative abundance, not exact area percentages. Settings do not survive page reloads.
+Solitary boas move slowly and sometimes coil around tree trunks; smaller striped snakes travel in loose groups with varied body sizes. `J` includes both snake habitats.
+
+Large compound landscapes join groves, bush thickets, grass, wet banks and water into continuous surfaces. Each arrangement owns 16 tiles with overlapping porous borders; the streamed world no longer scatters standalone plant sprites. Recurring open woodland, flowering and fruiting groves, muddy gaps and wetter stretches bring variety beyond the quiet opening. Scattered grassy clearings leave room between dense stands, and continuous rooted wind smooths canopy motion. Leaves have configurable tint palettes, and grouped trees retain movement/perch templates. See [landscape groups](docs/LANDSCAPE-PATCHES.md).
+
+Menu clicks, sound controls and ordinary taps keep auto-scroll moving. Only navigation (drag, zoom, keyboard travel or a location jump) delays it for three seconds.
+
+Open woodland now has extra deer, small snakes and birds, plus solitary squirrels that climb trees. Colorful canopy birds are more plentiful in dense stands. Black bears usually forage alone, occasionally as a mother with cubs. Denser cover favors wolves, jaguars and wild boar; deer flee brief boar charges. Small ponds have no fish schools. Streams have tighter muddy banks and wet vegetation; connected streams carry foam and twigs past beavers, bank-basking crocodiles and hopping toads. See [rivers and woodland wildlife](docs/RIVERS.md).
+
+The starting forest is deliberately sparse in plants. Travel in any direction gradually reveals denser stands and a different wildlife mix, reaching the full regional density 22 tiles from the seeded starting point. Groves, clearings, lakes and family encounters add variety along the way; revisiting the opening keeps its quiet character.
+
+World sliders regrow the current seed around your camera and reset scrollback. The mature forest uses the 2.5× animal setting; the opening applies a smaller local multiplier; landscape sliders control relative abundance, not exact area percentages. Settings do not survive page reloads.
 
 Reduced-motion preference starts paused. Reproduce a location with `?seed=42&x=-100&y=80`; force Canvas with `?renderer=canvas`. The old finite `?density=16` stress mode has been replaced by streamed-world benchmarks and wide-view travel tests.
 
@@ -62,6 +75,10 @@ Scrollback retains compact sleeping agent state until chunks expire. After evict
 
 ## Documentation
 
+- [Snake behavior, rigs and tree wrapping](docs/SNAKES.md)
+- [Shared landscape artwork, navigation templates and memory](docs/LANDSCAPE-PATCHES.md)
+- [Recurring colorful regions, canopy wildlife and black bears](docs/REGIONAL-VARIETY.md)
+- [Application defaults and per-sound tuning](docs/CONFIGURATION.md)
 - [Elephant anatomy, drinking, play and splash responses](docs/ELEPHANTS.md)
 - [Natural forest composition, variety and procedural vines](docs/FOREST.md)
 - [Landscape controls and smooth shorelines](docs/SETTINGS.md)

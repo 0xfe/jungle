@@ -1,0 +1,14 @@
+{
+  "title": "Elephant voice - trumpeting",
+  "author": "தகவலுழவன் (Info-farmer)",
+  "date": "2011-02-01",
+  "source": "https://commons.wikimedia.org/wiki/File:Elephant_voice_-_trumpeting.ogg",
+  "revision": "https://commons.wikimedia.org/w/index.php?title=File:Elephant_voice_-_trumpeting.ogg&oldid=1193614299",
+  "license": "CC0-1.0",
+  "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "verified": "2026-09-28",
+  "sourceSha256": "e5f3120e5eaca87cc080bbf57bd185c96d52fd0f63cc1dfe33228c8bfa29f3bc",
+  "derivedSha256": "bb7e120427f6a1a6798dbf5fa7c19cbc8721e1eeecf433222c8e12527fcc44f7",
+  "conversion": "ffmpeg 7.1 -i assets/source/audio/elephant-trumpet.ogg -ar 24000 -ac 1 -af \"afade=t=in:d=0.03,afade=t=out:st=1.30:d=0.14,volume=0.5\" -c:a pcm_s16le -map_metadata -1 public/assets/audio/elephant-trumpet.wav",
+  "notes": "Mono PCM16, 24 kHz, gentle endpoint fades, half source amplitude. Original OGG retained; normal builds use committed WAV and require no ffmpeg or network."
+}

@@ -155,5 +155,5 @@ test('shelf packing reuses earlier row gaps without overlapping frames or their 
   const sprite=(id:string,width:number,height:number)=>({id,trim:false,anchor:[0,0] as [number,number],frames:[{width,height,data:new Uint8Array(width*height*4).fill(id.charCodeAt(0))}]});
   const packed=packAtlas([sprite('a',18,10),sprite('b',18,9),sprite('c',8,8)],32,28);
   const a=packed.manifest.sprites.a!.frames[0]!,c=packed.manifest.sprites.c!.frames[0]!;
-  assert.equal(c.y,a.y);assert.ok(c.x>=a.x+a.width+2);assert.ok(packed.image.height<=28);
+  assert.equal(c.y,a.y);assert.ok(c.x>=a.x+a.width+1);assert.ok(packed.image.height<=28);
 });

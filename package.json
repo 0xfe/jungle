@@ -21,7 +21,10 @@
     "audio:preview": "tsx scripts/audio-preview.ts",
     "plants:preview": "tsx scripts/art/preview-plants.ts",
     "motion:preview": "tsx scripts/motion-preview.ts",
-    "elephants:preview": "tsx scripts/elephant-preview.ts"
+    "snakes:preview": "tsx scripts/snake-preview.ts",
+    "rivers:preview": "tsx scripts/river-preview.ts",
+    "elephants:preview": "tsx scripts/elephant-preview.ts",
+    "patches:preview": "tsx scripts/patch-preview.ts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {AgentSystem,type AgentEnvironment} from '../src/agents';
-import {ECO_CLASSES,EcologicalAgent,MonkeyAgent,FishAgent,WhaleAgent,CrabAgent,PlantAgent,jungleAgents} from '../src/jungle/agents';
+import {ECO_CLASSES,EcologicalAgent,MonkeyAgent,FishAgent,WhaleAgent,CrabAgent,PlantAgent,LandscapePatchAgent,jungleAgents} from '../src/jungle/agents';
 import {ECO_KINDS,ECO_SPECS,ecoClips,habitatAllows} from '../src/jungle/ecology';
 import {InfiniteWorld} from '../src/jungle/infinite';
 import {terrainEnvironment} from '../src/jungle/terrain';
@@ -72,7 +72,7 @@ test('tree stands are mostly upright, locally consistent and have small porous r
  let upright=0,same=0,total=0;
  for(let y=-30;y<30;y++)for(let x=-30;x<30;x++){const a=groveAt(x,y,2718),b=groveAt(x+.3,y+.3,2718);upright+=Number(a.morphology!==2);same+=Number(a.species===b.species);total++;}
  assert.ok(upright/total>.85);assert.ok(same/total>.85);
- const w=new InfiniteWorld();w.ensure({minX:-8,minY:-8,maxX:8,maxY:8});const trees=w.agents.filter(a=>a instanceof PlantAgent&&a.kind==='tree').length;
+ const w=new InfiniteWorld();w.ensure({minX:-8,minY:-8,maxX:8,maxY:8});const trees=w.agents.reduce((n,a)=>n+(a instanceof LandscapePatchAgent?a.supports.length:0),0);
  assert.ok(w.groundCover.length>0&&w.groundCover.length<trees);assert.ok(w.groundCover.every(c=>c.radius<.25&&c.opacity<.4));
 });
 
@@ -97,6 +97,8 @@ test('marine presentation hides submerged whales, draws a surfaced blow and keep
  whale.state='surface';whale.altitude=0;whale.breathClock=whale.cycleSeconds*.915;whale.previousBreath=whale.breathClock;Object.assign(whale.previous,whale.sample());
  frame=composeInfinite(w,atlas,view);assert.equal(frame.commands.find(c=>c.id===whale.id)?.color[3],255);
  assert.equal(frame.commands.filter(c=>c.id.startsWith(`${whale.id}-blow-`)).length,7);
+ // Fish now require substantial water and need not share a particular whale's territory.
+ const fp=w.wildlifeLandmark('fish');view.cameraX=fp.x;view.cameraY=fp.y;w.ensure(cameraBounds(view));
  const fish=w.agents.filter(a=>a.kind==='fish');assert.ok(fish.length>0);
- assert.ok(frame.commands.some(c=>fish.some(f=>f.id===c.id)&&c.layer<1));
+ frame=composeInfinite(w,atlas,view);assert.ok(frame.commands.some(c=>fish.some(f=>f.id===c.id)&&c.layer<1));
 });
