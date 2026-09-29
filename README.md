@@ -1,4 +1,4 @@
-# ∞ Infinite jungle
+# ∞ Infinite Jungle ([mo.town/jungle](https://mo.town/jungle)]
 
 **MIT License** - Copyright 2026 Mohit Cheppudira <shhh@mo.town>
 
