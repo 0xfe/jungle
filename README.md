@@ -1,5 +1,7 @@
 # ∞ Infinite jungle
 
+**MIT License** - Copyright 2026 Mohit Cheppudira <shhh@mo.town>
+
 An endlessly scrolling animated isometric pixel-art jungle with vegetation, birds, animals, etc. See it live at: [https://mo.town/jungle](https://mo.town/jungle).
 
 Built in TypeScript with **no runtime dependencies**, using WebGL, Canvas fallback and a real headless RGBA renderer. Independent agent classes and bounded procedural-world libraries sit alongside the reusable isometric components. Everything runs as a static site.
