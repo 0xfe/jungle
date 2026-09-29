@@ -4,7 +4,7 @@ An endlessly scrolling animated isometric pixel-art jungle with vegetation, bird
 
 Built in TypeScript with **no runtime dependencies**, using WebGL, Canvas fallback and a real headless RGBA renderer. Independent agent classes and bounded procedural-world libraries sit alongside the reusable isometric components. Everything runs as a static site.
 
-![Five seconds in the living jungle, with swaying flowers, rustling foliage and roaming wildlife](docs/preview.gif)
+![Five seconds auto-scrolling through the living jungle, with swaying flowers, rustling foliage and roaming wildlife](docs/preview.gif)
 
 [Still image](docs/preview.png) · Regenerate with `npm run readme:preview`.
 
@@ -47,7 +47,7 @@ To change application defaults, edit [src/config.ts](src/config.ts), then rebuil
 | `Enter` / `Return` | Show or hide the bottom menu (hidden by default) |
 | Arrows / WASD / drag | Travel without an island boundary; drift resumes 3 seconds after navigation ends |
 | Shift + arrows / WASD | Travel faster |
-| `J` | Cycle all 21 animal habitats; briefly pause camera drift (whales surface intermittently) |
+| `J` | Cycle all 25 animal habitats; briefly pause camera drift (whales surface intermittently) |
 | `N` | Visit dry scrub, meadow, lake, forest, then a stream |
 | `O` / Settings | With overlays visible: adjust vegetation, wildlife, water, lake size, clearings, hills and sound |
 | `?` | With overlays visible: FPS, per-stage CPU timing, world/cache/memory statistics and keyboard guide |
@@ -60,6 +60,48 @@ To change application defaults, edit [src/config.ts](src/config.ts), then rebuil
 | `Home` / `0` | Return to the seeded starting forest |
 | `G` | Show tile seams |
 | `Esc` | Close settings or the field guide |
+
+## Artifacts
+
+### Wildlife
+
+- **Birds:** toucans, macaws and parakeets (parrots), kingfishers, seagulls, hawks and vultures.
+- **Predators:** jaguars, wolves and crocodiles.
+- **Large herbivores:** deer and fawns, zebras, giraffes and elephants.
+- **Primates:** monkeys and orangutans.
+- **Other mammals:** black bears and cubs, squirrels, wild boar and beavers.
+- **Snakes and amphibians:** solitary boas, smaller striped snakes and toads.
+- **Aquatic wildlife:** fish schools and surfacing whales.
+- **Decorative insects:** fluttering butterflies and firefly-like glints.
+
+### Trees and canopies
+
+- **Broadleaf trees:** tall tiered crowns, forked and asymmetric crowns, airy young trees and dense mature forms.
+- **Palms:** fan palms and feather palms.
+- **Banana plants:** broad-leaf clumps, taller forms and young shoots.
+- **Flowering and fruiting groves:** colorful blossoms, fruit-bearing crowns and clustered trees with individual trunks.
+- **Climbing foliage:** hanging vines and lianas.
+
+### Flowers, bushes and groundcover
+
+- **Flowers:** hibiscus, daisies, blue bellflowers, bird-of-paradise, lavender, red ginger, white starflowers and coral-and-cream wildflower clumps.
+- **Shrubs:** rounded small-leaf shrubs, berry bushes, broad-leaf tropical bushes, airy flowering bushes, pink-tipped bushes and cream-blooming bushes.
+- **Ferns:** tall feather ferns, low lime-green ferns and overlapping fern thickets.
+- **Groundcover:** grasses, meadow tufts, clover, wildflower carpets and leaf litter.
+- **Wetland plants:** mossy bank vegetation, reeds, sedges, lily pads and small aquatic plants.
+- **Additional source/fixture artwork:** flowering bromeliad rosettes and mushroom-covered rocks, alongside the individual tree and understory forms.
+
+### Landscape and atmosphere
+
+- **Terrain:** forest floor, grassy clearings, meadows, dry scrub, sandy shores, muddy banks and gently raised ground.
+- **Water:** lakes, ponds and connected flowing streams, with ripples, glints, foam and drifting woody debris.
+- **Small details:** fallen leaves, twigs, sparse root litter and weathered bones/hide at vulture feeding spots.
+- **Animation and weather:** rooted tree sway, rustling leaves and petals, drifting leaves, rain, dusk light, elephant spray and whale blows.
+
+### Soundscape
+
+- **Environment:** rustling leaves, water, rain and dusk insects.
+- **Wildlife:** bird whistles, trills, chatter, gull-like calls, woodpecker-like drumming, footsteps and recorded elephant trumpets.
 
 ## Documentation
 
