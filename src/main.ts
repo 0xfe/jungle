@@ -23,6 +23,9 @@ import { HABITATS, type Habitat, type Weather } from './jungle/world';
 import { type AtlasManifest } from './jungle/scene';
 
 const el = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+const startupStarted = performance.now();
+const repositoryUrl = el<HTMLAnchorElement>('github-link').href;
+console.info(`Starting Infinite Jungle · v${__BUILD_INFO__.version}\n${repositoryUrl}`);
 const params = new URLSearchParams(location.search);
 // Choose entropy once at the browser boundary; world generation stays deterministic.
 const initialSeed = startupSeed(params.get('seed'), () => CONFIG.startup.randomizeSeed
@@ -173,6 +176,8 @@ el('help-button').onclick = () => help(); el('close-help').onclick = () => { hel
 el('pause').onclick = () => { paused = !paused; syncUI(); };
 el('zoom-in').onclick = () => zoom(CONFIG.camera.zoomStep); el('zoom-out').onclick = () => zoom(-CONFIG.camera.zoomStep);
 window.addEventListener('keydown', e => {
+  // Preserve native keyboard activation for the repository link.
+  if(e.key==='Enter'&&e.target instanceof Element&&e.target.closest('#github-link'))return;
   if(e.key==='Enter'&&!e.metaKey&&!e.ctrlKey&&!e.altKey){e.preventDefault();if(!e.repeat)toggleUI();return;}
   if (e.metaKey || e.ctrlKey || e.altKey || (e.target instanceof HTMLElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName))) return;
   const key = e.key.toLowerCase();
@@ -201,11 +206,11 @@ document.addEventListener('visibilitychange', () => { last = 0; clearNavigation(
 function bindCanvas(): void {
   canvas.addEventListener('pointerdown', e => {
     if (e.button !== 0 || !pointers.begin(e.pointerId, { x: e.clientX, y: e.clientY })) return;
-    if(e.pointerType==='touch')menuTap.begin(e.pointerId,{x:e.clientX,y:e.clientY},e.timeStamp);
+    menuTap.begin(e.pointerId,{x:e.clientX,y:e.clientY},e.timeStamp);
     canvas.setPointerCapture(e.pointerId);
   });
   canvas.addEventListener('pointermove', e => {
-    if(e.pointerType==='touch')menuTap.move(e.pointerId,{x:e.clientX,y:e.clientY});
+    menuTap.move(e.pointerId,{x:e.clientX,y:e.clientY});
     const gesture = pointers.move(e.pointerId, { x: e.clientX, y: e.clientY });
     if (!gesture) return;
     const rect = canvas.getBoundingClientRect();
@@ -215,12 +220,11 @@ function bindCanvas(): void {
   });
   const release = (e: PointerEvent) => {
     const moved=pointers.navigating;
-    if(e.pointerType==='touch'){
-      const tapped=e.type==='pointerup'?menuTap.end(e.pointerId,e.timeStamp):false;
-      if(e.type!=='pointerup')menuTap.cancel(e.pointerId);
-      if(tapped===1||(tapped===2&&!uiVisible))toggleUI();
-      else if(tapped===2)keepMenuAwake();
-    }
+    const tapped=e.type==='pointerup'?menuTap.end(e.pointerId,e.timeStamp):0;
+    if(e.type!=='pointerup')menuTap.cancel(e.pointerId);
+    // Mouse clicks toggle individually; a touch double-tap always leaves the menu open.
+    if(tapped&&(e.pointerType!=='touch'||tapped===1||!uiVisible))toggleUI();
+    else if(tapped===2)keepMenuAwake();
     if(pointers.end(e.pointerId)&&moved)pauseDrift();
   };
   canvas.addEventListener('pointerup', release);
@@ -307,6 +311,25 @@ async function start(): Promise<void> {
   // Keep the loading scene visible until the first real jungle frame is drawn.
   await new Promise<void>((resolve,reject)=>requestAnimationFrame(time=>{try{loop(time);resolve();}catch(error){reject(error);}}));
   el('loading').hidden=true;canvas.setAttribute('aria-busy','false');
+  logStartup();
+}
+/** Snapshot only after the first frame, when streaming and visible-tile counts are populated. */
+function logStartup(): void {
+  console.groupCollapsed('Infinite Jungle ready');
+  console.info('Build', __BUILD_INFO__);
+  console.info('Runtime', {
+    renderer: renderer.name, startupMs: Math.round(performance.now() - startupStarted),
+    seed: world.seed, habitat: world.habitat, weather: world.weather, mobile, paused, drift,
+    viewport: { width: view.width, height: view.height, pixelRatio: view.pixelRatio },
+    camera: { x: view.cameraX, y: view.cameraY, zoom: view.zoom },
+    sound: { enabled: soundEnabled, state: audio.state, levels: { ...audioSettings } },
+  });
+  console.info('World settings', { ...settings });
+  console.info('Application defaults', structuredClone(CONFIG));
+  console.info('Initial world stats (memory is estimated, not total browser RAM)', world.stats);
+  console.info('Budgets', { cache: { ...world.cache.budget }, maxActiveChunks: CONFIG.world.maxActiveChunks });
+  console.info('Atlas', { width: atlas.width, height: atlas.height, sprites: Object.keys(atlas.sprites).length, ...atlas.stats });
+  console.groupEnd();
 }
 toggleUI();
 start().catch(error => { console.error(error);el('loading').hidden=false;el('loading').setAttribute('role','alert');el('loading').textContent = 'The jungle could not load. Run npm run build, then refresh.';canvas.setAttribute('aria-busy','false'); });

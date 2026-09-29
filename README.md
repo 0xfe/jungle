@@ -19,7 +19,7 @@ npm ci
 npm run dev
 ```
 
-Open **http://localhost:4173** for the full-screen jungle. **Press Enter / Return to show or hide the compact bottom menu.** Only the mute button is visible initially, in the top right. Tap the scene on touchscreens to show or hide the menu; double-tap to show it. The menu fades after 3 seconds unused and stays visible while Settings or Help is open; `?` opens Help even while the menu is hidden. This builds assets/code and starts a local static server. It doesn't watch files: rebuild and refresh after edits. Use `PORT=8080 npm run serve` for another port.
+Open **http://localhost:4173** for the full-screen jungle. **Click the jungle or press Enter / Return to show or hide the compact bottom menu.** Only the mute button is visible initially, in the top right. Tap the scene on touchscreens to show or hide the menu; double-tap to show it. The GitHub icon opens the [official repository](https://github.com/0xfe/jungle) in a new tab. The menu fades after 3 seconds unused and stays visible while Settings or Help is open; `?` opens Help even while the menu is hidden. This builds assets/code and starts a local static server. It doesn't watch files: rebuild and refresh after edits. Use `PORT=8080 npm run serve` for another port.
 
 ```sh
 npm run build          # deterministic assets, typecheck, bundle → dist/
@@ -42,11 +42,13 @@ Deploy with `./upload.sh dev` to `muthanna.com/jungle-dev/` or `./upload.sh prod
 
 To change application defaults, edit [src/config.ts](src/config.ts), then rebuild. It covers startup, camera, density, wildlife probabilities, audio (including every individual sound), rendering and cache limits. See [configuration details](docs/CONFIGURATION.md).
 
+The browser console prints a startup banner and repository link, followed by an expandable report after the first frame: package version, Git revision/commit date and modified status (unknown without Git), config SHA-256, effective seed/settings, renderer, camera/audio state, initial world counts, cache budgets and atlas statistics. Identical source builds retain identical metadata; the date is the commit date, not the build time.
+
 ## Explore
 
 | Key / gesture | Action |
 | --- | --- |
-| `Enter` / `Return` | Show or hide the bottom menu (hidden by default) |
+| Click / tap / `Enter` / `Return` | Show or hide the bottom menu (hidden by default) |
 | Arrows / WASD / drag | Travel without an island boundary; drift resumes 3 seconds after navigation ends |
 | Shift + arrows / WASD | Travel faster |
 | `J` | Cycle all 25 animal habitats; briefly pause camera drift (whales surface intermittently) |

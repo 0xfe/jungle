@@ -53,7 +53,7 @@ export class InteractionPause {
   }
 }
 
-/** Short single-finger taps, with a second nearby tap identified as a double tap.
+/** Short single-pointer clicks/taps, with a second nearby tap identified as a double tap.
  * Returns 0 for navigation/cancellation, 1 for a single tap and 2 for a double tap.
  * Times are injected browser milliseconds.
  * A drag, long press, cancellation or second finger invalidates the whole pair. */

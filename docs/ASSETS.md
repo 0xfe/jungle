@@ -20,6 +20,10 @@ The three original bitmap sheets were generated on **2026-09-26 with the built-i
 
 Initial generation did not consistently honor transparency/background instructions. Accepted edits produced flat magenta chroma-key backgrounds; the pipeline removes the key and its edge contamination. The runtime atlas has real alpha. Do not mistake the magenta source sheets for runtime textures.
 
+## Toolbar icon
+
+The inline GitHub mark in `public/index.html` comes from [Primer Octicons v19.15.3](https://github.com/primer/octicons/blob/v19.15.3/icons/mark-github-16.svg), under the MIT license. Its path is unchanged; size and color follow the toolbar. Source URL and the full copyright/license notice ship in [`public/assets/github-ATTRIBUTION.txt`](../public/assets/github-ATTRIBUTION.txt). Normal builds require no network access.
+
 ## Build and inspect
 
 ```sh

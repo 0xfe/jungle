@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { buildSite } from '../scripts/build.mjs';
+import { buildInfo } from '../scripts/build-info.mjs';
 import { verifyBuild, sha256 } from '../scripts/verify-build.mjs';
 import { createSiteServer } from '../scripts/serve.mjs';
 const exec = promisify(execFile);
@@ -15,6 +16,8 @@ async function fixture(t) {
   const root = await mkdtemp(join(tmpdir(), 'jungle-deploy-test-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   for (const path of ['src', 'public/assets/audio', 'assets/source/audio', 'scripts', 'bin']) await mkdir(join(root, path), { recursive: true });
+  await writeFile(join(root, 'package.json'), JSON.stringify({version:'1.2.3'}));
+  await writeFile(join(root, 'src/config.ts'), 'export const CONFIG = {};');
   const audio = Buffer.from('retained audio fixture');
   await writeFile(join(root, 'assets/source/audio/elephant-trumpet.ogg'), audio);
   await writeFile(join(root, 'public/assets/audio/elephant-trumpet.wav'), audio);
@@ -31,6 +34,29 @@ async function fixture(t) {
 }
 
 const entry = (files, name) => Object.keys(files).find(path => path.startsWith(`assets/${name}-`) && !path.endsWith('.map'));
+
+test('build metadata identifies archives, clean revisions and modified configuration', async t => {
+  const root = await fixture(t);
+  const archive = await buildInfo(root);
+  assert.equal(archive.version, '1.2.3');
+  assert.equal(archive.revision, null);
+  assert.equal(archive.modified, null);
+  await exec('git', ['init', '--quiet'], {cwd:root});
+  await exec('git', ['add', 'package.json', 'src', 'public', 'assets'], {cwd:root});
+  await writeFile(join(root, '.gitignore'), 'dist/\n');
+  await exec('git', ['add', '.gitignore'], {cwd:root});
+  await exec('git', ['-c', 'user.name=Build Test', '-c', 'user.email=build@example.invalid', '-c', 'commit.gpgsign=false', 'commit', '--quiet', '-m', 'Fixture'], {cwd:root});
+  const clean = await buildInfo(root);
+  assert.match(clean.revision, /^[a-f0-9]{40}$/);
+  assert.ok(Number.isFinite(Date.parse(clean.committedAt)));
+  assert.equal(clean.modified, false);
+  await writeFile(join(root, 'src/config.ts'), 'export const CONFIG = { changed: true };');
+  const modified = await buildInfo(root);
+  assert.equal(modified.modified, true);
+  assert.equal(modified.revision, clean.revision);
+  assert.notEqual(modified.configSha256, clean.configSha256);
+  assert.deepEqual(await buildInfo(root), modified);
+});
 
 test('builds are deterministic and changes propagate through hashed asset URLs and HTML', async t => {
   const root=await fixture(t),dist=join(root,'dist');
