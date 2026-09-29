@@ -4,7 +4,9 @@ An endlessly scrolling animated isometric pixel-art jungle with vegetation, bird
 
 Built in TypeScript with **no runtime dependencies**, using WebGL, Canvas fallback and a real headless RGBA renderer. Independent agent classes and bounded procedural-world libraries sit alongside the reusable isometric components. Everything runs as a static site.
 
-![The living jungle with colorful flowers, dense groves, giraffes, zebras and elephants beside the water](docs/preview.png)
+![Five seconds in the living jungle, with swaying flowers, rustling foliage and roaming wildlife](docs/preview.gif)
+
+[Still image](docs/preview.png) · Regenerate with `npm run readme:preview`.
 
 ## Quickstart
 
