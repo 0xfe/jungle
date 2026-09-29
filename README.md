@@ -1,6 +1,6 @@
-# ∞ Infinite Jungle ([mo.town/jungle](https://mo.town/jungle)]
+# ∞ Infinite Jungle ([mo.town/jungle](https://mo.town/jungle))
 
-**MIT License** - Copyright 2026 Mohit Cheppudira <shhh@mo.town>
+**MIT License** - Copyright 2026 Mohit Cheppudira
 
 An endlessly scrolling animated isometric pixel-art jungle with vegetation, birds, animals, etc. See it live at: [https://mo.town/jungle](https://mo.town/jungle).
 
