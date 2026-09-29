@@ -1,3 +1,4 @@
+import { CANOPY_BIRDS } from './flight';
 import { populationRange } from './encounters';
 import { planArrangement, pieceSupports, treePerchHeight, schoolWater, type TreeSupport } from './patches';
 import { LandscapePatchAgent } from './agents/patch';
@@ -102,7 +103,7 @@ export class InfiniteWorld {
     }
     if(flock && trees.length>1){const group=`flock:${cx}:${cy}`,first=trees[Math.floor(wildlife.next()*trees.length)]!;
       for(let i=0;i<2+Math.floor(wildlife.next()*2);i++){
-        const a=new ToucanAgent(`${group}:${i}`,first.x+.08+i*.1,first.y-.08,seed());a.territory=[...bounds];a.groupId=group;a.leaderId=`${group}:0`;a.altitude=treePerchHeight(first);a.targetAltitude=a.altitude;a.previous=a.sample();agents.push(a);
+        const a=new ToucanAgent(`${group}:${i}`,first.x+.08+i*.1,first.y-.08,seed());a.territory=bounds.map((v,i)=>v+(i<2?-1:1)*CONFIG.world.birds.territoryMargin) as typeof bounds;a.groupId=group;a.leaderId=`${group}:0`;a.altitude=treePerchHeight(first);a.targetAltitude=a.altitude;a.previous=a.sample();agents.push(a);
       }
     }
     if(apes && trees.length>3){const p=spot();if(p){const group=`family:${cx}:${cy}`,count=wildlife.next()<.55?2:1;
@@ -166,7 +167,7 @@ export class InfiniteWorld {
         }
         if(!point)continue;
         const a=new C(`${group}:${i}`,point.x,point.y,Math.floor(ecoRandom.next()*0xffffffff));
-        a.territory=[...bounds];a.groupId=(kind==='blackBear'&&!bearCubs)||['hawk','vulture','whale','boa','squirrel','boar','beaver','crocodile','toad'].includes(kind)?'':group;a.leaderId=a.groupId?`${group}:0`:'';if(kind!=='hawk')a.heading=commonHeading;
+        a.territory=CANOPY_BIRDS.includes(kind)?bounds.map((v,i)=>v+(i<2?-1:1)*CONFIG.world.birds.territoryMargin) as typeof bounds:[...bounds];a.groupId=(kind==='blackBear'&&!bearCubs)||['hawk','vulture','whale','boa','squirrel','boar','beaver','crocodile','toad'].includes(kind)?'':group;a.leaderId=a.groupId?`${group}:0`:'';if(kind!=='hawk')a.heading=commonHeading;
         if(kind==='wolf'&&i>=adults){a.juvenile=true;a.motherId=a.leaderId;a.size=(agents.find(p=>p.id===a.leaderId) as WildlifeAgent).size*(.52+ecoRandom.next()*.12);}
         if(kind==='blackBear'&&i>0){a.juvenile=true;a.motherId=a.leaderId;a.size=(agents.find(p=>p.id===a.leaderId) as WildlifeAgent).size*(.43+ecoRandom.next()*.13);}
         if(kind==='elephant'&&i===count-1){a.juvenile=true;a.motherId=a.leaderId;a.size*=.63;}
@@ -261,7 +262,7 @@ export class InfiniteWorld {
       const record = { terrain: a.terrain.data, agents: jungleAgents.encode(a.agents) };
       this.cache.put(a.x, a.y, record, record.terrain.length + record.agents.length + 256, this.pinned);
     }
-    const w = new BinaryWriter(); w.u32(0x4a4e474c); w.u8(17); w.u32(this.seed);
+    const w = new BinaryWriter(); w.u32(0x4a4e474c); w.u8(18); w.u32(this.seed);
     for(const key of SETTING_KEYS)w.f64(this.settings[key]);
     w.u8(['rainforest', 'flowering', 'wetland'].indexOf(this.habitat)); w.u8(['sun', 'rain', 'dusk'].indexOf(this.weather));
     for (const n of [this.time, this.previousTime, this.generated, this.renderedTotal, this.cache.expired]) w.f64(n);
@@ -272,7 +273,7 @@ export class InfiniteWorld {
   static restore(bytes: Uint8Array, budget = DEFAULT_WORLD_BUDGET): InfiniteWorld {
     if (bytes.length > budget.maxBytes + 65536) throw new Error('Checkpoint exceeds memory budget');
     const r = new BinaryReader(bytes);
-    if (r.u32() !== 0x4a4e474c || r.u8() !== 17) throw new Error('Unsupported world checkpoint');
+    if (r.u32() !== 0x4a4e474c || r.u8() !== 18) throw new Error('Unsupported world checkpoint');
     const seed = r.u32(), settings=Object.fromEntries(SETTING_KEYS.map(k=>[k,r.f64()])) as unknown as WorldSettings;
     for(const k of SETTING_KEYS)if(settings[k]!==normalizeSettings(settings)[k])throw new Error('Invalid world settings');
     const habitat = (['rainforest', 'flowering', 'wetland'] as const)[r.u8()], weather = (['sun', 'rain', 'dusk'] as const)[r.u8()];

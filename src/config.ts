@@ -121,9 +121,18 @@ export const CONFIG = {
       flowerWindPeriod: 9,
       /** Fraction of compound components carrying small rooted/airborne accents. */
       accentCoverage: .90,
+      /** Leaf/petal rustle cycle in seconds, layered over continuous rooted sway. */
+      accentRustlePeriod: 4.8,
       /** RGB foliage palettes multiply a luminance mask; wood/soil retain their color.
        * Change these to red/brown for seasonal leaves; there are only three shared tints. */
       foliage: [[110,184,49],[96,166,48],[128,192,60]] as readonly (readonly [number,number,number])[],
+    },
+    birds: {
+      /** Chance of a canopy bird choosing a nearby perch across water per trip. */
+      crossingChance: .18,
+      /** Maximum search radius and extra owner-territory margin, in tiles. */
+      crossingRange: 4.5,
+      territoryMargin: 2,
     },
     population: {
       /** Extra colorful-bird candidate weight in dense canopy (added to the open boost). */
@@ -134,7 +143,7 @@ export const CONFIG = {
       zebra: .045,
       /** Rare solitary large birds; probabilities per candidate owner chunk. */
       hawk: .009,
-      vulture: .012,
+      vulture: .008,
       bearFamilyChance: .28,
       /** Solitary squirrels favor open woodland; each still requires a real tree. */
       squirrel: .10,
@@ -165,7 +174,7 @@ export const CONFIG = {
       /** Fraction of inland elephant candidates retained (others favor water). */
       inlandElephantRetention: .12,
       /** Shorebird group candidate probability per chunk. */
-      seagull: .30,
+      seagull: .23,
       /** Fish school candidate probability per chunk. */
       fish: .4,
       /** Solitary whale candidate probability; requires deep water. */

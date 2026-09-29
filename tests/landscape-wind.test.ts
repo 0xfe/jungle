@@ -76,12 +76,13 @@ test('landscape accents share atlas regions, rooted animation and exact sleeping
  world.agents=[patch];const view={width:900,height:700,pixelRatio:1,zoom:1,grid:false,cameraX:0,cameraY:0};
  const accents=()=>composeInfinite(world,atlas,view,1).commands.filter(c=>c.id.includes(':accent:')||c.id.includes(':flutter:'));
  const before=accents();assert.ok(before.length>2&&before.length<=12);
- for(const c of before)assert.ok(Object.entries(atlas.sprites).some(([id,s])=>id.startsWith('accent-')&&(s as {frames:unknown[]}).frames[0]===c.region));
+ for(const c of before)assert.ok(Object.entries(atlas.sprites).some(([id,s])=>id.startsWith('accent-')&&(s as {frames:unknown[]}).frames.includes(c.region)));
  patch.previousPhase=patch.phase=1;
  const after=accents();assert.notDeepEqual(after,before);
+ assert.ok(before.some(c=>c.id.includes(':accent:')&&after.find(n=>n.id===c.id)?.region!==c.region),'leaf/petal atlas frames advance separately from rooted waving');
  for(const c of before.filter(c=>c.id.includes(':accent:'))){
   const next=after.find(n=>n.id===c.id)!;
-  const s=Object.values(atlas.sprites).find((s:any)=>s.frames[0]===c.region) as {width:number;height:number;anchor:number[]};
+  const s=Object.values(atlas.sprites).find((s:any)=>s.frames.includes(c.region)) as {width:number;height:number;anchor:number[]};
   const root=(command:DrawCommand)=>{const q=command.corners!;return {x:q[0].x+(q[1].x-q[0].x)*s.anchor[0]!/s.width+(q[2].x-q[0].x)*s.anchor[1]!/s.height,y:q[0].y+(q[2].y-q[0].y)*s.anchor[1]!/s.height};};
   assert.ok(Math.abs(root(c).x-root(next).x)<1e-9);assert.ok(Math.abs(root(c).y-root(next).y)<1e-9);
  }

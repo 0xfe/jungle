@@ -40,16 +40,26 @@ The additional [source sheet](../assets/source/landscape-accent-variety.png) sup
 
 Auto-scroll increases from 16 to **20 CSS pixels/second**, preserving the three-second navigation delay and explicit pause/drift toggles.
 
-World schema **17** and agent schema **14** reject earlier saves. Sleeping cached agents resume; expired chunks regenerate initial populations. No durable migration/history or automatic persistence is implemented. Estimated live-agent memory allowance is 896 bytes per agent, plus existing landscape-piece/support allowances and shared resources; it is not total browser RAM.
+World schema **18** and agent schema **14** reject earlier saves. Sleeping cached agents resume; expired chunks regenerate initial populations. No durable migration/history or automatic persistence is implemented. Estimated live-agent memory allowance is 896 bytes per agent, plus existing landscape-piece/support allowances and shared resources; it is not total browser RAM.
 
 ## Review
 
 `npm run check` rebuilds the atlas, typechecks, tests and writes scene snapshots, including zebra habitat. `npm run assets:preview` writes all headings/actions for bears, zebras, giraffes and elephants. `npx tsx scripts/art/preview-repose.ts` writes resting contact sheets and the sixteen accent forms. `npm run patches:preview` shows the landscape overlays; `npm run benchmark` measures CPU work, excluding GPU completion. Browser inspection must cover both WebGL and Canvas, hidden-menu Help, sound, keyboard travel, mobile layout and touch interaction where available.
 
-The reviewed atlas contains 15,530 logical / 12,753 unique frames in 4096 × 4016 pixels (**62.75 MiB decoded**, about 3.03 MiB PNG). CPU-only benchmark p95 simulation/composition on this host: opening forest 0.98/2.35 ms, mature forest 0.95/3.24 ms, wide rain 2.66/7.51 ms; travel stream maximum 19.96 ms. These are local measurements, not GPU completion or device-independent guarantees.
+The reviewed atlas contains 15,738 logical / 12,927 unique frames in 4096 × 4080 pixels (**63.75 MiB decoded**, about 3.08 MiB PNG). CPU-only benchmark p95 simulation/composition on this host: opening forest 1.25/3.16 ms, mature forest 1.18/4.39 ms, wide rain 3.76/9.85 ms; travel stream maximum 20.63 ms. These are local measurements, not GPU completion or device-independent guarantees.
 
-`npm run check` passes 163 tests, including rest transitions, planted feet, exact continuation, predator escape, toad hops, climbing support, signed-coordinate population ranges, bounded raptor flights and vulture ground residence.
+`npm run check` passes 166 tests, including rest transitions, planted feet, exact continuation, predator escape, toad hops, climbing support, signed-coordinate population ranges, bounded raptor flights and vulture ground residence.
 
 Browser review covers WebGL desktop and Canvas at a 390 × 844 viewport, hidden-menu Help, keyboard/landscape travel and zoom. The mobile guide remains scrollable and controls fit within the viewport. Double-tap recognition, drag/pinch exclusion and cancellation are headless-tested; physical-phone touch delivery has not been verified because the available browser connection has no touch-injection control.
 
-The browser on this host reported around 30 FPS in the sampled views. Canvas submission is appreciably heavier than the CPU-only benchmark; this is desktop responsive emulation, not a phone performance measurement.
+The browser on this host reported around 30–58 FPS across sampled views. Canvas submission is appreciably heavier than the CPU-only benchmark; this is desktop responsive emulation, not a phone performance measurement.
+
+## Gentle rustling and river crossings
+
+Vulture candidate frequency falls from 0.012 to 0.008 (one third fewer); seagulls from 0.30 to 0.23 (about 23% fewer). Habitat/density still determine actual counts, and individual flock sizes are preserved.
+
+The sixteen flower/shrub accents now have fourteen baked phases each. `scripts/art/accent-rustle.ts` deforms the registered low-resolution painting locally: leaf fans move sideways with differing phases, and a smaller second wave nods flower heads vertically. The bottom four rows remain byte-identical. Inverse nearest-neighbor sampling preserves the palette without holes from forward splatting or blurred interpolation. All phases share union bounds and one anchor; the source artwork, prompts and resolution are unchanged. No live image generation is needed. Existing broad rooted shear runs continuously on top of the pixel loop. `world.patches.accentRustlePeriod` sets the 4.8-second base cycle, varied by form; the owner's interpolated clock freezes on pause and restores exactly. Draw counts and per-instance texture counts do not increase.
+
+`npx tsx scripts/art/preview-accent-rustle.ts` writes a contact strip of the actual atlas frames. Tests inspect every form for local movement, exact roots, transparent gutters and identical loop endpoints; scene tests check frame selection and frozen/restored presentation.
+
+Canopy birds (toucans, macaws, parakeets and kingfishers) have an 18% opportunity per trip to choose a real dry perch across water within 4.5 tiles. Searches examine at most 64 supports and sample bounded routes across the shared water field. Their owner territories gain a two-tile margin on each side so chunk edges do not behave as invisible river walls. The owner chunk still retains the bird; this is bounded local flight, not migration. Ordinary flock behavior and powered/gliding cadence continue. Crossings reuse already serialized targets, altitude, motor, RNG and prior samples. World schema 18 pins changed populations/territories; agent layout remains 14.

@@ -10,6 +10,7 @@ Edit **[`src/config.ts`](../src/config.ts)**, run `npm run build`, then refresh 
 | `world.opening` | Sparse-start plant/animal fractions and transition radii |
 | `world.rivers` | Pond spacing, channel half-width and downstream speed; water zero disables the network |
 | `world.regions` | Recurring regional wavelength, open-canopy fraction and wet-region water depth |
+| `world.birds` | Canopy crossing chance, search radius and bounded territory margin |
 | `world.population` | Candidate probability for each species, plus inland elephant retention |
 | `world.cache` / `maxActiveChunks` | Byte/count/distance budgets and active viewport cap |
 | `rendering` | Renderer preference, pixel-ratio caps and Canvas tint-cache limits |
@@ -58,4 +59,6 @@ World checkpoints store slider values, but not a copy of this entire source conf
 
 Landscape motion uses `world.patches.groundSway` for low foliage, `flowerSwayPixels` and `flowerWindPeriod` for a separate, restrained flower-bed breeze, `sway` for trees, and `rustleCoverage`/`rustlePixels` for optional crown detail. `rendering.animationBudget` averages CPU submission cost with `responseSeconds`, fades crown detail toward `minimum` above `targetMs`, and restores it below 70% of that target. It never changes simulation speed, populations or broad wind. Rendering follows browser animation callbacks rather than a fixed FPS cap; the fixed 60 Hz clock belongs to simulation. See [landscape motion](LANDSCAPE-PATCHES.md).
 
-Current sound, input, bears/zebras, giraffe proportions, elephant sampling, shared landscape accents and schema 16/13 are documented in [wildlife refinements](WILDLIFE-REFINEMENTS.md).
+Current sound, input, bears/zebras, giraffe proportions, elephant sampling, shared landscape accents and schema 18/14 are documented in [wildlife refinements](WILDLIFE-REFINEMENTS.md).
+
+`world.patches.accentRustlePeriod` controls the local leaf/petal animation cycle while broad sway keeps running. `world.birds.crossingChance`, `crossingRange` and `territoryMargin` tune occasional perch-to-perch flights across water. Vulture and seagull frequency remain under `world.population`; these generator changes require a fresh world. See [wildlife refinements](WILDLIFE-REFINEMENTS.md#gentle-rustling-and-river-crossings).

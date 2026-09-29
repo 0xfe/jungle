@@ -242,7 +242,8 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
             if(!s)throw new Error(`Missing landscape accent: ${name}`);
             const base=screen(x,y),z=scale*(.60+hash(index,11,world.seed)*.95),lean=(Math.sin(phase*(.7+form*.023))+.25*Math.sin(phase*1.9))*.045;
             const corners=rootedQuad(base,s.width,s.height,s.anchor,z,z,lean),box=quadBounds(corners);
-            if(visible(box,view.width,view.height))commands.push({...box,corners,id:`${a.id}:accent:${index}`,region:s.frames[0],color:[255,255,255,255],layer:2,depth:x+y});
+            const rustle=Math.floor(phase*(1+form*.017)/CONFIG.world.patches.accentRustlePeriod*s.frames.length)%s.frames.length;
+            if(visible(box,view.width,view.height))commands.push({...box,corners,id:`${a.id}:accent:${index}`,region:s.frames[rustle],color:[255,255,255,255],layer:2,depth:x+y});
             // Wings fold continuously; drifting leaves fade before looping. These
             // decorative insects are components, not independently ticking agents.
             if(index%3===0){

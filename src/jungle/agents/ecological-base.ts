@@ -1,5 +1,5 @@
 import { nearestThreat } from '../encounters';
-import { BIRD_FLIGHT } from '../flight';
+import { BIRD_FLIGHT, CANOPY_BIRDS, crossingPerch } from '../flight';
 import { BinaryReader, BinaryWriter, ease, herdIntent, type AgentEnvironment } from '../../agents';
 import { clamp, lerp } from '../../iso/math';
 import { angleDelta, TAU } from '../animation';
@@ -34,6 +34,11 @@ export abstract class EcologicalAgent extends WildlifeAgent {
  }
  protected journey(env:AgentEnvironment,perching=false):boolean {
   const social=herdIntent(this,env.nearby(this.x,this.y,4));
+  const crossing=perching&&CANOPY_BIRDS.includes(this.kind)?crossingPerch(this.x,this.y,env,this.random,(x,y)=>this.within(x,y)):undefined;
+  if(crossing){
+   this.target={x:crossing.x,y:crossing.y};this.targetAltitude=crossing.height;
+   this.tripPace=.85+this.random.next()*.35;this.state='travel';this.timer=30;return true;
+  }
   const perches=perching?(env.perches?.(this.x,this.y,this.spec.range)??[]).filter(p=>this.within(p.x,p.y)&&Math.hypot(p.x-this.x,p.y-this.y)>.18):[];
   if(social)perches.sort((a,b)=>Math.hypot(a.x-social.target.x,a.y-social.target.y)-Math.hypot(b.x-social.target.x,b.y-social.target.y));
   if(perching && !perches.length){this.timer=1+this.random.next();return false;}

@@ -1,8 +1,9 @@
 import { ACCENT_FORMS, ACCENT_SIZES } from '../../src/jungle/accents';
 import { isolatePlant } from './foliage';
+import { accentRustleFrames } from './accent-rustle';
 import sharp from 'sharp';
 import type { BakeSprite } from '../../src/iso/bake/atlas';
-/** Four retained source cells. Keep a single registered pose and animate geometry.
+/** Retained structural source cells with registered local rustle clips.
  * Alpha threshold removes generated translucent fringes before nearest sampling. */
 export async function bakeLandscapeAccents():Promise<BakeSprite[]> {
  const {data,info}=await sharp('assets/source/landscape-accents.png').ensureAlpha().raw().toBuffer({resolveWithObject:true});
@@ -28,7 +29,7 @@ export async function bakeLandscapeAccents():Promise<BakeSprite[]> {
   const png=await sharp(clean.data,{raw:{width:clean.width,height:clean.height,channels:4}}).png().toBuffer();
   const pixels=await sharp(png).trim({threshold:10}).resize(size-4,size-4,{fit:'contain',position:'bottom',background:{r:0,g:0,b:0,alpha:0},kernel:'nearest'})
    .extend({top:2,bottom:2,left:2,right:2,background:{r:0,g:0,b:0,alpha:0}}).raw().toBuffer();
-  sprites.push({id:`accent-${ACCENT_FORMS[i]}`,anchor:[size/2,size-3],frames:[{width:size,height:size,data:pixels}]});
+  sprites.push({id:`accent-${ACCENT_FORMS[i]}`,anchor:[size/2,size-3],frames:accentRustleFrames({width:size,height:size,data:pixels},i)});
  }
  return sprites;
 }

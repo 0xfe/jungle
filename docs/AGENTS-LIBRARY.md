@@ -85,7 +85,7 @@ For example, a tiger would need rest/stalk/pursue/recover states, distinct sense
 
 The ecological extension preserves seven additional float64 values: swing origin x/y/height, normalized route progress, route duration, current breathing clock and prior breathing clock. Environment samples optionally expose `depth` (normalized habitat depth) and `beach`; neither field introduces a jungle import into the generic agent library. All eleven new class codecs have exact multi-step continuation tests.
 
-Plant records now include a two-byte genotype, expanded once into cached appearance traits. Structural morphology, growth scale, phase, previous phase, wind rate and vigor remain owned by the concrete plant agent. Vines are attached presentation components; they do not consume separate ticks or state records. Current collection schema is 14 and world checkpoint schema is 17. See [botanical design](FOREST.md).
+Plant records now include a two-byte genotype, expanded once into cached appearance traits. Structural morphology, growth scale, phase, previous phase, wind rate and vigor remain owned by the concrete plant agent. Vines are attached presentation components; they do not consume separate ticks or state records. Current collection schema is 14 and world checkpoint schema is 18. See [botanical design](FOREST.md).
 
 `FlightMotion` is a reusable DOM-free component that advances a wing phase through powered/glide bouts, varying cadence and lift from a caller-supplied profile and per-agent random stream. Wildlife records add its powered flag and three float64 values plus a trip-pace float64 (33 bytes). Restoring these fields is necessary for exact continuation. Monkey support geometry reuses the existing route origin/progress/duration fields. See [animal motion](ANIMAL-MOTION.md).
 
@@ -99,6 +99,6 @@ Boas and small snakes each have a concrete class, with tree-support or loose-gro
 
 Types 53–57 register solitary squirrels, boar, beavers, crocodiles and toads. Their route/climb/hop state uses the existing ecological codec; bank habitat is an optional generic environment sample field. See [river wildlife](RIVERS.md).
 
-Study 15 adds shared multi-tile landscape groups, tint masks and static trunk templates. Current world/agent schemas are **17/14**; see [landscape groups](LANDSCAPE-PATCHES.md) for source provenance, animation, navigation and memory details.
+Study 15 adds shared multi-tile landscape groups, tint masks and static trunk templates. Current world/agent schemas are **18/14**; see [landscape groups](LANDSCAPE-PATCHES.md) for source provenance, animation, navigation and memory details.
 
-Recurring colorful regions, canopy population/perch changes, new generated source provenance and black bear type 58 behavior/rig/codecs are documented in [regional variety](REGIONAL-VARIETY.md). Current world/agent schemas are **17/14**.
+Recurring colorful regions, canopy population/perch changes, new generated source provenance and black bear type 58 behavior/rig/codecs are documented in [regional variety](REGIONAL-VARIETY.md). Current world/agent schemas are **18/14**.

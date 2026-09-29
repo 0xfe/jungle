@@ -1,5 +1,5 @@
 import { Repose } from '../../agents/repose';
-import { BIRD_FLIGHT } from '../flight';
+import { BIRD_FLIGHT, crossingPerch } from '../flight';
 import { StartleResponse, FlightMotion, AgentRandom, BinaryReader, BinaryWriter, SpeedMotor, ease, herdIntent, type Agent, type AgentEnvironment } from '../../agents';
 import { clamp, lerp, type Vec2 } from '../../iso/math';
 import { angleDelta, TAU } from '../animation';
@@ -33,6 +33,8 @@ export abstract class WildlifeAgent implements Agent {
     return true;
   }
   protected wander(env:AgentEnvironment, distance:number, canopy=false): boolean {
+    const crossing=this.kind==='toucan'?crossingPerch(this.x,this.y,env,this.random,(x,y)=>this.within(x,y)):undefined;
+    if(crossing){this.target={x:crossing.x,y:crossing.y};this.targetAltitude=crossing.height;this.tripPace=.85+this.random.next()*.35;this.state='travel';this.timer=30;return true;}
     const social = herdIntent(this,env.nearby(this.x,this.y,5));
     const perches = canopy ? env.perches?.(this.x,this.y,3)?.filter(p=>this.within(p.x,p.y) && Math.hypot(p.x-this.x,p.y-this.y)>.3) ?? [] : [];
     if(social && perches.length)perches.sort((a,b)=>Math.hypot(a.x-social.target.x,a.y-social.target.y)-Math.hypot(b.x-social.target.x,b.y-social.target.y));
