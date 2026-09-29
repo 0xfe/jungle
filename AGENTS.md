@@ -36,6 +36,10 @@ ould be able to look at the code and figure out what's going on.
 - In general, try to write code that is decoupled, cohesive, and testable. Try and minimize duplication an
 d build and maintain reusable components.
 
+- Commit changes to git with a descriptive message, but don't push.
+
+- You can run "./upload.sh dev" after making meaningful changes, if everything is working correctly, but never upload to prod.
+
 ## Assets and documentation
 
 - Read `docs/ASSETS.md` and `docs/ANIMATION.md` before adding sprites. Use image generation for new organic bitmap artwork; for directional animals, prefer an articulated model baked to sprite frames. Preserve generated source art as reference.
