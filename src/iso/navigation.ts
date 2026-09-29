@@ -53,9 +53,11 @@ export class InteractionPause {
   }
 }
 
-/** Two short, nearby single-finger taps. Times are injected browser milliseconds.
+/** Short single-finger taps, with a second nearby tap identified as a double tap.
+ * Returns 0 for navigation/cancellation, 1 for a single tap and 2 for a double tap.
+ * Times are injected browser milliseconds.
  * A drag, long press, cancellation or second finger invalidates the whole pair. */
-export class DoubleTap {
+export class TouchTaps {
   private current?: {id:number;point:PointerPosition;time:number};
   private previous?: {point:PointerPosition;time:number};
   private readonly held=new Set<number>();
@@ -67,14 +69,14 @@ export class DoubleTap {
   move(id:number,point:PointerPosition):void {
     if(this.current?.id===id&&Math.hypot(point.x-this.current.point.x,point.y-this.current.point.y)>3){this.current=undefined;this.previous=undefined;}
   }
-  end(id:number,time:number):boolean {
+  end(id:number,time:number):0|1|2 {
     this.held.delete(id);
-    const tap=this.current;if(!tap||tap.id!==id)return false;
+    const tap=this.current;if(!tap||tap.id!==id)return 0;
     this.current=undefined;
-    if(time-tap.time>250){this.previous=undefined;return false;}
+    if(time-tap.time>250){this.previous=undefined;return 0;}
     const previous=this.previous;
-    if(previous&&time-previous.time<=350&&Math.hypot(tap.point.x-previous.point.x,tap.point.y-previous.point.y)<=28){this.previous=undefined;return true;}
-    this.previous={point:tap.point,time};return false;
+    if(previous&&time-previous.time<=350&&Math.hypot(tap.point.x-previous.point.x,tap.point.y-previous.point.y)<=28){this.previous=undefined;return 2;}
+    this.previous={point:tap.point,time};return 1;
   }
   cancel(id:number):void {if(this.held.has(id))this.clear();}
   clear():void {this.current=undefined;this.previous=undefined;this.held.clear();}

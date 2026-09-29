@@ -75,15 +75,20 @@ test('pinching back in responds immediately after hitting the zoom limit', () =>
   assert.equal(view.zoom, 2.25);
 });
 
-test('double touch taps show controls, without confusing drags, pinches or long presses',async()=>{
- const {DoubleTap}=await import('../src/iso/navigation'),tap=new DoubleTap(),p={x:100,y:100};
- tap.begin(1,p,0);assert.equal(tap.end(1,80),false);
- tap.begin(2,{x:105,y:99},160);assert.equal(tap.end(2,240),true);
- tap.begin(3,p,500);tap.move(3,{x:115,y:100});assert.equal(tap.end(3,550),false);
- tap.begin(4,p,620);assert.equal(tap.end(4,670),false);
- tap.clear();tap.begin(1,p,800);tap.begin(2,p,810);tap.end(1,850);assert.equal(tap.end(2,880),false);
- tap.begin(3,p,950);assert.equal(tap.end(3,1000),false);
- tap.clear();tap.begin(4,p,1100);assert.equal(tap.end(4,1500),false);
- tap.begin(5,p,1600);assert.equal(tap.end(5,1650),false);
- tap.begin(6,{x:300,y:100},1700);assert.equal(tap.end(6,1750),false);
+test('touch taps distinguish single and double taps from drags, pinches and long presses',async()=>{
+ const {TouchTaps}=await import('../src/iso/navigation'),tap=new TouchTaps(),p={x:100,y:100};
+ tap.begin(1,p,0);assert.equal(tap.end(1,80),1);
+ tap.begin(2,{x:105,y:99},160);assert.equal(tap.end(2,240),2);
+ // Pointer capture release after a successful tap must not erase the pair.
+ tap.begin(3,p,500);assert.equal(tap.end(3,550),1);tap.cancel(3);
+ tap.begin(4,p,620);assert.equal(tap.end(4,670),2);
+ tap.begin(5,p,800);tap.move(5,{x:115,y:100});assert.equal(tap.end(5,850),0);
+ tap.begin(6,p,900);assert.equal(tap.end(6,950),1);
+ tap.clear();tap.begin(1,p,1000);tap.begin(2,p,1010);assert.equal(tap.end(1,1050),0);assert.equal(tap.end(2,1080),0);
+ tap.begin(3,p,1150);assert.equal(tap.end(3,1200),1);
+ tap.clear();tap.begin(4,p,1300);assert.equal(tap.end(4,1700),0);
+ tap.begin(5,p,1800);assert.equal(tap.end(5,1850),1);
+ tap.begin(6,{x:300,y:100},1900);assert.equal(tap.end(6,1950),1);
+ tap.begin(7,p,2100);tap.cancel(7);assert.equal(tap.end(7,2150),0);
+ tap.begin(8,p,2200);assert.equal(tap.end(8,2250),1);
 });

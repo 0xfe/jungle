@@ -14,7 +14,7 @@ Edit **[`src/config.ts`](../src/config.ts)**, run `npm run build`, then refresh 
 | `world.population` | Candidate probability for each species, plus inland elephant retention |
 | `world.cache` / `maxActiveChunks` | Byte/count/distance budgets and active viewport cap |
 | `rendering` | Renderer preference, pixel-ratio caps and Canvas tint-cache limits |
-| `interface` | Slider debounce and statistics update/sample intervals |
+| `interface` | Menu idle timeout, slider debounce and statistics update/sample intervals |
 | `audio` | Desktop/mobile initial enabled states, mix levels, proximity, polyphony, call timing/pitch ranges, fades, PCM rate/seed and individual sounds |
 
 A URL seed/position override still takes precedence, and `?renderer=canvas` can force Canvas. Sliders and keyboard controls override defaults for the current page only. Resetting world settings restores `CONFIG.world.settings`. Home restores configured zoom/drift at the seeded opening. `camera.driftResumeSeconds` defaults to 3: navigation delays drift without overriding P or Pause. Pinch zoom shares the same zoom bounds as buttons and the wheel. The config is build-time source, not a live settings store.
@@ -62,3 +62,5 @@ Landscape motion uses `world.patches.groundSway` for low foliage, `flowerSwayPix
 Current sound, input, bears/zebras, giraffe proportions, elephant sampling, shared landscape accents and schema 18/14 are documented in [wildlife refinements](WILDLIFE-REFINEMENTS.md).
 
 `world.patches.accentRustlePeriod` controls the local leaf/petal animation cycle while broad sway keeps running. `world.birds.crossingChance`, `crossingRange` and `territoryMargin` tune occasional perch-to-perch flights across water. Vulture and seagull frequency remain under `world.population`; these generator changes require a fresh world. See [wildlife refinements](WILDLIFE-REFINEMENTS.md#gentle-rustling-and-river-crossings).
+
+`interface.menuIdleSeconds` defaults to 3. Toolbar interaction restarts this delay; open Settings/Help panels and held controls suspend it. Closing a panel starts a full delay. Enter toggles controls, a single touch tap toggles them, and a double tap leaves them visible. The toolbar fades in/out in 160 ms; reduced-motion preferences remove this transition. The startup loading canopy is independent of menu visibility and remains until the first rendered frame.

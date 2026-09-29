@@ -224,6 +224,8 @@ export const CONFIG = {
     animationBudget: { targetMs: 14, minimum: .3, responseSeconds: 1.5 },
   },
   interface: {
+    /** Seconds of unused toolbar time before fading out; open panels hold it visible. */
+    menuIdleSeconds: 3,
     /** Delay after moving a world slider before rebuilding the landscape, milliseconds. */
     settingsDebounceMs: 250,
     /** Time between updates to FPS and statistics text, seconds. */

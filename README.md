@@ -4,7 +4,7 @@ An endlessly scrolling animated isometric pixel-art jungle with vegetation, bird
 
 Built in TypeScript with **no runtime dependencies**, using WebGL, Canvas fallback and a real headless RGBA renderer. Independent agent classes and bounded procedural-world libraries sit alongside the reusable isometric components. Everything runs as a static site.
 
-![Five seconds auto-scrolling through the living jungle, with swaying flowers, rustling foliage and roaming wildlife](docs/preview.gif)
+![Five seconds in the living jungle, with swaying flowers, rustling foliage and roaming wildlife](docs/preview.gif)
 
 [Still image](docs/preview.png) · Regenerate with `npm run readme:preview`.
 
@@ -17,7 +17,7 @@ npm ci
 npm run dev
 ```
 
-Open **http://localhost:4173** for the full-screen jungle. **Press Enter / Return to show or hide the compact bottom menu.** Only the mute button is visible initially, in the top right. Double-tap the scene on touchscreens to show the menu; `?` opens Help even while the menu is hidden. This builds assets/code and starts a local static server. It doesn't watch files: rebuild and refresh after edits. Use `PORT=8080 npm run serve` for another port.
+Open **http://localhost:4173** for the full-screen jungle. **Press Enter / Return to show or hide the compact bottom menu.** Only the mute button is visible initially, in the top right. Tap the scene on touchscreens to show or hide the menu; double-tap to show it. The menu fades after 3 seconds unused and stays visible while Settings or Help is open; `?` opens Help even while the menu is hidden. This builds assets/code and starts a local static server. It doesn't watch files: rebuild and refresh after edits. Use `PORT=8080 npm run serve` for another port.
 
 ```sh
 npm run build          # deterministic assets, typecheck, bundle → dist/
@@ -50,7 +50,7 @@ To change application defaults, edit [src/config.ts](src/config.ts), then rebuil
 | `J` | Cycle all 25 animal habitats; briefly pause camera drift (whales surface intermittently) |
 | `N` | Visit dry scrub, meadow, lake, forest, then a stream |
 | `O` / Settings | With overlays visible: adjust vegetation, wildlife, water, lake size, clearings, hills and sound |
-| `?` | With overlays visible: FPS, per-stage CPU timing, world/cache/memory statistics and keyboard guide |
+| `?` | Open Help, even with the menu hidden: FPS, per-stage CPU timing, world/cache/memory statistics and keyboard guide |
 | `R` | Generate a new seeded world |
 | `1` / `2` / `3` | Rainforest / flowering / wetland preset |
 | `T` | Sun / rain / dusk |

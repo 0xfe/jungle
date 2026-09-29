@@ -13,7 +13,7 @@ import { ECO_KINDS } from './jungle/ecology';
 import { ease } from './agents';
 import { InfiniteWorld } from './jungle/infinite';
 import { cameraBounds, composeInfinite, gestureCamera, panCamera, type InfiniteView } from './jungle/infinite-scene';
-import { DoubleTap, InteractionPause, PointerNavigation } from './iso/navigation';
+import { TouchTaps, InteractionPause, PointerNavigation } from './iso/navigation';
 import { TerrainKind, TERRAIN_NAMES } from './jungle/terrain';
 import { CanvasRenderer } from './iso/canvas';
 import { WebGLRenderer } from './iso/webgl';
@@ -40,7 +40,7 @@ let paused = CONFIG.startup.paused || (CONFIG.startup.respectReducedMotion && ma
 let drift = CONFIG.camera.drift && !paused, cameraVX = 0, cameraVY = 0, last = 0, frameCount = 0, fpsElapsed = 0;
 const keys = new Set<string>();
 const pointers = new PointerNavigation();
-const menuTap = new DoubleTap();
+const menuTap = new TouchTaps();
 const driftPause = new InteractionPause(CONFIG.camera.driftResumeSeconds);
 /** Browser time is confined to input/presentation; it never changes simulation randomness. */
 function pauseDrift(): void { driftPause.touch(performance.now() / 1000); }
@@ -51,11 +51,29 @@ let canvas = el<HTMLCanvasElement>('jungle');
 let renderer: Renderer, atlas: AtlasManifest;
 const announce = (text: string) => { el('announcement').textContent = text; };
 let uiVisible=!CONFIG.startup.menuVisible;
+let menuTimer:ReturnType<typeof setTimeout>|undefined;
+const menuPointers=new Set<number>();
+/** Only idle, closed-panel controls disappear. A held control gets a fresh delay on release. */
+function keepMenuAwake():void {
+  clearTimeout(menuTimer);
+  if(!uiVisible||!el('help').hidden||!el('settings').hidden||menuPointers.size)return;
+  menuTimer=setTimeout(()=>{if(uiVisible)toggleUI();},CONFIG.interface.menuIdleSeconds*1000);
+}
 function toggleUI():void {
   uiVisible=!uiVisible;document.body.classList.toggle('ui-hidden',!uiVisible);
   document.querySelectorAll<HTMLElement>('[data-ui]').forEach(node=>{node.inert=!uiVisible;});
   if(!uiVisible){keys.clear();if(document.activeElement instanceof HTMLElement)document.activeElement.blur();}
+  keepMenuAwake();
 }
+for(const type of ['pointermove','focusin','keydown','input','click'] as const)document.addEventListener(type,e=>{
+  if(e.target instanceof Element&&e.target.closest('[data-ui]'))keepMenuAwake();
+});
+document.addEventListener('pointerdown',e=>{
+  if(e.target instanceof Element&&e.target.closest('[data-ui]')){menuPointers.add(e.pointerId);keepMenuAwake();}
+},{capture:true});
+for(const type of ['pointerup','pointercancel','lostpointercapture'] as const)document.addEventListener(type,e=>{
+  if(menuPointers.delete(e.pointerId))keepMenuAwake();
+},{capture:true});
 
 function syncUI(): void {
   el('pause').setAttribute('aria-pressed', String(paused));
@@ -92,11 +110,12 @@ function nextWildlife():void { pauseDrift();
   const next=world.wildlifeLandmark(kind,view.cameraX,view.cameraY);view.cameraX=next.x;view.cameraY=next.y;cameraVX=cameraVY=0;
   syncUI();announce(`Watching ${kind==='blackBear'?'black bear':kind} habitat.`);
 }
-function help(open = !uiVisible || el('help').hidden): void { if(open&&!uiVisible)toggleUI(); if(open)showSettings(false); el('help').hidden = !open; el('help-button').setAttribute('aria-expanded', String(open)); }
+function help(open = !uiVisible || el('help').hidden): void { if(open&&!uiVisible)toggleUI(); if(open)showSettings(false); el('help').hidden = !open; el('help-button').setAttribute('aria-expanded', String(open)); keepMenuAwake(); }
 function showSettings(open=el('settings').hidden):void{
   if(open&&!uiVisible)return;
   el('settings').hidden=!open;el('settings-button').setAttribute('aria-expanded',String(open));
   if(open){el('help').hidden=true;el('help-button').setAttribute('aria-expanded','false');keys.clear();}
+  keepMenuAwake();
 }
 el('settings-button').onclick=()=>showSettings();el('close-settings').onclick=()=>{showSettings(false);el('settings-button').focus();};
 let settingsTimer:ReturnType<typeof setTimeout>|undefined;
@@ -176,7 +195,7 @@ window.addEventListener('keydown', e => {
   else if (['1','2','3'].includes(key)) regrow(HABITATS[Number(key) - 1]!);
 });
 window.addEventListener('keyup', e => { if (keys.delete(e.key.toLowerCase())&&e.key.toLowerCase()!=='shift') pauseDrift(); });
-function clearNavigation(): void { if(pointers.navigating||keys.size>Number(keys.has('shift')))pauseDrift(); keys.clear(); pointers.clear(); menuTap.clear(); cameraVX = cameraVY = 0; }
+function clearNavigation(): void { if(pointers.navigating||keys.size>Number(keys.has('shift')))pauseDrift(); keys.clear(); pointers.clear(); menuTap.clear(); menuPointers.clear();keepMenuAwake();cameraVX = cameraVY = 0; }
 window.addEventListener('blur', clearNavigation);
 document.addEventListener('visibilitychange', () => { last = 0; clearNavigation(); updateAudio(0); });
 function bindCanvas(): void {
@@ -199,7 +218,8 @@ function bindCanvas(): void {
     if(e.pointerType==='touch'){
       const tapped=e.type==='pointerup'?menuTap.end(e.pointerId,e.timeStamp):false;
       if(e.type!=='pointerup')menuTap.cancel(e.pointerId);
-      if(tapped&&!uiVisible)toggleUI();
+      if(tapped===1||(tapped===2&&!uiVisible))toggleUI();
+      else if(tapped===2)keepMenuAwake();
     }
     if(pointers.end(e.pointerId)&&moved)pauseDrift();
   };
@@ -283,7 +303,10 @@ async function start(): Promise<void> {
     e.preventDefault(); renderer.dispose(); freshCanvas(); bindCanvas(); renderer = new CanvasRenderer(canvas, pixels, {maxEntries:CONFIG.rendering.canvasTintEntries,maxBytes:CONFIG.rendering.canvasTintBytes}); resize();
     el('renderer').textContent = renderer.name; announce('Graphics context lost. Continued with Canvas rendering.');
   });
-  el('renderer').textContent = renderer.name; el('loading').hidden = true; syncUI(); syncSound(); unlockSound(); requestAnimationFrame(loop);
+  el('renderer').textContent = renderer.name; syncUI(); syncSound(); unlockSound();
+  // Keep the loading scene visible until the first real jungle frame is drawn.
+  await new Promise<void>((resolve,reject)=>requestAnimationFrame(time=>{try{loop(time);resolve();}catch(error){reject(error);}}));
+  el('loading').hidden=true;canvas.setAttribute('aria-busy','false');
 }
 toggleUI();
-start().catch(error => { console.error(error); el('loading').removeAttribute('data-ui');el('loading').inert=false;el('loading').hidden=false; el('loading').textContent = 'The jungle could not load. Run npm run build, then refresh.'; });
+start().catch(error => { console.error(error);el('loading').hidden=false;el('loading').setAttribute('role','alert');el('loading').textContent = 'The jungle could not load. Run npm run build, then refresh.';canvas.setAttribute('aria-busy','false'); });
