@@ -4,7 +4,7 @@ An endlessly scrolling isometric pixel-art jungle. See it live at: [https://mo.t
 
 Built in TypeScript with **no runtime dependencies**, using WebGL, Canvas fallback and a real headless RGBA renderer. Independent agent classes and bounded procedural-world libraries sit alongside the reusable isometric components. Everything runs as a static site.
 
-![A procedurally generated jungle](docs/preview.png)
+![The living jungle with colorful flowers, dense groves, giraffes, zebras and elephants beside the water](docs/preview.png)
 
 ## Quickstart
 
