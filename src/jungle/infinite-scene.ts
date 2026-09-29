@@ -228,6 +228,32 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
           if(isGrove(piece.style)&&part<3&&!(piece.trees&(1<<part)))continue;
           drawPiece(piece.style,part,piece.scale,piece.opacity);
         }
+        // A bounded overlay per selected component, owned by this arrangement.
+        // Ground anchors preserve animal/tree occlusion; the existing interpolated
+        // clock freezes on pause and resumes exactly after sleeping/checkpoints.
+        const rank=hash(index,7,Math.floor(piece.phase*1e6));
+        if(piece.style!=='water'&&rank<CONFIG.world.patches.accentCoverage){
+          const x=piece.x+(hash(index,8,world.seed)-.5)*1.3,y=piece.y+(hash(index,9,world.seed)-.5)*1.3;
+          if((world.tileAt(x,y)?.materialAt(x,y)??TerrainKind.Deep)<TerrainKind.Shallow){
+            const name=piece.style==='flowers'||index%3===0?'flowers':'bush',s=atlas.sprites[`accent-${name}`];
+            if(!s)throw new Error(`Missing landscape accent: ${name}`);
+            const base=screen(x,y),z=scale*(.75+rank*.4),lean=Math.sin(phase*.9)*.06;
+            const corners=rootedQuad(base,s.width,s.height,s.anchor,z,z,lean),box=quadBounds(corners);
+            if(visible(box,view.width,view.height))commands.push({...box,corners,id:`${a.id}:accent:${index}`,region:s.frames[0],color:[255,255,255,255],layer:2,depth:x+y});
+            // Wings fold continuously; drifting leaves fade before looping. These
+            // decorative insects are components, not independently ticking agents.
+            if(index%3===0){
+              const butterfly=index%2===0,t=phase*(butterfly?.65:.22),cycle=((t%1)+1)%1;
+              const fly=atlas.sprites[`accent-${butterfly?'butterfly':'leaf'}`];
+              if(!fly)throw new Error('Missing airborne landscape accent');
+              const fx=x+Math.sin(t)*.18,fy=y+Math.cos(t*.73)*.13;
+              const fp=screen(fx,fy,world.heightAt(fx,fy)+(butterfly?15+Math.sin(t*1.7)*5:8+(1-cycle)*30));
+              const width=scale*(butterfly?.25+.65*Math.abs(Math.sin(phase*11)):.7),height=scale*.7;
+              const q=rootedQuad(fp,fly.width,fly.height,fly.anchor,width,height,Math.sin(t)*.4),bounds=quadBounds(q);
+              if(visible(bounds,view.width,view.height))commands.push({...bounds,corners:q,id:`${a.id}:flutter:${index}`,region:fly.frames[0],color:[255,255,255,Math.round(255*(butterfly?1:Math.sin(cycle*Math.PI)))],layer:2,depth:fx+fy});
+            }
+          }
+        }
       }
       // Fireflies belong to the compound presentation, retaining the old quiet
       // glints without reintroducing a separately simulated mote on each tile.
@@ -294,7 +320,7 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
       }
       const name=`${a.kind}-${clip}-${ecoDirection(a.kind,d.heading)}`,count=atlas.sprites[name]?.frames.length;
       if(!count)throw new Error(`Unknown ecology sprite ${name}`);
-      const oneShot=d.state==='drink'||d.state==='spray'||d.state==='hop';
+      const oneShot=d.state==='drink'||d.state==='spray'||d.state==='hop'||d.state==='rise'||d.state==='lower';
       const pose=oneShot?Math.min(count-1,Math.floor(d.gait*(count-1))):Math.min(count-1,Math.floor((d.state==='swing'?d.gait:d.gait%1)*count));
       const water=spec.mode==='water',visibility=a.kind==='whale'?clamp((d.altitude+12)/12,0,1):1;
       const heading=a.kind==='crab'?d.heading+Math.PI/2:d.heading;

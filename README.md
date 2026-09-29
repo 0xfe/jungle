@@ -15,7 +15,7 @@ npm ci
 npm run dev
 ```
 
-Open **http://localhost:4173** for the full-screen jungle. **Press Enter / Return to show or hide the compact bottom menu.** Only the mute button is visible initially, in the top right. This builds assets/code and starts a local static server. It doesn't watch files: rebuild and refresh after edits. Use `PORT=8080 npm run serve` for another port.
+Open **http://localhost:4173** for the full-screen jungle. **Press Enter / Return to show or hide the compact bottom menu.** Only the mute button is visible initially, in the top right. Double-tap the scene on touchscreens to show the menu; `?` opens Help even while the menu is hidden. This builds assets/code and starts a local static server. It doesn't watch files: rebuild and refresh after edits. Use `PORT=8080 npm run serve` for another port.
 
 ```sh
 npm run build          # deterministic assets, typecheck, bundle → dist/
@@ -57,7 +57,7 @@ To change application defaults, edit [src/config.ts](src/config.ts), then rebuil
 | `G` | Show tile seams |
 | `Esc` | Close settings or the field guide |
 
-**Sound starts off on mobile and on for desktop:** master 60%, environment 5%, animals 80%. On mobile, tap the speaker to enable it. Desktop browsers may wait for your first click or keypress before starting audio. The top-right speaker button always toggles mute, including with the menu hidden. Independent whistles, trills, chatter and woodpecker-like taps overlap, with occasional recorded elephant trumpets nearby; settings adjust the layers separately. Sound fades when muted, paused or the page is hidden.
+**Sound starts muted on every platform:** master 60%, environment 5%, animals 80%. Click or tap the speaker to enable it. Other gestures never undo mute. The top-right speaker button always toggles mute, including with the menu hidden. Independent whistles, trills, chatter and woodpecker-like taps overlap, with occasional recorded elephant trumpets nearby; settings adjust the layers separately. Sound fades when muted, paused or the page is hidden.
 
 Solitary boas move slowly and sometimes coil around tree trunks; smaller striped snakes travel in loose groups with varied body sizes. `J` includes both snake habitats.
 
@@ -98,3 +98,5 @@ Scrollback retains compact sleeping agent state until chunks expire. After evict
 - [Contributor/agent instructions](AGENTS.md)
 
 The current prototype has gentle height fields and local herd territories. Cross-chunk animal migration, full ecological lifecycles, general pathfinding, overhangs and durable world persistence remain future work.
+
+Bears now stand and pick at trees, small zebra herds graze in dry woodland, giraffes are taller, and elephant turns/trunk actions have more frames. Flowers, bushes, butterflies and drifting leaves animate over shared landscapes. See [wildlife and landscape refinements](docs/WILDLIFE-REFINEMENTS.md) for behavior, artwork, texture tradeoffs and verification.

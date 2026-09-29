@@ -83,7 +83,7 @@ export abstract class EcologicalAgent extends WildlifeAgent {
   if(this.state==='rest'){if(this.startle.remaining>0)this.heading+=clamp(angleDelta(this.heading,this.startle.heading),-dt*3,dt*3);this.motor.stop();this.gait+=dt*.25*this.pace;return;}
   const dx=this.target.x-this.x,dy=this.target.y-this.y,d=Math.hypot(dx,dy),desired=Math.atan2(dy,dx),turn=this.spec.mode==='water'?1.8:3;
   const delta=angleDelta(this.heading,desired);this.heading+=clamp(delta,-turn*dt,turn*dt);
-  if(this.type>=53&&Math.abs(delta)>.2){this.motor.stop();return;}
+  if((this.type>=53||this.kind==='elephant')&&Math.abs(delta)>.2){this.motor.stop();return;}
   const running=(this.kind==='wolf'||this.kind==='boar')&&this.state==='run';
   const speed=(running?.95:this.spec.speed)*this.pace*this.tripPace*(this.juvenile?.88:1)*(this.spec.mode==='air'?(this.flight.powered?1.08:.9):1),accel=running?2.6:this.kind==='elephant'?.22:this.spec.mode==='air'?1.5:.6;
   this.motor.update(Math.min(speed,d/.24,Math.sqrt(2*accel*d)*.65)*Math.max(0,Math.cos(delta)),dt,accel,accel*7);

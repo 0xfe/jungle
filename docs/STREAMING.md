@@ -92,3 +92,5 @@ Settings changes create a new world with the same seed and a new immutable norma
 Shared compound landscape arrangements and their bounded planning probes are described in [LANDSCAPE-PATCHES.md](LANDSCAPE-PATCHES.md). Narrow stream banks use a steeper water-field slope plus shared feathered mud decals; fish schools require a substantial wet footprint, excluding small ponds.
 
 Recurring colorful regions, canopy population/perch changes, new generated source provenance and black bear type 58 behavior/rig/codecs are documented in [regional variety](REGIONAL-VARIETY.md). Current world/agent schemas are **15/12**.
+
+Current sound, input, bears/zebras, giraffe proportions, elephant sampling, shared landscape accents and schema 16/13 are documented in [wildlife refinements](WILDLIFE-REFINEMENTS.md).

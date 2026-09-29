@@ -13,7 +13,7 @@ import { ECO_KINDS } from './jungle/ecology';
 import { ease } from './agents';
 import { InfiniteWorld } from './jungle/infinite';
 import { cameraBounds, composeInfinite, gestureCamera, panCamera, type InfiniteView } from './jungle/infinite-scene';
-import { InteractionPause, PointerNavigation } from './iso/navigation';
+import { DoubleTap, InteractionPause, PointerNavigation } from './iso/navigation';
 import { TerrainKind, TERRAIN_NAMES } from './jungle/terrain';
 import { CanvasRenderer } from './iso/canvas';
 import { WebGLRenderer } from './iso/webgl';
@@ -40,6 +40,7 @@ let paused = CONFIG.startup.paused || (CONFIG.startup.respectReducedMotion && ma
 let drift = CONFIG.camera.drift && !paused, cameraVX = 0, cameraVY = 0, last = 0, frameCount = 0, fpsElapsed = 0;
 const keys = new Set<string>();
 const pointers = new PointerNavigation();
+const menuTap = new DoubleTap();
 const driftPause = new InteractionPause(CONFIG.camera.driftResumeSeconds);
 /** Browser time is confined to input/presentation; it never changes simulation randomness. */
 function pauseDrift(): void { driftPause.touch(performance.now() / 1000); }
@@ -91,7 +92,7 @@ function nextWildlife():void { pauseDrift();
   const next=world.wildlifeLandmark(kind,view.cameraX,view.cameraY);view.cameraX=next.x;view.cameraY=next.y;cameraVX=cameraVY=0;
   syncUI();announce(`Watching ${kind==='blackBear'?'black bear':kind} habitat.`);
 }
-function help(open = el('help').hidden): void { if(open&&!uiVisible)return; if(open)showSettings(false); el('help').hidden = !open; el('help-button').setAttribute('aria-expanded', String(open)); }
+function help(open = !uiVisible || el('help').hidden): void { if(open&&!uiVisible)toggleUI(); if(open)showSettings(false); el('help').hidden = !open; el('help-button').setAttribute('aria-expanded', String(open)); }
 function showSettings(open=el('settings').hidden):void{
   if(open&&!uiVisible)return;
   el('settings').hidden=!open;el('settings-button').setAttribute('aria-expanded',String(open));
@@ -175,15 +176,17 @@ window.addEventListener('keydown', e => {
   else if (['1','2','3'].includes(key)) regrow(HABITATS[Number(key) - 1]!);
 });
 window.addEventListener('keyup', e => { if (keys.delete(e.key.toLowerCase())&&e.key.toLowerCase()!=='shift') pauseDrift(); });
-function clearNavigation(): void { if(pointers.navigating||keys.size>Number(keys.has('shift')))pauseDrift(); keys.clear(); pointers.clear(); cameraVX = cameraVY = 0; }
+function clearNavigation(): void { if(pointers.navigating||keys.size>Number(keys.has('shift')))pauseDrift(); keys.clear(); pointers.clear(); menuTap.clear(); cameraVX = cameraVY = 0; }
 window.addEventListener('blur', clearNavigation);
 document.addEventListener('visibilitychange', () => { last = 0; clearNavigation(); updateAudio(0); });
 function bindCanvas(): void {
   canvas.addEventListener('pointerdown', e => {
     if (e.button !== 0 || !pointers.begin(e.pointerId, { x: e.clientX, y: e.clientY })) return;
+    if(e.pointerType==='touch')menuTap.begin(e.pointerId,{x:e.clientX,y:e.clientY},e.timeStamp);
     canvas.setPointerCapture(e.pointerId);
   });
   canvas.addEventListener('pointermove', e => {
+    if(e.pointerType==='touch')menuTap.move(e.pointerId,{x:e.clientX,y:e.clientY});
     const gesture = pointers.move(e.pointerId, { x: e.clientX, y: e.clientY });
     if (!gesture) return;
     const rect = canvas.getBoundingClientRect();
@@ -191,7 +194,15 @@ function bindCanvas(): void {
     gestureCamera(view, { from: backing(gesture.from), to: backing(gesture.to), zoomRatio: gesture.zoomRatio }, CONFIG.camera.minZoom, CONFIG.camera.maxZoom);
     cameraVX = cameraVY = 0; pauseDrift(); syncUI();
   });
-  const release = (e: PointerEvent) => { const moved=pointers.navigating;if (pointers.end(e.pointerId)&&moved) pauseDrift(); };
+  const release = (e: PointerEvent) => {
+    const moved=pointers.navigating;
+    if(e.pointerType==='touch'){
+      const tapped=e.type==='pointerup'?menuTap.end(e.pointerId,e.timeStamp):false;
+      if(e.type!=='pointerup')menuTap.cancel(e.pointerId);
+      if(tapped&&!uiVisible)toggleUI();
+    }
+    if(pointers.end(e.pointerId)&&moved)pauseDrift();
+  };
   canvas.addEventListener('pointerup', release);
   canvas.addEventListener('pointercancel', release);
   canvas.addEventListener('lostpointercapture', release);

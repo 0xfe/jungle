@@ -52,3 +52,5 @@ The browser still renders a complete scene on each available animation callback.
 `CONFIG.world.patches` exposes `sway`, `windPeriod`, `groundSway`, `rustleCoverage` and `rustlePixels`. `CONFIG.rendering.animationBudget` sets the CPU target, minimum detail fraction and response time. Lower detail changes neither terrain nor species populations, simulation RNG, checkpoints or the atlas. No schema change is needed. `npm run patches:preview` includes `artifacts/landscape-wind-strip.png`, showing four times at one fixed camera for trees, flowers and grass.
 
 Flower carpets and their grass fringe use a separate slow nine-second breeze, capped at 0.75 logical pixels of travel from rest at the tallest tip before instance/camera scale. This replaces the broad ground shear that made whole flower beds appear to stretch and slide. Flower heads and stems stay registered; tree sway and crown rustling are unchanged. Tune `flowerSwayPixels` and `flowerWindPeriod` under `CONFIG.world.patches`.
+
+Current sound, input, bears/zebras, giraffe proportions, elephant sampling, shared landscape accents and schema 16/13 are documented in [wildlife refinements](WILDLIFE-REFINEMENTS.md).

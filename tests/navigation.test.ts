@@ -74,3 +74,16 @@ test('pinching back in responds immediately after hitting the zoom limit', () =>
   gestureCamera(view, nav.move(2, { x: 280, y: 100 })!, .65, 2.5);
   assert.equal(view.zoom, 2.25);
 });
+
+test('double touch taps show controls, without confusing drags, pinches or long presses',async()=>{
+ const {DoubleTap}=await import('../src/iso/navigation'),tap=new DoubleTap(),p={x:100,y:100};
+ tap.begin(1,p,0);assert.equal(tap.end(1,80),false);
+ tap.begin(2,{x:105,y:99},160);assert.equal(tap.end(2,240),true);
+ tap.begin(3,p,500);tap.move(3,{x:115,y:100});assert.equal(tap.end(3,550),false);
+ tap.begin(4,p,620);assert.equal(tap.end(4,670),false);
+ tap.clear();tap.begin(1,p,800);tap.begin(2,p,810);tap.end(1,850);assert.equal(tap.end(2,880),false);
+ tap.begin(3,p,950);assert.equal(tap.end(3,1000),false);
+ tap.clear();tap.begin(4,p,1100);assert.equal(tap.end(4,1500),false);
+ tap.begin(5,p,1600);assert.equal(tap.end(5,1650),false);
+ tap.begin(6,{x:300,y:100},1700);assert.equal(tap.end(6,1750),false);
+});

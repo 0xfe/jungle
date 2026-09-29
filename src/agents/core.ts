@@ -17,7 +17,7 @@ export interface AgentEnvironment {
   hasStimuli?:boolean;
   sample(x: number, y: number): EnvironmentSample;
   canMove(x: number, y: number): boolean;
-  perches?(x: number, y: number, radius: number): readonly (Vec2 & { height: number })[];
+  perches?(x: number, y: number, radius: number): readonly (Vec2 & { height: number; root?: Vec2 })[];
   nearby(x: number, y: number, radius: number): readonly Neighbor[];
 }
 export interface Agent extends Vec2 {

@@ -1,3 +1,4 @@
+import { zebraMesh } from './zebra-model';
 import { blackBearMesh } from './black-bear-model';
 import { snakeMesh } from './snake-model';
 import { riverAnimalMesh } from './river-model';
@@ -7,6 +8,7 @@ import { MONKEY_GRIP_Z, type EcoKind } from '../../src/jungle/ecology';
 const TAU=Math.PI*2,black:RGB=[35,39,37],cream:RGB=[241,225,181];
 /** Small authored rigs: mesh coordinates face +X, same projection/root convention as deer. */
 export function ecologyMesh(kind:EcoKind,clip:string,p:number):Mesh {
+ if(kind==='zebra')return zebraMesh(clip,p);
  if(kind==='blackBear')return blackBearMesh(clip,p);
  if(['squirrel','boar','beaver','crocodile','toad'].includes(kind))return riverAnimalMesh(kind,clip,p);
  if(kind==='boa'||kind==='smallSnake')return snakeMesh(kind,clip,p);
@@ -98,6 +100,12 @@ export function ecologyMesh(kind:EcoKind,clip:string,p:number):Mesh {
   ellipsoid(m,[.43,0,.82+bob],[.23,.2,.26],fur);ellipsoid(m,[.62,0,.9+bob],[.2,.14,.17],fur);bone(m,[.68,0,.86+bob],[.96,0,.79+bob],.078,fur);ellipsoid(m,[.99,0,.79+bob],[.042,.047,.035],black);
   for(const side of [-1,1]){bone(m,[.53,side*.095,.99],[.49,side*.12,1.18],.042,fur);ellipsoid(m,[.7,side*.128,.95],[.03,.017,.019],[231,182,79]);}
   bone(m,[-.49,0,.74],[-.88,wave*.065,.52],.095,fur);bone(m,[-.88,wave*.065,.52],[-1.07,wave*.08,.39],.05,black);
+ }
+ const transformed=new Set<Mesh[number]['vertices'][number]>();
+ if(giraffe)for(const triangle of m)for(const v of triangle.vertices){
+  if(transformed.has(v))continue;transformed.add(v);
+  v.position=[v.position[0],v.position[1],v.position[2]*1.16];
+  const n=[v.normal[0],v.normal[1],v.normal[2]/1.16],length=Math.hypot(...n);v.normal=[n[0]!/length,n[1]!/length,n[2]!/length];
  }
  return m;
 }

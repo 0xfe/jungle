@@ -8,7 +8,7 @@ Elephant families now favor waterside chunks. Individuals approach reachable dri
 
 The old generic quadruped mesh is replaced by `scripts/art/elephant-model.ts`: domed shoulders and forehead, smaller lobed ears, a heavy rounded body, column-like legs with padded feet/toenails, curved tusks, a tapered tail and a connected tapered trunk. It is an Asian-elephant-inspired pixel-art rig, not a complete anatomical model. The visual/behavior reference is the [San Diego Zoo elephant account](https://animals.sandiegozoo.org/animals/elephant), including collecting water in the trunk before transferring it to the mouth.
 
-The build-only software baker renders sixteen headings. Each heading contains eight resting, twenty walking, twenty-four drinking and sixteen spraying poses: **1,088 frames**. Drink and spray include both endpoints of their normalized action; cyclic clips exclude the duplicate endpoint. Registered roots and union trimming prevent pose-dependent sprite jumps. Body size scales the sprite, footprint, drinking reach and walking stride together.
+The build-only software baker renders 24 headings. Each heading contains 8 resting, 24 walking, 36 drinking and 24 spraying poses: **2,208 frames**. Drink and spray include both endpoints of their normalized action; cyclic clips exclude the duplicate endpoint. Registered roots and union trimming prevent pose-dependent sprite jumps. Body size scales the sprite, footprint, drinking reach and walking stride together.
 
 The walk has a long four-beat stance. Nominal speed is 0.12 tiles/second with a 0.175-tile stride, calibrated to the authored foot excursion. The existing motor accelerates and brakes smoothly; gait advances from actual displacement. Ear, tail and trunk motion give resting animals small independent movements.
 
@@ -60,3 +60,5 @@ The elephant preview writes `artifacts/elephant-water-sequence.png`, individual 
 In the browser, **Enter/Return** reveals the otherwise hidden controls. **J** cycles to elephant habitat; zoom in to inspect the new poses. The same frames/effects run in WebGL, Canvas and the headless memory renderer.
 
 Full skin deformation, fluid simulation, general pathfinding around obstacles, migration and durable interaction history remain future work.
+
+Current sound, input, bears/zebras, giraffe proportions, elephant sampling, shared landscape accents and schema 16/13 are documented in [wildlife refinements](WILDLIFE-REFINEMENTS.md).

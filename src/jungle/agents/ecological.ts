@@ -1,3 +1,5 @@
+import {ZebraAgent} from './zebra';
+export {ZebraAgent} from './zebra';
 import { BlackBearAgent } from './black-bear';
 export { BlackBearAgent } from './black-bear';
 import { SquirrelAgent, BoarAgent, BeaverAgent, CrocodileAgent, ToadAgent } from './river-wildlife';
@@ -154,4 +156,4 @@ export class WhaleAgent extends EcologicalAgent {readonly kind='whale';readonly 
 export class MacawAgent extends EcologicalAgent {readonly kind='macaw';readonly type=48;protected decide(e:AgentEnvironment){this.follow(e,true);}static read(r:BinaryReader){return EcologicalAgent.readAs(r,(...a)=>new MacawAgent(...a));}}
 export class ParakeetAgent extends EcologicalAgent {readonly kind='parakeet';readonly type=49;protected decide(e:AgentEnvironment){this.follow(e,true);}static read(r:BinaryReader){return EcologicalAgent.readAs(r,(...a)=>new ParakeetAgent(...a));}}
 export class KingfisherAgent extends EcologicalAgent {readonly kind='kingfisher';readonly type=50;protected decide(e:AgentEnvironment){this.follow(e,true);}static read(r:BinaryReader){return EcologicalAgent.readAs(r,(...a)=>new KingfisherAgent(...a));}}
-export const ECO_CLASSES={blackBear:BlackBearAgent,squirrel:SquirrelAgent,boar:BoarAgent,beaver:BeaverAgent,crocodile:CrocodileAgent,toad:ToadAgent,boa:BoaAgent,smallSnake:SmallSnakeAgent,monkey:MonkeyAgent,wolf:WolfAgent,giraffe:GiraffeAgent,elephant:ElephantAgent,crab:CrabAgent,seagull:SeagullAgent,fish:FishAgent,whale:WhaleAgent,macaw:MacawAgent,parakeet:ParakeetAgent,kingfisher:KingfisherAgent};
+export const ECO_CLASSES={zebra:ZebraAgent,blackBear:BlackBearAgent,squirrel:SquirrelAgent,boar:BoarAgent,beaver:BeaverAgent,crocodile:CrocodileAgent,toad:ToadAgent,boa:BoaAgent,smallSnake:SmallSnakeAgent,monkey:MonkeyAgent,wolf:WolfAgent,giraffe:GiraffeAgent,elephant:ElephantAgent,crab:CrabAgent,seagull:SeagullAgent,fish:FishAgent,whale:WhaleAgent,macaw:MacawAgent,parakeet:ParakeetAgent,kingfisher:KingfisherAgent};

@@ -67,3 +67,23 @@ test('animation detail responds gradually to sustained CPU load and recovers wit
   assert.equal(rustleWeight(.9,.45,1),0);
   assert.ok(Math.abs(rustleWeight(.2,.45,.7)-rustleWeight(.2,.45,.701))<.01);
 });
+
+test('landscape accents share atlas regions, rooted animation and exact sleeping continuation',async()=>{
+ const atlas=JSON.parse(await readFile('public/assets/jungle.json','utf8'));
+ const world=new InfiniteWorld(2718,'rainforest',undefined,{water:0});
+ world.ensure({minX:-4,minY:-4,maxX:4,maxY:4});
+ const patch=new LandscapePatchAgent('accents',0,0,Array.from({length:6},(_,i)=>({style:'flowers' as const,variant:0,tint:0,trees:0,x:(i%3)-1,y:Math.floor(i/3),scale:1,opacity:1,phase:i*.7})));
+ world.agents=[patch];const view={width:900,height:700,pixelRatio:1,zoom:1,grid:false,cameraX:0,cameraY:0};
+ const accents=()=>composeInfinite(world,atlas,view,1).commands.filter(c=>c.id.includes(':accent:')||c.id.includes(':flutter:'));
+ const before=accents();assert.ok(before.length>2&&before.length<=12);
+ for(const c of before)assert.ok(Object.entries(atlas.sprites).some(([id,s])=>id.startsWith('accent-')&&(s as {frames:unknown[]}).frames[0]===c.region));
+ patch.previousPhase=patch.phase=1;
+ const after=accents();assert.notDeepEqual(after,before);
+ for(const c of before.filter(c=>c.id.includes(':accent:'))){
+  const next=after.find(n=>n.id===c.id)!;
+  const s=Object.values(atlas.sprites).find((s:any)=>s.frames[0]===c.region) as {width:number;height:number;anchor:number[]};
+  const root=(command:DrawCommand)=>{const q=command.corners!;return {x:q[0].x+(q[1].x-q[0].x)*s.anchor[0]!/s.width+(q[2].x-q[0].x)*s.anchor[1]!/s.height,y:q[0].y+(q[2].y-q[0].y)*s.anchor[1]!/s.height};};
+  assert.ok(Math.abs(root(c).x-root(next).x)<1e-9);assert.ok(Math.abs(root(c).y-root(next).y)<1e-9);
+ }
+ const state=jungleAgents.encode(world.agents);world.agents=jungleAgents.decode(state);assert.deepEqual(accents(),after);assert.deepEqual(accents(),after,'presentation without simulation never advances the clock');
+});

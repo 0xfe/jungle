@@ -158,3 +158,5 @@ Implemented: independent world-space open, flower, fruit and wet-region fields c
 ## Liveliness after landscape consolidation
 
 Implemented: stronger continuous tree sway, registered crown ripples on a bounded subset, moving flower heads/stems and grass above stationary soil. CPU feedback gradually reduces optional ripples under load; all broad breeze motion remains. Rendering uses available animation callbacks, while simulation retains fixed 60 Hz and interpolation. No per-leaf simulation, new texture pages, changing plant populations or schema changes are involved. GPU-based budgeting and asynchronous chunk generation remain future work. See [landscape motion](docs/LANDSCAPE-PATCHES.md).
+
+Current sound, input, bears/zebras, giraffe proportions, elephant sampling, shared landscape accents and schema 16/13 are documented in [wildlife refinements](docs/WILDLIFE-REFINEMENTS.md).

@@ -1,28 +1,33 @@
 import sharp from 'sharp';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
-import {ElephantAgent,DeerAgent,PlantAgent} from '../src/jungle/agents';
+import {ElephantAgent,DeerAgent,PlantAgent,LandscapePatchAgent} from '../src/jungle/agents';
 import {InfiniteWorld} from '../src/jungle/infinite';
 import {cameraBounds,composeInfinite} from '../src/jungle/infinite-scene';
 import {MemoryRenderer} from '../src/iso/render';
+import {TerrainKind} from '../src/jungle/terrain';
 import {drinkingSpot} from '../src/jungle/water-sites';
 import type {AgentEnvironment} from '../src/agents';
 await mkdir('artifacts',{recursive:true});
 const atlas=JSON.parse(await readFile('public/assets/jungle.json','utf8'));
 const raw=await sharp('public/assets/jungle.png').ensureAlpha().raw().toBuffer({resolveWithObject:true});
 const renderer=new MemoryRenderer({width:raw.info.width,height:raw.info.height,data:raw.data});
-const world=new InfiniteWorld(),location=world.wildlifeLandmark('elephant');
+const world=new InfiniteWorld(2718),location=world.wildlifeLandmark('elephant',-14,-9);
 const view={width:620,height:480,pixelRatio:1,zoom:3,grid:false,cameraX:location.x,cameraY:location.y};world.ensure(cameraBounds(view));
-const env:AgentEnvironment={time:0,nearby:()=>[],canMove:(x,y)=>world.canMove(x,y),sample:(x,y)=>({water:(world.tileAt(x,y)?.materialAt(x,y)??0)>=4,elevation:world.heightAt(x,y),moisture:.6,light:.8,wind:1})};
-const a=world.agents.find(a=>a instanceof ElephantAgent) as ElephantAgent;
-a.size=1;
+const env:AgentEnvironment={time:0,nearby:()=>[],canMove:(x,y)=>world.canMove(x,y),sample:(x,y)=>({water:(world.tileAt(x,y)?.materialAt(x,y)??0)>=TerrainKind.Shallow,elevation:world.heightAt(x,y),moisture:.6,light:.8,wind:1})};
 const stand=(x:number,y:number)=>[[0,0],[.23,0],[-.23,0],[0,.23],[0,-.23]].every(([dx,dy])=>world.canMove(x+dx!,y+dy!));
-const spot=drinkingSpot(a,1,env,stand,()=>true);if(!spot)throw new Error('No drinking spot for preview');
+// A habitat landmark guarantees an elephant, not reachable water for its first
+// actor. Review a real valid shoreline among the bounded active population.
+const candidates=world.agents.filter((a):a is ElephantAgent=>a instanceof ElephantAgent)
+ .map(a=>({a,spot:drinkingSpot(a,1,env,stand,()=>true)}));
+const selected=candidates.find(c=>c.spot);
+if(!selected?.spot)throw new Error('No reachable drinking spot in elephant preview habitat (seed 2718)');
+const {a,spot}=selected;a.size=1;
 a.x=spot.x;a.y=spot.y;a.heading=spot.heading;a.waterKnown=true;a.waterX=spot.waterX;a.waterY=spot.waterY;
 const neighbor=new DeerAgent('preview-deer',a.x,a.y,3);
 const dry=Array.from({length:16},(_,i)=>{const t=i*Math.PI/8;return{x:a.x+Math.cos(t)*.9,y:a.y+Math.sin(t)*.9};}).find(p=>stand(p.x,p.y));
 if(!dry)throw new Error('No neighboring dry spot');neighbor.x=dry.x;neighbor.y=dry.y;neighbor.state='look';neighbor.heading=spot.heading;neighbor.previous=neighbor.sample();
 // A deliberately cleared review fixture makes the trunk/nozzle visible.
-world.agents=world.agents.filter(x=>x.speed===undefined&&!(x instanceof PlantAgent));world.agents.push(a,neighbor);
+world.agents=world.agents.filter(x=>x.speed===undefined&&!(x instanceof PlantAgent)&&!(x instanceof LandscapePatchAgent));world.agents.push(a,neighbor);
 view.cameraX=a.x-.15;view.cameraY=a.y-.15;
 const panels:sharp.OverlayOptions[]=[];
 for(let i=0;i<6;i++){

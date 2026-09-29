@@ -102,3 +102,11 @@ test('marine presentation hides submerged whales, draws a surfaced blow and keep
  const fish=w.agents.filter(a=>a.kind==='fish');assert.ok(fish.length>0);
  frame=composeInfinite(w,atlas,view);assert.ok(frame.commands.some(c=>fish.some(f=>f.id===c.id)&&c.layer<1));
 });
+
+
+test('rig proportions apply height transforms once to shared vertices',()=>{
+ const giraffe=ecologyMesh('giraffe','rest',0),bear=ecologyMesh('blackBear','stand',0);
+ const height=(m:typeof giraffe)=>Math.max(...m.flatMap(t=>t.vertices.map(v=>v.position[2])));
+ assert.ok(height(giraffe)>3.1&&height(giraffe)<3.3);
+ assert.ok(height(bear)>1.4&&height(bear)<1.8);
+});

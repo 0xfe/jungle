@@ -52,3 +52,30 @@ export class InteractionPause {
     return held || now < this.resumeAt;
   }
 }
+
+/** Two short, nearby single-finger taps. Times are injected browser milliseconds.
+ * A drag, long press, cancellation or second finger invalidates the whole pair. */
+export class DoubleTap {
+  private current?: {id:number;point:PointerPosition;time:number};
+  private previous?: {point:PointerPosition;time:number};
+  private readonly held=new Set<number>();
+  begin(id:number,point:PointerPosition,time:number):void {
+    this.held.add(id);
+    if(this.held.size!==1){this.current=undefined;this.previous=undefined;return;}
+    this.current={id,point,time};
+  }
+  move(id:number,point:PointerPosition):void {
+    if(this.current?.id===id&&Math.hypot(point.x-this.current.point.x,point.y-this.current.point.y)>3){this.current=undefined;this.previous=undefined;}
+  }
+  end(id:number,time:number):boolean {
+    this.held.delete(id);
+    const tap=this.current;if(!tap||tap.id!==id)return false;
+    this.current=undefined;
+    if(time-tap.time>250){this.previous=undefined;return false;}
+    const previous=this.previous;
+    if(previous&&time-previous.time<=350&&Math.hypot(tap.point.x-previous.point.x,tap.point.y-previous.point.y)<=28){this.previous=undefined;return true;}
+    this.previous={point:tap.point,time};return false;
+  }
+  cancel(id:number):void {if(this.held.has(id))this.clear();}
+  clear():void {this.current=undefined;this.previous=undefined;this.held.clear();}
+}

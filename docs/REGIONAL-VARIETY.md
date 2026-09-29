@@ -38,3 +38,5 @@ World schema **15** and agent schema **12** reject older layouts. Family links, 
 `npm run patches:preview` produces the neutral asset contact sheet, opening/mature views, and `artifacts/region-{flowers,fruit,open,wet}.png` at fixed points along a long diagonal route. `npm run assets:preview` includes bear direction/action sheets; `npm run snapshot` includes a real generated bear habitat.
 
 Tests cover recurrent regional diversity, shared negative-edge water fields, no-water settings, mixed grove root spacing, all asset variants and fingerprint inputs, species RNG isolation, dense-canopy bird rates, solitary/family bear spawning, cub following/mother waiting, calibrated stride/blocked movement, valid clips and exact continuation through foraging and family behavior. See [performance](PERFORMANCE.md) for the current CPU benchmark and browser observations.
+
+Current sound, input, bears/zebras, giraffe proportions, elephant sampling, shared landscape accents and schema 16/13 are documented in [wildlife refinements](WILDLIFE-REFINEMENTS.md).

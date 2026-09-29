@@ -57,3 +57,5 @@ World checkpoints store slider values, but not a copy of this entire source conf
 
 
 Landscape motion uses `world.patches.groundSway` for low foliage, `flowerSwayPixels` and `flowerWindPeriod` for a separate, restrained flower-bed breeze, `sway` for trees, and `rustleCoverage`/`rustlePixels` for optional crown detail. `rendering.animationBudget` averages CPU submission cost with `responseSeconds`, fades crown detail toward `minimum` above `targetMs`, and restores it below 70% of that target. It never changes simulation speed, populations or broad wind. Rendering follows browser animation callbacks rather than a fixed FPS cap; the fixed 60 Hz clock belongs to simulation. See [landscape motion](LANDSCAPE-PATCHES.md).
+
+Current sound, input, bears/zebras, giraffe proportions, elephant sampling, shared landscape accents and schema 16/13 are documented in [wildlife refinements](WILDLIFE-REFINEMENTS.md).

@@ -146,3 +146,5 @@ Recurring colorful regions, canopy population/perch changes, new generated sourc
 
 
 The landscape wind pass separates four original flower-carpet petal masks from the existing neutral base. No new generated source is needed: the exact original artwork/prompts remain retained. Petals keep source RGB, stems retain tint masks, and soil stays stationary. Runtime crown bands reuse atlas subregions. The rebuilt atlas has 11,589 logical / 9,844 unique frames at 4096×4064 (63.50 MiB decoded), within the existing budget. The existing landscape-baker fingerprint covers this mask change.
+
+Current sound, input, bears/zebras, giraffe proportions, elephant sampling, shared landscape accents and schema 16/13 are documented in [wildlife refinements](WILDLIFE-REFINEMENTS.md).

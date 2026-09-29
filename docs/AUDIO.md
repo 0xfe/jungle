@@ -1,8 +1,8 @@
 # Soundscapes and the reusable audio library
 
-Sound is **off by default on mobile and enabled by default on desktop**, with master **60%**, environment **5%** and wildlife **80%**. The top-right speaker button remains visible when Enter/Return hides the main menu. Settings contains the same mute control and the three volume sliders. The initial scene has a quiet leaf/water bed underneath independent bird phrases, with steps, rain and dusk insects joining as appropriate.
+Sound is **muted by default on every platform**, with master **60%**, environment **5%** and wildlife **80%**. The top-right speaker button remains visible when Enter/Return hides the main menu. Settings contains the same mute control and the three volume sliders. The initial scene has a quiet leaf/water bed underneath independent bird phrases, with steps, rain and dusk insects joining as appropriate.
 
-Mobile identification uses the user agent and touch/coarse-pointer capabilities, including desktop-UA iPads; resizing a desktop window does not change mute. `CONFIG.audio.mobileEnabled` controls this startup policy. A mobile user must explicitly enable sound.
+`CONFIG.audio.enabled` defaults to false. Every user explicitly enables sound with the speaker button. `mobileEnabled` remains an additional mobile opt-in restriction if automatic startup is configured in a custom build; resizing a window never changes mute.
 
 When sound is enabled, the application attempts startup automatically and retries on clicks/keypresses if browser autoplay policy suspends it. A muted preference is never reversed by a gesture. The graph is silent while suspended, paused or hidden, avoiding a queue of calls that would burst out on resume. Browsers may require the first interaction before producing sound; see [autoplay behavior](https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Autoplay). The graph is released on page exit and can restart after a back/forward-cache return. Nothing is fetched from a sound service.
 
@@ -63,3 +63,5 @@ Nearby elephant agents occasionally emit the [CC0 “Elephant voice - trumpeting
 Each nearby elephant owns an audio-only ID-seeded caller with an 18–42-second minimum-base spacing (lengthened by rain/dusk), slight rate variation and distance attenuation. Calls belong to the wildlife slider and share the existing voice/history caps. There is no distant elephant chorus, and snakes make no footstep sounds. Muting, pausing, hiding or suspending the audio context does not queue calls for later playback.
 
 `CONFIG.audio.sounds.elephant` controls enabled/gain/speed/intervalScale. Its duration/pitch/rhythm/texture fields document the source and do not resynthesize or time-stretch a recording; edit/reconvert the retained recording to change those characteristics. Original synthetic voices continue honoring their synthesis controls.
+
+Current sound, input, bears/zebras, giraffe proportions, elephant sampling, shared landscape accents and schema 16/13 are documented in [wildlife refinements](WILDLIFE-REFINEMENTS.md).

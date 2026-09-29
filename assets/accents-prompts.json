@@ -1,0 +1,11 @@
+{
+  "tool": "Built-in image_gen",
+  "date": "2026-09-29",
+  "source": "assets/source/landscape-accents.png",
+  "reference": "assets/source/landscape-accents-reference.png",
+  "prompts": [
+    "Use case: stylized-concept. Asset type: small overlay sprite source sheet for a colorful isometric pixel jungle. A clean 2 columns by 2 rows sheet on true transparent background, each sprite isolated within its equal square cell with generous empty gutters. Top left: small clump of pink and golden tropical wildflowers with three stems and green leaves. Top right: small lush fern bush with a few turquoise green leaves and tiny red berries. Bottom left: one orange and turquoise butterfly viewed from above with wings fully open, body vertical. Bottom right: a single light green falling leaf with a short brown twig. Charming crisp pixel-art shapes, warm gentle highlights, rich colors, no ground disks, no shadows, no text, no labels, no borders. Plants viewed in 2:1 isometric perspective, roots at bottom center. Structural source forms only; animation will be applied to the registered pixels.",
+    "Remove all colored glow, haze and shadow surrounding the four sprites. Keep precisely the flowers, fern bush, butterfly and leaf artwork and the same 2 by 2 cell layout and pixel detail. Everything outside the actual hard-edged sprite silhouettes must be fully transparent; no floating background pixels. Transparent game sprite sheet."
+  ],
+  "bake": "scripts/art/landscape-accents.ts: 2x2 reviewed cells, opaque alpha fringe threshold, nearest-neighbor, shared atlas."
+}

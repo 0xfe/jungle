@@ -1,3 +1,4 @@
+import { bakeLandscapeAccents } from './art/landscape-accents';
 import { bakeLandscapePatches, patchLogicalScale } from './art/landscape-patches';
 import { snakeSide } from './art/snake-model';
 import { GROUND_PALETTE, GROUND_STEPS } from '../src/jungle/ground-blend';
@@ -20,7 +21,7 @@ import { vineFrames } from './art/vines';
 import { isolatePlant } from './art/foliage';
 
 const sha = (data: Uint8Array | string) => createHash('sha256').update(data).digest('hex');
-const dependencies = ['scripts/art/black-bear-model.ts','src/jungle/agents/black-bear.ts','src/jungle/regions.ts','assets/source/landscape-color-groves.png','assets/source/landscape-color-ground.png','assets/variety-prompts.json','scripts/art/landscape-patches.ts','src/jungle/patches.ts','src/jungle/geometry.ts','assets/source/landscape-groves.png','assets/source/landscape-ground.png','assets/landscape-prompts.json','scripts/art/river-model.ts','src/jungle/agents/river-wildlife.ts','scripts/art/snake-model.ts','src/jungle/snake-pose.ts','src/jungle/agents/snakes.ts','src/jungle/agents/ecological-base.ts','src/jungle/ground-blend.ts','scripts/art/elephant-model.ts', 'src/jungle/elephant-pose.ts', 'src/agents/startle.ts','src/agents/flight.ts', 'src/jungle/flight.ts', 'src/jungle/botany.ts', 'assets/source/forest-forms.png', 'scripts/art/vines.ts', 'scripts/art/foliage.ts', 'scripts/prepare-assets.ts', 'scripts/art/ecology-model.ts', 'src/jungle/ecology.ts', 'src/jungle/agents/ecological.ts', 'scripts/art/deer-model.ts', 'scripts/art/wildlife-model.ts', 'src/jungle/agents/wildlife.ts', 'src/agents/social.ts', 'assets/source/tree-forms.png', 'scripts/art/wind.ts',
+const dependencies = ['scripts/art/landscape-accents.ts','assets/source/landscape-accents.png','assets/accents-prompts.json','scripts/art/zebra-model.ts','src/jungle/agents/zebra.ts','scripts/art/black-bear-model.ts','src/jungle/agents/black-bear.ts','src/jungle/regions.ts','assets/source/landscape-color-groves.png','assets/source/landscape-color-ground.png','assets/variety-prompts.json','scripts/art/landscape-patches.ts','src/jungle/patches.ts','src/jungle/geometry.ts','assets/source/landscape-groves.png','assets/source/landscape-ground.png','assets/landscape-prompts.json','scripts/art/river-model.ts','src/jungle/agents/river-wildlife.ts','scripts/art/snake-model.ts','src/jungle/snake-pose.ts','src/jungle/agents/snakes.ts','src/jungle/agents/ecological-base.ts','src/jungle/ground-blend.ts','scripts/art/elephant-model.ts', 'src/jungle/elephant-pose.ts', 'src/agents/startle.ts','src/agents/flight.ts', 'src/jungle/flight.ts', 'src/jungle/botany.ts', 'assets/source/forest-forms.png', 'scripts/art/vines.ts', 'scripts/art/foliage.ts', 'scripts/prepare-assets.ts', 'scripts/art/ecology-model.ts', 'src/jungle/ecology.ts', 'src/jungle/agents/ecological.ts', 'scripts/art/deer-model.ts', 'scripts/art/wildlife-model.ts', 'src/jungle/agents/wildlife.ts', 'src/agents/social.ts', 'assets/source/tree-forms.png', 'scripts/art/wind.ts',
   'src/iso/bake/mesh.ts', 'src/iso/bake/rasterize.ts', 'src/iso/bake/atlas.ts', 'src/iso/math.ts',
   'src/iso/spatial.ts', 'src/jungle/animation.ts', 'src/jungle/world.ts', 'src/jungle/agents/deer.ts', 'src/jungle/agents/fixed.ts', 'src/jungle/agents/index.ts', 'src/agents/core.ts', 'src/agents/motion.ts', 'src/agents/system.ts', 'src/agents/index.ts', 'assets/source/trees.png', 'assets/source/plants.png',
   'package-lock.json'];
@@ -39,7 +40,7 @@ try {
   }
 } catch { /* First build, changed dependencies or missing generated outputs: rebuild. */ }
 const started = performance.now();
-const inputs: BakeSprite[] = await bakeLandscapePatches();
+const inputs: BakeSprite[] = [...await bakeLandscapePatches(),...await bakeLandscapeAccents()];
 for (const spec of [
   { file: 'trees', prefix: 'tree' as const, w: 128, h: 96, anchor: [64, 93] as [number, number] },
   { file: 'plants', prefix: 'plant' as const, w: 96, h: 64, anchor: [48, 58] as [number, number] },
@@ -114,9 +115,9 @@ for(const kind of ['toucan','orangutan','jaguar'] as WildlifeKind[]){
  }
 }
 for(const kind of ECO_KINDS){
- const spec=ECO_SPECS[kind],camera={width:112,height:112,anchor:[56,87] as [number,number],scale:spec.cameraScale};
+ const spec=ECO_SPECS[kind],camera={width:112,height:112,anchor:[56,87] as [number,number],scale:kind==='elephant'?17.5:spec.cameraScale};
  for(const [clip,count] of Object.entries(ecoClips(kind))){
-  const poses=Array.from({length:count},(_,i)=>ecologyMesh(kind,clip,i/(clip==='drink'||clip==='spray'||clip==='wrap'||clip==='hop'?count-1:count)));
+  const poses=Array.from({length:count},(_,i)=>ecologyMesh(kind,clip,i/(clip==='drink'||clip==='spray'||clip==='wrap'||clip==='hop'||clip==='rise'||clip==='lower'?count-1:count)));
   for(let d=0;d<spec.directions;d++){
    const heading=d/spec.directions*TAU;
    if(kind!=='boa'||(clip!=='wrap'&&clip!=='coil'))inputs.push({id:`${kind}-${clip}-${d}`,anchor:camera.anchor,frames:poses.map(mesh=>bakeMesh(mesh,heading,camera))});
@@ -225,9 +226,18 @@ for (const [id, width, height, anchor] of [
   }
   inputs.push({ id, anchor: [...anchor], frames: [{ width, height, data }] });
 }
+// Finite-fixture foliage keeps every registered pose at half texel resolution.
+// Streaming uses compound artwork; logical dimensions/roots remain unchanged.
+for(const s of inputs)if(/^(tree|plant)-/.test(s.id)){
+ s.frames=await Promise.all(s.frames.map(async f=>{
+  const width=Math.ceil(f.width/2),height=Math.ceil(f.height/2);
+  const data=await sharp(f.data,{raw:{width:f.width,height:f.height,channels:4}}).resize(width,height,{kernel:'nearest'}).raw().toBuffer();
+  return {width,height,data};
+ }));s.anchor=[s.anchor[0]/2,s.anchor[1]/2];
+}
 const { image, manifest } = packAtlas(inputs, 4096, 4096);
 for(const [id,s] of Object.entries(manifest.sprites)){
- const scale=id.startsWith('patch-')?patchLogicalScale(id):/^ground-\d/.test(id)?2:1;
+ const scale=/^(tree|plant)-/.test(id)?2:id.startsWith('elephant-')?21/17.5:id.startsWith('patch-')?patchLogicalScale(id):/^ground-\d/.test(id)?2:1;
  if(scale!==1){s.width*=scale;s.height*=scale;s.anchor=[s.anchor[0]*scale,s.anchor[1]*scale];}
 }
 // The broad, soft legacy-island shadow needs fewer texels, with the same logical bounds.

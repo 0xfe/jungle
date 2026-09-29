@@ -119,6 +119,8 @@ export const CONFIG = {
       flowerSwayPixels: .75,
       /** Slow flower breeze cycle in seconds, independent of tree wind. */
       flowerWindPeriod: 9,
+      /** Fraction of compound components carrying small rooted/airborne accents. */
+      accentCoverage: .65,
       /** RGB foliage palettes multiply a luminance mask; wood/soil retain their color.
        * Change these to red/brown for seasonal leaves; there are only three shared tints. */
       foliage: [[110,184,49],[96,166,48],[128,192,60]] as readonly (readonly [number,number,number])[],
@@ -128,6 +130,8 @@ export const CONFIG = {
       canopyBirdBoost: 1.3,
       /** Black bear candidate probability; most solitary, some mothers with 1–2 cubs. */
       blackBear: .05,
+      /** Small zebra herds favor dry, open woodland. */
+      zebra: .045,
       bearFamilyChance: .28,
       /** Solitary squirrels favor open woodland; each still requires a real tree. */
       squirrel: .10,
@@ -218,8 +222,8 @@ export const CONFIG = {
   audio: {
     /** Mobile/touch-first devices start muted unless explicitly enabled here. */
     mobileEnabled: false,
-    /** Start sound automatically where permitted; otherwise unlock on the first gesture. */
-    enabled: true,
+    /** Initial sound preference on every platform; only the sound control unmutes. */
+    enabled: false,
     levels: {
       /** Master volume, 0–1, before the mixer's fixed headroom gain. */
       master: .6,
