@@ -1,0 +1,14 @@
+{
+  "date": "2026-09-29",
+  "tool": "Built-in image_gen",
+  "source": "assets/source/landscape-accent-variety.png",
+  "prompt": "Use case: stylized-concept. Production sprite source sheet for a lush colorful isometric pixel jungle. Exactly FOUR columns and FOUR rows of equally sized cells (16 sprites), generously separated on a truly transparent background. All sprites fully contained, plant root at bottom center of its cell. NO ground disks, NO background glow, no shadows, no text or grid lines. Consistent crisp clustered pixel art, 2:1 isometric view, upper-left light, green/jade foliage. These are structural plant variants, NOT animation frames. Row 1: pink hibiscus clump; yellow daisy mound; blue bellflower spray; tall orange bird-of-paradise clump. Row 2: lavender spires; red ginger cones; white starflower bush; low mixed coral and cream wildflowers. Row 3: wide rounded small-leaf shrub; tall feathery fern; red-berry bush; broad-leaf tropical bush. Row 4: low lime-green fern mound; tall airy grass-and-flower bush; dense dark-green bush with pink tips; broad arching bush with pale yellow blooms. Make silhouettes visibly distinct: some broad and squat, some tall and upright, some delicate and airy. Vibrant and charming, detailed enough to read when reduced to 32 to 60 pixel sprites. Entire cell backgrounds fully transparent right up to hard-edged artwork, no haze.",
+  "reviewedRows": [
+    0,
+    0.27,
+    0.51,
+    0.755,
+    1
+  ],
+  "bake": "scripts/art/landscape-accents.ts; nearest-neighbor; registered root anchors; retain main connected silhouette"
+}

@@ -1,16 +1,18 @@
+import { Repose } from '../../agents/repose';
 import { BIRD_FLIGHT } from '../flight';
 import { StartleResponse, FlightMotion, AgentRandom, BinaryReader, BinaryWriter, SpeedMotor, ease, herdIntent, type Agent, type AgentEnvironment } from '../../agents';
 import { clamp, lerp, type Vec2 } from '../../iso/math';
 import { angleDelta, TAU } from '../animation';
 import type { EcoKind } from '../ecology';
 export type WildlifeKind = EcoKind | 'toucan' | 'orangutan' | 'jaguar';
-export type WildlifeState = 'rest' | 'travel' | 'chase' | 'climb' | 'swing' | 'surface' | 'run' | 'drink' | 'spray' | 'wrap' | 'coil' | 'unwrap' | 'descend' | 'swim' | 'hop' | 'forage' | 'rise' | 'stand' | 'pick' | 'lower' | 'graze';
-const states: WildlifeState[] = ['rest','travel','chase','climb','swing','surface','run','drink','spray','wrap','coil','unwrap','descend','swim','hop','forage','rise','stand','pick','lower','graze'];
+export type WildlifeState = 'rest' | 'travel' | 'chase' | 'climb' | 'swing' | 'surface' | 'run' | 'drink' | 'spray' | 'wrap' | 'coil' | 'unwrap' | 'descend' | 'swim' | 'hop' | 'forage' | 'rise' | 'stand' | 'pick' | 'lower' | 'graze' | 'dive' | 'land';
+const states: WildlifeState[] = ['rest','travel','chase','climb','swing','surface','run','drink','spray','wrap','coil','unwrap','descend','swim','hop','forage','rise','stand','pick','lower','graze','dive','land'];
 export interface WildlifeSample extends Vec2 { heading: number; gait: number; altitude: number; state: WildlifeState }
 /** Common mechanics only; species decisions stay in concrete subclasses. */
 export abstract class WildlifeAgent implements Agent {
   abstract readonly kind: WildlifeKind; abstract readonly type: number;
   startle=new StartleResponse();
+  repose=new Repose();
   random: AgentRandom; motor = new SpeedMotor(); heading: number; gait = 0; altitude = 0; targetAltitude = 0;
   size: number; coat: number; juvenile = false; groupId = ''; leaderId = ''; motherId = '';
   state: WildlifeState = 'rest'; timer: number; cooldown = 0; decision = 0; target: Vec2; pace: number; tripPace=1; flight=new FlightMotion();
@@ -63,6 +65,10 @@ export abstract class WildlifeAgent implements Agent {
     this.startle.update(dt);
     Object.assign(this.previous,this.sample()); this.timer-=dt; this.cooldown=Math.max(0,this.cooldown-dt); this.decision-=dt;
     if(this.decision<=0) { this.decision=.2+this.pace*.08; this.perceiveSplash(env);if(this.startle.remaining<=0)this.decide(env); }
+    if(this.kind==='jaguar'){
+      const wake=this.state==='chase'||this.state==='run'||this.startle.remaining>0;
+      if(this.repose.update(dt,this.random,wake)){this.motor.stop();return;}
+    }
     if(this.state==='rest') { if(this.startle.remaining>0)this.heading+=clamp(angleDelta(this.heading,this.startle.heading),-dt*2.8,dt*2.8);this.motor.update(0,dt,1,5); this.gait+=dt*.22*this.pace; return; }
     if(this.state==='climb') {
       const desired=Math.atan2(this.target.y-this.y,this.target.x-this.x);this.heading+=clamp(angleDelta(this.heading,desired),-dt*2,dt*2);
@@ -87,14 +93,14 @@ export abstract class WildlifeAgent implements Agent {
   }
   write(w:BinaryWriter):void {
     w.string(this.id);w.u32(this.random.state);w.string(this.groupId);w.string(this.leaderId);w.string(this.motherId);w.u8(Number(this.juvenile));w.u8(this.coat);w.u8(states.indexOf(this.state));w.u8(states.indexOf(this.previous.state));
-    this.flight.write(w);this.startle.write(w);w.f64(this.tripPace);
+    this.flight.write(w);this.startle.write(w);this.repose.write(w);w.f64(this.tripPace);
     for(const n of [this.x,this.y,this.heading,this.gait,this.altitude,this.targetAltitude,this.size,this.timer,this.cooldown,this.decision,this.target.x,this.target.y,this.pace,this.speed,this.motor.acceleration,...this.territory,this.previous.x,this.previous.y,this.previous.heading,this.previous.gait,this.previous.altitude]) w.f64(n);
   }
   static restore<T extends WildlifeAgent>(r:BinaryReader, create:(id:string,x:number,y:number,seed:number)=>T):T {
     const id=r.string(),seed=r.u32(),group=r.string(),leader=r.string(),mother=r.string(),young=r.u8(),coat=r.u8(),state=states[r.u8()],previousState=states[r.u8()];
     if(young>1||coat>2||!state||!previousState)throw new Error('Invalid wildlife state');
-    const flight=new FlightMotion();flight.read(r);const startle=new StartleResponse();startle.read(r);const tripPace=r.f64();
-    const a=create(id,r.f64(),r.f64(),seed);a.flight=flight;a.startle=startle;a.tripPace=tripPace;a.random.state=seed;a.groupId=group;a.leaderId=leader;a.motherId=mother;a.juvenile=Boolean(young);a.coat=coat;a.state=state;
+    const flight=new FlightMotion();flight.read(r);const startle=new StartleResponse();startle.read(r);const repose=new Repose();repose.read(r);const tripPace=r.f64();
+    const a=create(id,r.f64(),r.f64(),seed);a.flight=flight;a.startle=startle;a.repose=repose;a.tripPace=tripPace;a.random.state=seed;a.groupId=group;a.leaderId=leader;a.motherId=mother;a.juvenile=Boolean(young);a.coat=coat;a.state=state;
     a.heading=r.f64();a.gait=r.f64();a.altitude=r.f64();a.targetAltitude=r.f64();a.size=r.f64();a.timer=r.f64();a.cooldown=r.f64();a.decision=r.f64();a.target={x:r.f64(),y:r.f64()};a.pace=r.f64();a.motor.speed=r.f64();a.motor.acceleration=r.f64();a.territory=[r.f64(),r.f64(),r.f64(),r.f64()];
     a.previous={x:r.f64(),y:r.f64(),heading:r.f64(),gait:r.f64(),altitude:r.f64(),state:previousState};return a;
   }
@@ -123,14 +129,16 @@ export class JaguarAgent extends WildlifeAgent {
   protected decide(env:AgentEnvironment):void {
     if(this.state==='chase' && (this.timer<=.3||this.cooldown>0)){this.state='rest';this.timer=6;this.cooldown=25+this.random.next()*20;return;}
     if(this.cooldown===0) {
-      const prey=env.nearby(this.x,this.y,2.8).filter(n=>n.kind==='deer'&&this.clear(n.x,n.y,env)).sort((a,b)=>Math.hypot(a.x-this.x,a.y-this.y)-Math.hypot(b.x-this.x,b.y-this.y)||a.id.localeCompare(b.id))[0];
+      const prey=env.nearby(this.x,this.y,2.8).filter(n=>(n.kind==='deer'||n.kind==='zebra')&&this.clear(n.x,n.y,env)).sort((a,b)=>Math.hypot(a.x-this.x,a.y-this.y)-Math.hypot(b.x-this.x,b.y-this.y)||a.id.localeCompare(b.id))[0];
       if(prey && (this.state==='chase'||this.random.next()<.12)) {
         const distance=Math.hypot(prey.x-this.x,prey.y-this.y);
         if(distance<.28){this.state='rest';this.timer=5;this.cooldown=35;return;} // Non-contact encounters; no kills.
         this.target={x:prey.x,y:prey.y};if(this.state!=='chase'){this.timer=2.5+this.random.next()*1.5;this.state='chase';}return;
       }
     }
+    if(this.repose.active)return;
     if(this.state==='rest'&&this.timer<=0){
+      if(this.repose.cooldown===0&&this.random.next()<.45){this.repose.begin(this.random);this.timer=2;return;}
       const run=this.cooldown===0&&this.random.next()<.16;
       if(this.wander(env,run?2.4:1.6)&&run){this.state='run';this.cooldown=25+this.random.next()*25;}
     }

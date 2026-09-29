@@ -1,3 +1,5 @@
+import { REPOSE_CLIPS } from './art/repose';
+import { scavengingRemains } from './art/raptor-model';
 import { bakeLandscapeAccents } from './art/landscape-accents';
 import { bakeLandscapePatches, patchLogicalScale } from './art/landscape-patches';
 import { snakeSide } from './art/snake-model';
@@ -21,7 +23,7 @@ import { vineFrames } from './art/vines';
 import { isolatePlant } from './art/foliage';
 
 const sha = (data: Uint8Array | string) => createHash('sha256').update(data).digest('hex');
-const dependencies = ['scripts/art/landscape-accents.ts','assets/source/landscape-accents.png','assets/accents-prompts.json','scripts/art/zebra-model.ts','src/jungle/agents/zebra.ts','scripts/art/black-bear-model.ts','src/jungle/agents/black-bear.ts','src/jungle/regions.ts','assets/source/landscape-color-groves.png','assets/source/landscape-color-ground.png','assets/variety-prompts.json','scripts/art/landscape-patches.ts','src/jungle/patches.ts','src/jungle/geometry.ts','assets/source/landscape-groves.png','assets/source/landscape-ground.png','assets/landscape-prompts.json','scripts/art/river-model.ts','src/jungle/agents/river-wildlife.ts','scripts/art/snake-model.ts','src/jungle/snake-pose.ts','src/jungle/agents/snakes.ts','src/jungle/agents/ecological-base.ts','src/jungle/ground-blend.ts','scripts/art/elephant-model.ts', 'src/jungle/elephant-pose.ts', 'src/agents/startle.ts','src/agents/flight.ts', 'src/jungle/flight.ts', 'src/jungle/botany.ts', 'assets/source/forest-forms.png', 'scripts/art/vines.ts', 'scripts/art/foliage.ts', 'scripts/prepare-assets.ts', 'scripts/art/ecology-model.ts', 'src/jungle/ecology.ts', 'src/jungle/agents/ecological.ts', 'scripts/art/deer-model.ts', 'scripts/art/wildlife-model.ts', 'src/jungle/agents/wildlife.ts', 'src/agents/social.ts', 'assets/source/tree-forms.png', 'scripts/art/wind.ts',
+const dependencies = ['src/jungle/accents.ts','assets/source/landscape-accent-variety.png','assets/accent-variety-prompts.json','scripts/art/repose.ts','src/agents/repose.ts','scripts/art/raptor-model.ts','src/jungle/agents/raptors.ts','src/jungle/encounters.ts','scripts/art/landscape-accents.ts','assets/source/landscape-accents.png','assets/accents-prompts.json','scripts/art/zebra-model.ts','src/jungle/agents/zebra.ts','scripts/art/black-bear-model.ts','src/jungle/agents/black-bear.ts','src/jungle/regions.ts','assets/source/landscape-color-groves.png','assets/source/landscape-color-ground.png','assets/variety-prompts.json','scripts/art/landscape-patches.ts','src/jungle/patches.ts','src/jungle/geometry.ts','assets/source/landscape-groves.png','assets/source/landscape-ground.png','assets/landscape-prompts.json','scripts/art/river-model.ts','src/jungle/agents/river-wildlife.ts','scripts/art/snake-model.ts','src/jungle/snake-pose.ts','src/jungle/agents/snakes.ts','src/jungle/agents/ecological-base.ts','src/jungle/ground-blend.ts','scripts/art/elephant-model.ts', 'src/jungle/elephant-pose.ts', 'src/agents/startle.ts','src/agents/flight.ts', 'src/jungle/flight.ts', 'src/jungle/botany.ts', 'assets/source/forest-forms.png', 'scripts/art/vines.ts', 'scripts/art/foliage.ts', 'scripts/prepare-assets.ts', 'scripts/art/ecology-model.ts', 'src/jungle/ecology.ts', 'src/jungle/agents/ecological.ts', 'scripts/art/deer-model.ts', 'scripts/art/wildlife-model.ts', 'src/jungle/agents/wildlife.ts', 'src/agents/social.ts', 'assets/source/tree-forms.png', 'scripts/art/wind.ts',
   'src/iso/bake/mesh.ts', 'src/iso/bake/rasterize.ts', 'src/iso/bake/atlas.ts', 'src/iso/math.ts',
   'src/iso/spatial.ts', 'src/jungle/animation.ts', 'src/jungle/world.ts', 'src/jungle/agents/deer.ts', 'src/jungle/agents/fixed.ts', 'src/jungle/agents/index.ts', 'src/agents/core.ts', 'src/agents/motion.ts', 'src/agents/system.ts', 'src/agents/index.ts', 'assets/source/trees.png', 'assets/source/plants.png',
   'package-lock.json'];
@@ -98,7 +100,9 @@ for(let i=0;i<formIDs.length;i++){
  inputs.push({id,anchor:[width/2,height-5],frames:windFrames({width,height,data:body},width,height,tree?'tree':'plant',variant)});
 }
 for(let v=0;v<4;v++)inputs.push({id:`vine-${v}`,anchor:[16,86],frames:vineFrames(v)});
-const camera = { width: 72, height: 72, anchor: [36, 55] as [number, number], scale: 28 };
+// Match the denser animal atlas to the pixel scale of newer rigs, preserving
+// logical dimensions below. Bake directly at this resolution, never blur frames.
+const camera = { width: 72, height: 72, anchor: [36, 55] as [number, number], scale: 21 };
 for (const [clip, count] of Object.entries(DEER_CLIPS) as [keyof typeof DEER_CLIPS, number][]) {
   // Reuse posed geometry across directions: only the view changes.
   const poses = Array.from({ length: count }, (_, frame) => deerMesh(clip, frame / (clip === 'raise' ? count - 1 : count)));
@@ -109,9 +113,10 @@ for (const [clip, count] of Object.entries(DEER_CLIPS) as [keyof typeof DEER_CLI
 }
 const wildlifeCamera={width:80,height:80,anchor:[40,65] as [number,number],scale:28};
 for(const kind of ['toucan','orangutan','jaguar'] as WildlifeKind[]){
+ const camera={...wildlifeCamera,scale:kind==='jaguar'?25:28};
  const clips:WildlifeClip[]=kind==='orangutan'?['rest','travel','climb']:kind==='jaguar'?['rest','travel','chase']:['rest','travel'];
  for(const clip of clips){const count=WILDLIFE_CLIPS[clip],poses=Array.from({length:count},(_,i)=>wildlifeMesh(kind,clip,i/count));
-  for(let direction=0;direction<16;direction++)inputs.push({id:`${kind}-${clip}-${direction}`,anchor:wildlifeCamera.anchor,frames:poses.map(mesh=>bakeMesh(mesh,direction/16*TAU,wildlifeCamera))});
+  for(let direction=0;direction<16;direction++)inputs.push({id:`${kind}-${clip}-${direction}`,anchor:camera.anchor,frames:poses.map(mesh=>bakeMesh(mesh,direction/16*TAU,camera))});
  }
 }
 for(const kind of ECO_KINDS){
@@ -126,6 +131,18 @@ for(const kind of ECO_KINDS){
   }
  }
 }
+// Rest poses are shared across all individuals. Reverse the same lowering clip
+// when rising, retaining union bounds and root registration in either direction.
+for(const kind of ['deer','zebra','jaguar','blackBear'] as const){
+ const scale=kind==='deer'?21:kind==='jaguar'?25:ECO_SPECS[kind].cameraScale;
+ const camera={width:112,height:112,anchor:[56,87] as [number,number],scale};
+ for(const [clip,count] of Object.entries(REPOSE_CLIPS)){
+  const poses=Array.from({length:count},(_,i)=>kind==='deer'?deerMesh(clip as keyof typeof REPOSE_CLIPS,i/(clip==='lieDown'?count-1:count)):
+   kind==='jaguar'?wildlifeMesh(kind,clip as keyof typeof REPOSE_CLIPS,i/(clip==='lieDown'?count-1:count)):ecologyMesh(kind,clip,i/(clip==='lieDown'?count-1:count)));
+  for(let d=0;d<8;d++)inputs.push({id:`${kind}-${clip}-${d}`,anchor:camera.anchor,frames:poses.map(mesh=>bakeMesh(mesh,d/8*TAU,camera))});
+ }
+}
+inputs.push({id:'scavenging-remains',anchor:[24,24],frames:[bakeMesh(scavengingRemains(),0,{width:48,height:40,anchor:[24,24],scale:28})]});
 // Small porous root-bed textures: localized soil flecks and recognizable leaves, not broad mud disks.
 for(let variant=0;variant<4;variant++){
  const width=64,height=64,data=new Uint8Array(width*height*4);
@@ -237,7 +254,7 @@ for(const s of inputs)if(/^(tree|plant)-/.test(s.id)){
 }
 const { image, manifest } = packAtlas(inputs, 4096, 4096);
 for(const [id,s] of Object.entries(manifest.sprites)){
- const scale=/^(tree|plant)-/.test(id)?2:id.startsWith('elephant-')?21/17.5:id.startsWith('patch-')?patchLogicalScale(id):/^ground-\d/.test(id)?2:1;
+ const scale=/^(tree|plant)-/.test(id)?2:id.startsWith('deer-')?28/21:id.startsWith('jaguar-')?28/25:id.startsWith('elephant-')?21/17.5:id.startsWith('patch-')?patchLogicalScale(id):/^ground-\d/.test(id)?2:1;
  if(scale!==1){s.width*=scale;s.height*=scale;s.anchor=[s.anchor[0]*scale,s.anchor[1]*scale];}
 }
 // The broad, soft legacy-island shadow needs fewer texels, with the same logical bounds.

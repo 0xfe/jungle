@@ -1,3 +1,4 @@
+import { restingPose } from './repose';
 import { add, bone, ellipsoid, type Mesh, type V3, type RGB } from '../../src/iso/bake/mesh';
 import { TAU, type DeerClip } from '../../src/jungle/animation';
 
@@ -5,10 +6,11 @@ const fur: RGB = [210, 143, 75];
 const cream: RGB = [250, 228, 184], dark: RGB = [48, 40, 30], hoof: RGB = [66, 52, 36];
 export interface DeerPose { head: V3; feet: V3[]; knees: V3[]; hips: V3[]; bob: number; headUp: number }
 /** Four-beat walk: hind-left, fore-left, hind-right, fore-right. Grounded during stance. */
-export function deerPose(clip: DeerClip, phase: number): DeerPose {
+export function deerPose(clip: DeerClip | 'lieDown' | 'lying' | 'shift', phase: number): DeerPose {
+  const rest=restingPose(clip,phase);
   const walk = clip === 'walk', run = clip === 'run', pivot = clip === 'turn';
   const headUp = clip === 'graze' ? 0 : clip === 'raise' ? phase * phase * (3 - 2 * phase) : 1;
-  const bob = run ? .045 * Math.sin(phase * TAU) : walk ? .013 * Math.cos(phase * TAU * 2) : .005 * Math.sin(phase * TAU);
+  const bob = -.50*rest.amount + (run ? .045 * Math.sin(phase * TAU) : walk ? .013 * Math.cos(phase * TAU * 2) : .005 * Math.sin(phase * TAU));
   const hips: V3[] = [], feet: V3[] = [], knees: V3[] = [];
   for (const [i, [x, y]] of [[-.43, -.17], [.39, -.17], [-.43, .17], [.39, .17]].entries()) {
     const p = (phase + (run ? [0, .48, .08, .56] : [0, .25, .5, .75])[i]!) % 1;
@@ -20,16 +22,18 @@ export function deerPose(clip: DeerClip, phase: number): DeerPose {
     const hip: V3 = [x!, y!, .8 + bob];
     const foot: V3 = [x! + fore * stride, y! * 1.16, .04 + lift];
     const knee: V3 = [x! + fore * stride * .4 + (x! > 0 ? .055 : -.115), y! * 1.05, .4 + lift * .35 + bob];
-    hips.push(hip); feet.push(foot); knees.push(knee);
+    const mix=(a:V3,b:V3):V3=>a.map((v,i)=>v+(b[i]!-v)*rest.amount) as unknown as V3;
+    hips.push(hip);feet.push(mix(foot,[x!>0?.12:-.18,y!*.9,.045]));
+    knees.push(mix(knee,[x!>0?.53:-.54,y!*1.3,.085+rest.shift*.025]));
   }
   const chew = Math.sin(phase * TAU);
   const head: V3 = [.92 + .018 * chew + (.69 - .92 - .018 * chew) * headUp,
-    .025 * Math.sin(phase * TAU), .27 + .018 * chew + (1.34 + bob - .27 - .018 * chew) * headUp];
+    .025 * Math.sin(phase * TAU)+rest.head*.35, .27 + .018 * chew + (1.34 + bob - .27 - .018 * chew) * headUp];
   return { head, feet, knees, hips, bob, headUp };
 }
 
 /** Art-directed, rigidly articulated mesh. Replace this producer with a rig importer later. */
-export function deerMesh(clip: DeerClip, phase: number): Mesh {
+export function deerMesh(clip: DeerClip | 'lieDown' | 'lying' | 'shift', phase: number): Mesh {
   const mesh: Mesh = [], pose = deerPose(clip, phase), b = pose.bob;
   const bodyCenter: V3 = [-.05, 0, .88 + b];
   ellipsoid(mesh, bodyCenter, [.61, .235, .29], fur, undefined, n => n[2] < -.45 ? cream : n[2] > .75 ? [165, 99, 45] : fur, 20, 12);

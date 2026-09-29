@@ -1,3 +1,4 @@
+import { raptorMesh } from './raptor-model';
 import { zebraMesh } from './zebra-model';
 import { blackBearMesh } from './black-bear-model';
 import { snakeMesh } from './snake-model';
@@ -8,6 +9,7 @@ import { MONKEY_GRIP_Z, type EcoKind } from '../../src/jungle/ecology';
 const TAU=Math.PI*2,black:RGB=[35,39,37],cream:RGB=[241,225,181];
 /** Small authored rigs: mesh coordinates face +X, same projection/root convention as deer. */
 export function ecologyMesh(kind:EcoKind,clip:string,p:number):Mesh {
+ if(kind==='hawk'||kind==='vulture')return raptorMesh(kind,clip,p);
  if(kind==='zebra')return zebraMesh(clip,p);
  if(kind==='blackBear')return blackBearMesh(clip,p);
  if(['squirrel','boar','beaver','crocodile','toad'].includes(kind))return riverAnimalMesh(kind,clip,p);

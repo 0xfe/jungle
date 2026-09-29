@@ -83,7 +83,7 @@ const restored = InfiniteWorld.restore(saved);
 restored.ensure({ minX: -4, minY: -4, maxX: 8, maxY: 8 });
 ```
 
-Current world schema is **15** and agent schema is **12**; previous checkpoints are rejected. Group IDs, family relationships and individual traits remain in compact animal records. Checkpoints flush active agents first. The binary envelope contains a magic/version, seed, seven generator settings, preset, weather, time/counters, two sketches, and cached chunk coordinates/terrain/agent byte records. No JSON arrays or per-frame images are stored. The world is restored without active objects until `ensure()` selects a region. Camera and caller-owned `FixedClock` are separate; save their fields too if you need an exact displayed frame, rather than just exact simulation continuation.
+Current world schema is **17** and agent schema is **14**; previous checkpoints are rejected. Group IDs, family relationships and individual traits remain in compact animal records. Checkpoints flush active agents first. The binary envelope contains a magic/version, seed, seven generator settings, preset, weather, time/counters, two sketches, and cached chunk coordinates/terrain/agent byte records. No JSON arrays or per-frame images are stored. The world is restored without active objects until `ensure()` selects a region. Camera and caller-owned `FixedClock` are separate; save their fields too if you need an exact displayed frame, rather than just exact simulation continuation.
 
 Unknown versions, malformed/truncated bytes, invalid terrain and insufficient restore budgets fail explicitly. Schema version also pins the generator interpretation: change it or provide a migration when procedural rules change. Expired state cannot be recovered from a checkpoint that no longer contains it. There is no automatic disk/IndexedDB persistence or save UI yet; the headless API is ready for a future persistence adapter.
 
@@ -91,6 +91,6 @@ Settings changes create a new world with the same seed and a new immutable norma
 
 Shared compound landscape arrangements and their bounded planning probes are described in [LANDSCAPE-PATCHES.md](LANDSCAPE-PATCHES.md). Narrow stream banks use a steeper water-field slope plus shared feathered mud decals; fish schools require a substantial wet footprint, excluding small ponds.
 
-Recurring colorful regions, canopy population/perch changes, new generated source provenance and black bear type 58 behavior/rig/codecs are documented in [regional variety](REGIONAL-VARIETY.md). Current world/agent schemas are **15/12**.
+Recurring colorful regions, canopy population/perch changes, new generated source provenance and black bear type 58 behavior/rig/codecs are documented in [regional variety](REGIONAL-VARIETY.md). Current world/agent schemas are **17/14**.
 
-Current sound, input, bears/zebras, giraffe proportions, elephant sampling, shared landscape accents and schema 16/13 are documented in [wildlife refinements](WILDLIFE-REFINEMENTS.md).
+Current sound, input, bears/zebras, giraffe proportions, elephant sampling, shared landscape accents and schema 17/14 are documented in [wildlife refinements](WILDLIFE-REFINEMENTS.md).

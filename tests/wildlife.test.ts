@@ -44,7 +44,7 @@ test('all wildlife codecs retain traits, group membership, motor, canopy height 
  const agents=[new ToucanAgent('bird',0,0,4),new OrangutanAgent('ape',1,0,9),new JaguarAgent('cat',3,1,2)];
  agents.forEach(a=>{a.groupId=a.kind==='jaguar'?'':'g';a.leaderId=a.id;});
  const sys=new AgentSystem();for(let i=0;i<600;i++)sys.step(agents,1/60,env);
- const bytes=jungleAgents.encode(agents),restored=jungleAgents.decode(bytes);assert.ok(bytes.length<1000);
+ const bytes=jungleAgents.encode(agents),restored=jungleAgents.decode(bytes);assert.ok(bytes.length<1200);
  assert.ok(restored[0] instanceof ToucanAgent && restored[1] instanceof OrangutanAgent && restored[2] instanceof JaguarAgent);
  for(let i=0;i<1200;i++){sys.step(agents,1/60,env);new AgentSystem().step(restored,1/60,env);}
  assert.deepEqual(jungleAgents.encode(agents),jungleAgents.encode(restored));

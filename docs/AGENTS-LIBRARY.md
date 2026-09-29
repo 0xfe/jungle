@@ -55,7 +55,7 @@ const [restored] = jungleAgents.decode(bytes);
 // restored is a DeerAgent with its behavior, RNG, motor and previous sample intact.
 ```
 
-Collections start with schema version `12` (the generic registry accepts an application-selected schema) and a uint32 count. Each record starts with a one-byte type tag: plants `1–8`, deer `20`, water `21`, motes `22`, toucan `30`, orangutan `31`, jaguar `32`, ecological species `40–58` with `44` reserved for dormant crabs (IDs never shift when the active list changes). IDs are UTF-8 length-prefixed strings. Mutable simulation values use float64 deliberately: a round trip resumes exactly rather than accumulating quantization drift. Static terrain uses smaller integer fields separately.
+Collections start with schema version `14` (the generic registry accepts an application-selected schema) and a uint32 count. Each record starts with a one-byte type tag: plants `1–8`, deer `20`, water `21`, motes `22`, toucan `30`, orangutan `31`, jaguar `32`, ecological species `40–59`, landscape groups `60`, hawks `61`, vultures `62` with `44` reserved for dormant crabs (IDs never shift when the active list changes). IDs are UTF-8 length-prefixed strings. Mutable simulation values use float64 deliberately: a round trip resumes exactly rather than accumulating quantization drift. Static terrain uses smaller integer fields separately.
 
 Per-record cost, excluding the five-byte collection header:
 
@@ -63,12 +63,13 @@ Per-record cost, excluding the five-byte collection header:
 | --- | ---: |
 | Plant | 62 |
 | Water / mote | 45 |
-| Deer | 274 plus group/leader/mother UTF-8 lengths |
-| Toucan / orangutan / jaguar | 274 plus group/leader/mother UTF-8 lengths |
-| Ecological species except elephant | 330 plus group/leader/mother UTF-8 lengths |
-| Black bear | 331 plus group/leader/mother UTF-8 lengths |
-| Boa / small snake | 355 plus group/leader/mother UTF-8 lengths |
-| Elephant | 380 plus group/leader/mother UTF-8 lengths |
+| Deer | 331 plus group/leader/mother UTF-8 lengths |
+| Toucan / orangutan / jaguar | 331 plus group/leader/mother UTF-8 lengths |
+| Base ecological species | 387 plus group/leader/mother UTF-8 lengths |
+| Black bear | 405 plus group/leader/mother UTF-8 lengths |
+| Boa / small snake | 412 plus group/leader/mother UTF-8 lengths |
+| Elephant | 437 plus group/leader/mother UTF-8 lengths |
+| Hawk / vulture | 427 plus group/leader/mother UTF-8 lengths |
 
 Prototype methods, shared species definitions, sprites and textures are never serialized. A class spread or JSON round trip does **not** preserve this contract; use the registry. Decoding rejects unknown schema/types, duplicate IDs, non-finite numbers, truncated records and trailing bytes. This is an application save format, not a general untrusted-object deserializer. Bump the schema or supply migrations when record layout changes.
 
@@ -84,7 +85,7 @@ For example, a tiger would need rest/stalk/pursue/recover states, distinct sense
 
 The ecological extension preserves seven additional float64 values: swing origin x/y/height, normalized route progress, route duration, current breathing clock and prior breathing clock. Environment samples optionally expose `depth` (normalized habitat depth) and `beach`; neither field introduces a jungle import into the generic agent library. All eleven new class codecs have exact multi-step continuation tests.
 
-Plant records now include a two-byte genotype, expanded once into cached appearance traits. Structural morphology, growth scale, phase, previous phase, wind rate and vigor remain owned by the concrete plant agent. Vines are attached presentation components; they do not consume separate ticks or state records. Current collection schema is 12 and world checkpoint schema is 15. See [botanical design](FOREST.md).
+Plant records now include a two-byte genotype, expanded once into cached appearance traits. Structural morphology, growth scale, phase, previous phase, wind rate and vigor remain owned by the concrete plant agent. Vines are attached presentation components; they do not consume separate ticks or state records. Current collection schema is 14 and world checkpoint schema is 17. See [botanical design](FOREST.md).
 
 `FlightMotion` is a reusable DOM-free component that advances a wing phase through powered/glide bouts, varying cadence and lift from a caller-supplied profile and per-agent random stream. Wildlife records add its powered flag and three float64 values plus a trip-pace float64 (33 bytes). Restoring these fields is necessary for exact continuation. Monkey support geometry reuses the existing route origin/progress/duration fields. See [animal motion](ANIMAL-MOTION.md).
 
@@ -98,6 +99,6 @@ Boas and small snakes each have a concrete class, with tree-support or loose-gro
 
 Types 53–57 register solitary squirrels, boar, beavers, crocodiles and toads. Their route/climb/hop state uses the existing ecological codec; bank habitat is an optional generic environment sample field. See [river wildlife](RIVERS.md).
 
-Study 15 adds shared multi-tile landscape groups, tint masks and static trunk templates. Current world/agent schemas are **15/12**; see [landscape groups](LANDSCAPE-PATCHES.md) for source provenance, animation, navigation and memory details.
+Study 15 adds shared multi-tile landscape groups, tint masks and static trunk templates. Current world/agent schemas are **17/14**; see [landscape groups](LANDSCAPE-PATCHES.md) for source provenance, animation, navigation and memory details.
 
-Recurring colorful regions, canopy population/perch changes, new generated source provenance and black bear type 58 behavior/rig/codecs are documented in [regional variety](REGIONAL-VARIETY.md). Current world/agent schemas are **15/12**.
+Recurring colorful regions, canopy population/perch changes, new generated source provenance and black bear type 58 behavior/rig/codecs are documented in [regional variety](REGIONAL-VARIETY.md). Current world/agent schemas are **17/14**.

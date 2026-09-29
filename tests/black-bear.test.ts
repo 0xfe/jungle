@@ -13,7 +13,7 @@ test('black bears turn while planted, walk with calibrated strides, and forage b
  assert.deepEqual([a.x,a.y,a.gait],start,'turn before translating');
  a.heading=0;const x=a.x,phase=a.gait;for(let i=0;i<10;i++)a.update(1/60,forest);
  assert.ok(a.x>x);assert.ok(Math.abs((a.gait-phase)*ECO_SPECS.blackBear.stride*a.size-(a.x-x))<1e-10);
- assert.ok(Math.abs(.52/.68*23*1.35*Math.SQRT1_2/96-ECO_SPECS.blackBear.stride)<.001);
+ assert.ok(Math.abs(.52/.68*23*ECO_SPECS.blackBear.displayScale*Math.SQRT1_2/96-ECO_SPECS.blackBear.stride)<.001);
  a.state='rest';a.timer=0;a.decision=0;let foraged=false,walked=false;
  for(let i=0;i<6000;i++){a.update(1/60,forest);const state=a.sample().state;foraged||=state==='forage'||state==='pick';walked||=a.speed>.02;assert.ok(forest.canMove(a.x,a.y));assert.ok(ecoClips('blackBear')[a.state]);if(state==='forage')assert.equal(a.speed,0);}
  assert.ok(foraged&&walked);assert.equal(a.groupId,'');

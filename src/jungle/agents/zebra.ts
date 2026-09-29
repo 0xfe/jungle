@@ -15,7 +15,7 @@ export class ZebraAgent extends EcologicalAgent {
    for(const offset of [0,.7,-.7]){
     const x=leader.x-Math.cos(angle+offset)*.42-Math.sin(angle)*side,y=leader.y-Math.sin(angle+offset)*.42+Math.cos(angle)*side;
     if(!this.routeClear(x,y,env))continue;
-    this.target={x,y};this.state='travel';this.timer=20;this.tripPace=1.15;return;
+    this.target={x,y};this.state=Math.hypot(leader.x-this.x,leader.y-this.y)>1.1||leader.speed>.5?'run':'travel';this.timer=20;this.tripPace=1.15;return;
    }
   }
   if(this.id===this.leaderId&&herd.some(n=>Math.hypot(n.x-this.x,n.y-this.y)>1.3)){
@@ -26,8 +26,9 @@ export class ZebraAgent extends EcologicalAgent {
    return;
   }
   if(this.state!=='rest'||this.timer>0)return;
+  if(this.repose.cooldown===0&&this.random.next()<.4){this.repose.begin(this.random);this.timer=2;return;}
   if(this.cooldown===0){this.state='graze';this.gait=0;this.timer=5+this.random.next()*9;return;}
-  this.journey(env);
+  if(this.journey(env)&&this.random.next()<.2){this.state='run';this.timer=3+this.random.next()*3;}
  }
  protected override stationaryAction(dt:number,_env:AgentEnvironment):boolean {
   if(this.state!=='graze')return false;

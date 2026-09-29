@@ -6,3 +6,5 @@ export * from './social';
 export * from './flight';
 
 export * from './startle';
+
+export * from './repose';

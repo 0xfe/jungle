@@ -1,3 +1,4 @@
+import { restingSprite } from './resting';
 import { PlantAgent } from './agents';
 import { project, hash, lerp, clamp } from '../iso/math';
 import { color, sortCommands, type DrawCommand, type Frame, type Region } from '../iso/render';
@@ -91,6 +92,10 @@ export function composeScene(world: World, atlas: AtlasManifest, view: View, alp
   });
   for (const deer of world.deer) {
     const d = sampleDeer(deer, alpha);
+    if(deer.repose.active){
+      const rest=restingSprite('deer',deer.repose,d.heading,alpha);
+      sprite(deer.id,rest.name,d.x,d.y,1.05*deer.size,rest.frame,2,d.x+d.y);continue;
+    }
     sprite(`${deer.id}-shadow`, 'shadow', d.x, d.y, .4*deer.size, 0, 1, d.x + d.y, false, .35);
     const clip = d.state === 'lower' ? 'raise' : d.state, count = DEER_CLIPS[clip];
     let phase = d.state === 'walk' || d.state === 'run' || d.state === 'turn' ? d.gait % 1 : ((time + deer.phase) / 1.2) % 1;

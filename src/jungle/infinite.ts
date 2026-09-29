@@ -1,3 +1,4 @@
+import { populationRange } from './encounters';
 import { planArrangement, pieceSupports, treePerchHeight, schoolWater, type TreeSupport } from './patches';
 import { LandscapePatchAgent } from './agents/patch';
 import { riverPaths, riverBanks, type RiverBank, type RiverPath } from './rivers';
@@ -30,7 +31,8 @@ export function faunaPlan(cx:number,cy:number,seed:number, density=DEFAULT_SETTI
   const beaver=random.next()<p.beaver*density,crocodile=random.next()<p.crocodile*density,toad=random.next()<p.toad*density;
   const blackBear=hash(cx,cy,seed+7310)<p.blackBear*density*(.45+.55*canopy);
   const zebra=hash(cx,cy,seed+7411)<p.zebra*density*open;
-  return {zebra,blackBear,squirrel,boar,beaver,crocodile,toad,deer,toucan,orangutan,jaguar,monkey,wolf,giraffe,elephant,seagull,fish,whale,macaw,parakeet,kingfisher,boa,smallSnake,random};
+  const hawk=hash(cx,cy,seed+7512)<p.hawk*density,vulture=hash(cx,cy,seed+7613)<p.vulture*density;
+  return {hawk,vulture,zebra,blackBear,squirrel,boar,beaver,crocodile,toad,deer,toucan,orangutan,jaguar,monkey,wolf,giraffe,elephant,seagull,fish,whale,macaw,parakeet,kingfisher,boa,smallSnake,random};
 }
 export class InfiniteWorld {
   readonly cache: ChunkCache<ChunkRecord>; readonly active = new Map<string, ActiveChunk>();
@@ -89,7 +91,7 @@ export class InfiniteWorld {
       }
     };
     let familyCenter: {x:number;y:number}|undefined;
-    if(herd){
+    if(herd&&populationRange('deer',cx*4+2,cy*4+2,this.seed)){
       familyCenter=spot();const count=3+Math.floor(wildlife.next()*3),group=`herd:${cx}:${cy}`;
       if(familyCenter)for(let i=0;i<count;i++){
         const p=i===0?familyCenter:spot(familyCenter);if(!p)continue;
@@ -106,7 +108,7 @@ export class InfiniteWorld {
     if(apes && trees.length>3){const p=spot();if(p){const group=`family:${cx}:${cy}`,count=wildlife.next()<.55?2:1;
       for(let i=0;i<count;i++){const a=new OrangutanAgent(`${group}:${i}`,p.x+i*.22,p.y,seed());a.territory=[...bounds];a.groupId=group;a.leaderId=`${group}:0`;a.juvenile=i===1;if(a.juvenile){a.motherId=a.leaderId;a.size*=.58;}agents.push(a);}
     }}
-    if(predator){const p=spot();if(p){const a=new JaguarAgent(`j:${cx}:${cy}`,p.x,p.y,seed());a.territory=[...bounds];a.cooldown=8+wildlife.next()*20;agents.push(a);}}
+    if(predator&&populationRange('jaguar',cx*4+2,cy*4+2,this.seed)){const p=spot();if(p){const a=new JaguarAgent(`j:${cx}:${cy}`,p.x,p.y,seed());a.territory=[...bounds];a.cooldown=8+wildlife.next()*20;agents.push(a);}}
     const plan=this.populationPlan(cx,cy);
     const sample=(x:number,y:number)=>{
       const tx=Math.floor(x)-cx*4,ty=Math.floor(y)-cy*4;
@@ -119,7 +121,7 @@ export class InfiniteWorld {
     const schoolSample=(x:number,y:number)=>{const key=`${x}:${y}`;let water=schoolSamples.get(key);if(water===undefined){water=sample(x,y).water;schoolSamples.set(key,water);}return water;};
     const compatible=(kind:EcoKind,x:number,y:number)=>{
       if(x<bounds[0]+.18||y<bounds[1]+.18||x>bounds[2]-.18||y>bounds[3]-.18||!habitatAllows(kind,sample(x,y)))return false;
-      if(ECO_SPECS[kind].mode==='ground'||kind==='crab'||(ECO_SPECS[kind].mode==='amphibious'&&!sample(x,y).water)){
+      if(ECO_SPECS[kind].mode==='ground'||kind==='vulture'||kind==='crab'||(ECO_SPECS[kind].mode==='amphibious'&&!sample(x,y).water)){
         const radius=kind==='elephant'?.3:kind==='giraffe'?.2:.13;
         for(const [dx,dy] of [[0,0],[1,0],[-1,0],[0,1],[0,-1]])if(!dry(x+dx!*radius,y+dy!*radius))return false;
       }
@@ -131,7 +133,7 @@ export class InfiniteWorld {
       // Species-local placement prevents a changed flock/perch layout from
       // consuming the random stream for all subsequent animal populations.
       const ecoRandom=new AgentRandom(coordinateHash(cx,cy,this.seed^0x45434f^Math.imul(ECO_SPECS[kind].type,0x9e3779b9)));
-      if(!plan[kind]||(['boa','squirrel'].includes(kind)&&!trees.length))continue;
+      if(!plan[kind]||!populationRange(kind,cx*4+2,cy*4+2,this.seed)||(['boa','squirrel'].includes(kind)&&!trees.length))continue;
       const shore=kind==='elephant'&&generatedTiles.some(t=>t.fields?.some(f=>f[0]<0));
       if(kind==='elephant'&&!shore&&ecoRandom.next()>CONFIG.world.population.inlandElephantRetention)continue;
       const perched=['monkey','macaw','parakeet','kingfisher'].includes(kind);
@@ -146,7 +148,7 @@ export class InfiniteWorld {
       const bearCubs=kind==='blackBear'&&ecoRandom.next()<CONFIG.world.population.bearFamilyChance?1+Math.floor(ecoRandom.next()*2):0;
       const cubs=kind==='wolf'&&ecoRandom.next()<.48?1+Math.floor(ecoRandom.next()*2):0;
       const adults=kind==='wolf'?3+Math.floor(ecoRandom.next()*3):0;
-      const count=kind==='blackBear'?1+bearCubs:kind==='wolf'?adults+cubs:['whale','boa','squirrel','boar','beaver','crocodile','toad'].includes(kind)?1:kind==='smallSnake'?3+Math.floor(ecoRandom.next()*3):kind==='fish'?7+Math.floor(ecoRandom.next()*5):kind==='parakeet'?3+Math.floor(ecoRandom.next()*3):2+Math.floor(ecoRandom.next()*2);
+      const count=kind==='blackBear'?1+bearCubs:kind==='wolf'?adults+cubs:['hawk','vulture','whale','boa','squirrel','boar','beaver','crocodile','toad'].includes(kind)?1:kind==='smallSnake'?3+Math.floor(ecoRandom.next()*3):kind==='fish'?7+Math.floor(ecoRandom.next()*5):kind==='parakeet'?3+Math.floor(ecoRandom.next()*3):2+Math.floor(ecoRandom.next()*2);
       const group=`${kind}:${cx}:${cy}`,C=ECO_CLASSES[kind];
       const commonHeading=ecoRandom.next()*Math.PI*2;
       for(let i=0;i<count;i++){
@@ -164,13 +166,13 @@ export class InfiniteWorld {
         }
         if(!point)continue;
         const a=new C(`${group}:${i}`,point.x,point.y,Math.floor(ecoRandom.next()*0xffffffff));
-        a.territory=[...bounds];a.groupId=(kind==='blackBear'&&!bearCubs)||['whale','boa','squirrel','boar','beaver','crocodile','toad'].includes(kind)?'':group;a.leaderId=a.groupId?`${group}:0`:'';a.heading=commonHeading;
+        a.territory=[...bounds];a.groupId=(kind==='blackBear'&&!bearCubs)||['hawk','vulture','whale','boa','squirrel','boar','beaver','crocodile','toad'].includes(kind)?'':group;a.leaderId=a.groupId?`${group}:0`:'';if(kind!=='hawk')a.heading=commonHeading;
         if(kind==='wolf'&&i>=adults){a.juvenile=true;a.motherId=a.leaderId;a.size=(agents.find(p=>p.id===a.leaderId) as WildlifeAgent).size*(.52+ecoRandom.next()*.12);}
         if(kind==='blackBear'&&i>0){a.juvenile=true;a.motherId=a.leaderId;a.size=(agents.find(p=>p.id===a.leaderId) as WildlifeAgent).size*(.43+ecoRandom.next()*.13);}
         if(kind==='elephant'&&i===count-1){a.juvenile=true;a.motherId=a.leaderId;a.size*=.63;}
-        a.altitude=point.height??(kind==='seagull'?40:kind==='fish'?-2:kind==='whale'?-12:0);a.targetAltitude=a.altitude;
+        a.altitude=point.height??(kind==='hawk'?105:kind==='seagull'?40:kind==='fish'?-2:kind==='whale'?-12:0);a.targetAltitude=a.altitude;
         a.breathClock=ecoRandom.next()*a.cycleSeconds;a.previousBreath=a.breathClock;
-        a.timer=kind==='boa'?12+ecoRandom.next()*25:kind==='smallSnake'?2+ecoRandom.next()*10:kind==='monkey'?18+ecoRandom.next()*40:kind==='fish'?.1+ecoRandom.next()*.6:kind==='whale'?.1:1+ecoRandom.next()*6;a.previous=a.sample();agents.push(a);
+        a.timer=kind==='vulture'?45+ecoRandom.next()*55:kind==='boa'?12+ecoRandom.next()*25:kind==='smallSnake'?2+ecoRandom.next()*10:kind==='monkey'?18+ecoRandom.next()*40:kind==='fish'?.1+ecoRandom.next()*.6:kind==='whale'?.1:1+ecoRandom.next()*6;a.previous=a.sample();agents.push(a);
       }
     }
     if(track)this.generated += CHUNK_SIZE ** 2;
@@ -251,7 +253,7 @@ export class InfiniteWorld {
   get stats() {
     return { worldSize: this.explored.estimate, renderedUnique: this.drawn.estimate, renderedNow: this.renderedNow, renderedTotal: this.renderedTotal,
       generated: this.generated, resident: this.cache.size * 16, active: this.tiles.length, expired: this.cache.expired * 16,
-      cachedBytes: this.cache.bytes, estimatedBytes: this.cache.bytes + this.agents.length * 768 + this.agents.reduce((n,a)=>n+(a instanceof LandscapePatchAgent?a.pieces.length*224+a.supports.length*104:0),0) + this.tiles.length * 6144 + 8192 + 512 * 1024 + this.rivers.length * 4096 + this.bankCover.length * 128, agents: this.agents.length, animals: this.agents.filter(a=>a.speed!==undefined).length, herds: new Set(this.agents.filter(a=>a instanceof DeerAgent && a.groupId).map(a=>(a as DeerAgent).groupId)).size };
+      cachedBytes: this.cache.bytes, estimatedBytes: this.cache.bytes + this.agents.length * 896 + this.agents.reduce((n,a)=>n+(a instanceof LandscapePatchAgent?a.pieces.length*224+a.supports.length*104:0),0) + this.tiles.length * 6144 + 8192 + 512 * 1024 + this.rivers.length * 4096 + this.bankCover.length * 128, agents: this.agents.length, animals: this.agents.filter(a=>a.speed!==undefined).length, herds: new Set(this.agents.filter(a=>a instanceof DeerAgent && a.groupId).map(a=>(a as DeerAgent).groupId)).size };
   }
   /** Capture active state before taking a compact checkpoint. Cache eviction remains intentional. */
   checkpoint(): Uint8Array {
@@ -259,7 +261,7 @@ export class InfiniteWorld {
       const record = { terrain: a.terrain.data, agents: jungleAgents.encode(a.agents) };
       this.cache.put(a.x, a.y, record, record.terrain.length + record.agents.length + 256, this.pinned);
     }
-    const w = new BinaryWriter(); w.u32(0x4a4e474c); w.u8(16); w.u32(this.seed);
+    const w = new BinaryWriter(); w.u32(0x4a4e474c); w.u8(17); w.u32(this.seed);
     for(const key of SETTING_KEYS)w.f64(this.settings[key]);
     w.u8(['rainforest', 'flowering', 'wetland'].indexOf(this.habitat)); w.u8(['sun', 'rain', 'dusk'].indexOf(this.weather));
     for (const n of [this.time, this.previousTime, this.generated, this.renderedTotal, this.cache.expired]) w.f64(n);
@@ -270,7 +272,7 @@ export class InfiniteWorld {
   static restore(bytes: Uint8Array, budget = DEFAULT_WORLD_BUDGET): InfiniteWorld {
     if (bytes.length > budget.maxBytes + 65536) throw new Error('Checkpoint exceeds memory budget');
     const r = new BinaryReader(bytes);
-    if (r.u32() !== 0x4a4e474c || r.u8() !== 16) throw new Error('Unsupported world checkpoint');
+    if (r.u32() !== 0x4a4e474c || r.u8() !== 17) throw new Error('Unsupported world checkpoint');
     const seed = r.u32(), settings=Object.fromEntries(SETTING_KEYS.map(k=>[k,r.f64()])) as unknown as WorldSettings;
     for(const k of SETTING_KEYS)if(settings[k]!==normalizeSettings(settings)[k])throw new Error('Invalid world settings');
     const habitat = (['rainforest', 'flowering', 'wetland'] as const)[r.u8()], weather = (['sun', 'rain', 'dusk'] as const)[r.u8()];

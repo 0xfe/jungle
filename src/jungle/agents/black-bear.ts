@@ -32,16 +32,17 @@ export class BlackBearAgent extends EcologicalAgent {
   if(this.state!=='rest')return;
   if(this.forageTarget){
    this.forageTarget=false;
-   const support=this.treeTarget&&Math.hypot(this.supportX-this.x,this.supportY-this.y)<=.36*this.size&&(env.perches?.(this.x,this.y,.5)??[]).some(p=>Math.hypot((p.root?.x??p.x)-this.supportX,(p.root?.y??p.y)-this.supportY)<.03);
+   const support=this.treeTarget&&Math.hypot(this.supportX-this.x,this.supportY-this.y)<=.45*this.size&&(env.perches?.(this.x,this.y,.5)??[]).some(p=>Math.hypot((p.root?.x??p.x)-this.supportX,(p.root?.y??p.y)-this.supportY)<.03);
    this.state=support?'rise':'forage';this.gait=0;this.timer=5+this.random.next()*7;return;
   }
   if(this.timer>0)return;
+  if(this.repose.cooldown===0&&this.random.next()<.45){this.repose.begin(this.random);this.timer=2;return;}
   // Search beside actual trunks, preferring nearby supports; never target their
   // solid root. Bounded probes retain dry-footed routes and owner territory.
   const trees=(env.perches?.(this.x,this.y,this.spec.range)??[]).map(p=>p.root??p);
   for(let i=0;i<24;i++){
    const tree=trees.length&&i<16?trees[Math.floor(this.random.next()*trees.length)]:undefined;
-   const angle=this.random.next()*TAU,distance=tree?.29*this.size:.3+this.random.next()*.9;
+   const angle=this.random.next()*TAU,distance=tree?.3625*this.size:.3+this.random.next()*.9;
    const x=(tree?.x??this.x)+Math.cos(angle)*distance,y=(tree?.y??this.y)+Math.sin(angle)*distance;
    if(Math.hypot(x-this.x,y-this.y)<.15||!this.routeClear(x,y,env))continue;
    if(mother&&Math.hypot(x-mother.x,y-mother.y)>.85)continue;

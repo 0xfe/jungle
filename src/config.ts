@@ -43,7 +43,7 @@ export const CONFIG = {
     /** Zoom change per mouse-wheel event. */
     wheelZoomStep: .05,
     /** Horizontal automatic travel in CSS pixels/second. */
-    driftSpeed: 16,
+    driftSpeed: 20,
     /** Normal keyboard travel in CSS pixels/second. */
     moveSpeed: 240,
     /** Shift-key travel in CSS pixels/second. */
@@ -120,7 +120,7 @@ export const CONFIG = {
       /** Slow flower breeze cycle in seconds, independent of tree wind. */
       flowerWindPeriod: 9,
       /** Fraction of compound components carrying small rooted/airborne accents. */
-      accentCoverage: .65,
+      accentCoverage: .90,
       /** RGB foliage palettes multiply a luminance mask; wood/soil retain their color.
        * Change these to red/brown for seasonal leaves; there are only three shared tints. */
       foliage: [[110,184,49],[96,166,48],[128,192,60]] as readonly (readonly [number,number,number])[],
@@ -132,6 +132,9 @@ export const CONFIG = {
       blackBear: .05,
       /** Small zebra herds favor dry, open woodland. */
       zebra: .045,
+      /** Rare solitary large birds; probabilities per candidate owner chunk. */
+      hawk: .009,
+      vulture: .012,
       bearFamilyChance: .28,
       /** Solitary squirrels favor open woodland; each still requires a real tree. */
       squirrel: .10,

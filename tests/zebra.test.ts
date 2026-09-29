@@ -10,7 +10,7 @@ test('zebra herds regroup, graze and resume exactly with distance-driven strides
  const lead=new ZebraAgent('leader',1.8,0,9),follow=new ZebraAgent('follower',0,0,10);
  for(const a of [lead,follow]){a.groupId='herd';a.leaderId=lead.id;a.timer=0;}
  const herd=[lead,follow],sys=new AgentSystem();sys.step(herd,1/60,land);
- assert.equal(lead.state,'rest');assert.equal(follow.state,'travel');
+ assert.equal(lead.state,'rest');assert.equal(follow.state,'run');
  let grazed=false;
  for(let i=0;i<3600;i++){sys.step(herd,1/60,land);grazed||=herd.some(a=>a.state==='graze');}
  assert.ok(grazed);assert.ok(Math.hypot(lead.x-follow.x,lead.y-follow.y)<1.5);
@@ -20,6 +20,10 @@ test('zebra herds regroup, graze and resume exactly with distance-driven strides
  const a=new ZebraAgent('stride',0,0,3);a.state='travel';a.heading=0;a.target={x:1,y:0};a.decision=100;a.timer=30;
  for(let i=0;i<60;i++){const x=a.x,gait=a.gait;a.update(1/60,land);assert.ok(Math.abs((a.gait-gait)*ECO_SPECS.zebra.stride*a.size-(a.x-x))<1e-10);}
  const gait=a.gait;a.update(1/60,{...land,canMove:()=>false});assert.equal(a.gait,gait);assert.equal(a.speed,0);
+ a.state='run';a.target={x:3,y:0};a.timer=30;
+ assert.ok(Math.abs(.655/.36*23*ECO_SPECS.zebra.displayScale*Math.SQRT1_2/96-.40)<.001);
+ for(let i=0;i<60;i++){const x=a.x,gait=a.gait;a.update(1/60,land);assert.ok(Math.abs((a.gait-gait)*.40*a.size-(a.x-x))<1e-10);}
+ const runningGait=a.gait;a.update(1/60,{...land,canMove:()=>false});assert.equal(a.gait,runningGait);assert.equal(a.speed,0);
  assert.equal(habitatAllows('zebra',{...land.sample(0,0),water:true}),false);
  assert.equal(habitatAllows('zebra',{...land.sample(0,0),moisture:.9}),false);
 });

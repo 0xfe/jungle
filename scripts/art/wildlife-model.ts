@@ -1,7 +1,8 @@
+import { restingPose } from './repose';
 import { add, bone, ellipsoid, type Mesh, type RGB, type V3 } from '../../src/iso/bake/mesh';
 import type { WildlifeKind } from '../../src/jungle/agents/wildlife';
-export type WildlifeClip = 'rest' | 'travel' | 'chase' | 'climb';
-export const WILDLIFE_CLIPS = { rest: 8, travel: 16, chase: 16, climb: 12 } as const;
+export type WildlifeClip = 'rest' | 'travel' | 'chase' | 'climb' | 'lieDown' | 'lying' | 'shift';
+export const WILDLIFE_CLIPS = { rest: 8, travel: 16, chase: 16, climb: 12,lieDown:8,lying:8,shift:8 } as const;
 const TAU=Math.PI*2;
 const dark:RGB=[42,36,26],cream:RGB=[244,219,159];
 /** Species-specific anatomy and stance, all oriented +X like the deer rig. */
@@ -43,14 +44,19 @@ export function wildlifeMesh(kind:WildlifeKind,clip:WildlifeClip,p:number):Mesh 
   for(let i=0;i<8;i++)bone(m,[-.2+i*.047,-.25,.64],[-.2+i*.047,-.28,.4],[.012,.02,.016][i%3]!,light);
   return m;
  }
- const fur:RGB=[207,151,61],bob=running?Math.sin(p*TAU)*.055:moving?Math.sin(p*TAU*2)*.012:0;
+ const repose=restingPose(clip,p);
+ const fur:RGB=[207,151,61],bob=-.33*repose.amount+(running?Math.sin(p*TAU)*.055:moving?Math.sin(p*TAU*2)*.012:Math.sin(p*TAU)*.006);
  ellipsoid(m,[0,0,.62+bob],[.61,.24,.25],fur,undefined,n=>n[2]<-.4?cream:fur,18,10);
  ellipsoid(m,[.44,0,.68+bob],[.25,.23,.27],fur);
+ const headStart=m.length;
  ellipsoid(m,[.65,0,.75+bob],[.25,.2,.21],fur);
  ellipsoid(m,[.83,0,.67+bob],[.14,.155,.095],cream);ellipsoid(m,[.94,0,.71+bob],[.043,.057,.031],dark);
  for(const side of [-1,1]) {
   ellipsoid(m,[.66,side*.179,.8+bob],[.055,.015,.026],[236,218,95]);ellipsoid(m,[.68,side*.192,.8+bob],[.022,.013,.025],dark);
   ellipsoid(m,[.52,side*.16,.94+bob],[.065,.045,.077],dark);ellipsoid(m,[.536,side*.17,.955+bob],[.036,.018,.035],fur);
+ }
+ const headEnd=m.length;
+ for(const side of [-1,1]) {
   // Rosettes, not deer spots: dark ring around a tawny center, attached to the flank.
   for(let row=0;row<2;row++)for(let j=0;j<6;j++){
    const x=-.48+j*.17+row*.04,z=.62+bob+row*.115,yy=side*.24*Math.sqrt(Math.max(.12,1-(x/.62)**2-((z-.62-bob)/.27)**2));
@@ -62,9 +68,16 @@ export function wildlifeMesh(kind:WildlifeKind,clip:WildlifeClip,p:number):Mesh 
   const stance=running?.35:.65,swing=Math.max(0,(phase-stance)/(1-stance)),fore=moving?(phase<stance?.5-phase/stance:-.5+swing*swing*(3-2*swing)):0;
   const lift=moving&&phase>stance?Math.sin(swing*Math.PI)*(running?.19:.07):0,x=front?.4:-.42;
   const hip:V3=[x,side*.17,.62+bob],knee:V3=[x+fore*.2+(front?.04:-.1),side*.18,.3+lift*.4],foot:V3=[x+fore*(running?.75:.52),side*.2,.035+lift];
-  bone(m,hip,knee,.076,fur);bone(m,knee,foot,.046,fur);ellipsoid(m,foot,[.082,.06,.045],fur);
+  const mix=(a:V3,b:V3):V3=>a.map((v,i)=>v+(b[i]!-v)*repose.amount) as unknown as V3;
+  const restingKnee=mix(knee,[front?.48:-.53,side*.23,.085]),restingFoot=mix(foot,[front?.79+repose.shift*.13:-.20,side*.24,.04]);
+  bone(m,hip,restingKnee,.076,fur);bone(m,restingKnee,restingFoot,.046,fur);ellipsoid(m,restingFoot,[.082,.06,.045],fur);
  }
  let from:V3=[-.55,0,.67+bob];
- for(let i=0;i<6;i++){const to:V3=[-.65-i*.1,Math.sin(p*TAU*.5+i*.4)*.08,.64+bob-i*.055];bone(m,from,to,.034,i%2?dark:fur);from=to;}
+ for(let i=0;i<6;i++){const to:V3=[-.65-i*.1,Math.sin(p*TAU*(repose.amount?1:.5)+i*.4)*.08,.64+bob-i*.055];bone(m,from,to,.034,i%2?dark:fur);from=to;}
+ if(repose.amount){
+  // Only articulated head geometry moves; flank markings and planted legs stay put.
+  const seen=new Set<Mesh[number]['vertices'][number]>();
+  for(const triangle of m.slice(headStart,headEnd))for(const v of triangle.vertices){if(seen.has(v))continue;seen.add(v);v.position=[v.position[0],v.position[1]+repose.head*.25,v.position[2]];}
+ }
  return m;
 }

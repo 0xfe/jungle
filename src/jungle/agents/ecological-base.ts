@@ -1,3 +1,4 @@
+import { nearestThreat } from '../encounters';
 import { BIRD_FLIGHT } from '../flight';
 import { BinaryReader, BinaryWriter, ease, herdIntent, type AgentEnvironment } from '../../agents';
 import { clamp, lerp } from '../../iso/math';
@@ -20,7 +21,7 @@ export abstract class EcologicalAgent extends WildlifeAgent {
   if(mode==='amphibious'&&!s.water&&!env.canMove(x,y))return false;
   if(mode==='ground'||mode==='shore'){
    if(!env.canMove(x,y))return false;
-   const radius=this.kind==='elephant'?.23*this.size:this.kind==='giraffe'?.14:this.kind==='blackBear'?.12*this.size:0;
+   const radius=this.kind==='elephant'?.23*this.size:this.kind==='giraffe'?.14:this.kind==='blackBear'?.15*this.size:0;
    if(radius)for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]])if(!env.canMove(x+dx!*radius,y+dy!*radius))return false;
   }
   if(this.kind==='whale')for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]])if(!habitatAllows('whale',env.sample(x+dx!*.65,y+dy!*.65)))return false;
@@ -48,6 +49,21 @@ export abstract class EcologicalAgent extends WildlifeAgent {
   }
   this.timer=.5+this.random.next()*2;return false;
  }
+ /** Bounded non-contact flight response, owned entirely by the prey. */
+ protected perceivePredator(env:AgentEnvironment):void {
+  if(this.altitude>.01)return;
+  const threat=nearestThreat(this.kind,this.x,this.y,env.nearby(this.x,this.y,2.2));
+  if(!threat)return;
+  this.startle.remaining=3;this.startle.heading=Math.atan2(this.y-threat.y,this.x-threat.x);
+  for(const length of (this.kind==='toad'?[.55,.35,.2]:[1.5,.9,.45]))for(const offset of [0,.5,-.5,1,-1]){
+   const angle=this.startle.heading+offset,x=this.x+Math.cos(angle)*length,y=this.y+Math.sin(angle)*length;
+   if(!this.routeClear(x,y,env))continue;
+   this.target={x,y};this.targetAltitude=0;this.state=this.kind==='zebra'?'run':'travel';this.timer=8;this.tripPace=this.kind==='squirrel'?1.8:1.25;
+   if(this.kind==='toad'){this.state='hop';this.routeX=this.x;this.routeY=this.y;this.routeProgress=0;this.routeDuration=.45;}
+   return;
+  }
+  this.motor.stop();this.state='rest';this.timer=1;
+ }
  protected stationaryAction(_dt:number,_env:AgentEnvironment):boolean {return false;}
  protected override escapeClear(x:number,y:number,env:AgentEnvironment):boolean {return this.routeClear(x,y,env);}
  protected follow(env:AgentEnvironment,perching=false):void {
@@ -59,7 +75,8 @@ export abstract class EcologicalAgent extends WildlifeAgent {
   this.startle.update(dt);
   Object.assign(this.previous,this.sample());this.previousBreath=this.breathClock;this.breathClock+=dt;
   this.timer-=dt;this.cooldown=Math.max(0,this.cooldown-dt);this.decision-=dt;
-  if(this.decision<=0){this.decision=.2+this.pace*.09;this.perceiveSplash(env);if(this.startle.remaining<=0)this.decide(env);}
+  if(this.decision<=0){this.decision=.2+this.pace*.09;this.perceiveSplash(env);this.perceivePredator(env);if(this.startle.remaining<=0&&!this.repose.active)this.decide(env);}
+  if(this.repose.update(dt,this.random,this.startle.remaining>0)){this.motor.stop();return;}
   if(this.stationaryAction(dt,env))return;
   if(this.state==='swing'){
    this.routeProgress=Math.min(1,this.routeProgress+dt/this.routeDuration);
@@ -84,11 +101,11 @@ export abstract class EcologicalAgent extends WildlifeAgent {
   const dx=this.target.x-this.x,dy=this.target.y-this.y,d=Math.hypot(dx,dy),desired=Math.atan2(dy,dx),turn=this.spec.mode==='water'?1.8:3;
   const delta=angleDelta(this.heading,desired);this.heading+=clamp(delta,-turn*dt,turn*dt);
   if((this.type>=53||this.kind==='elephant')&&Math.abs(delta)>.2){this.motor.stop();return;}
-  const running=(this.kind==='wolf'||this.kind==='boar')&&this.state==='run';
+  const running=(this.kind==='wolf'||this.kind==='boar'||this.kind==='zebra')&&this.state==='run';
   const speed=(running?.95:this.spec.speed)*this.pace*this.tripPace*(this.juvenile?.88:1)*(this.spec.mode==='air'?(this.flight.powered?1.08:.9):1),accel=running?2.6:this.kind==='elephant'?.22:this.spec.mode==='air'?1.5:.6;
   this.motor.update(Math.min(speed,d/.24,Math.sqrt(2*accel*d)*.65)*Math.max(0,Math.cos(delta)),dt,accel,accel*7);
   const step=Math.min(d,this.speed*dt),x=this.x+Math.cos(this.heading)*step,y=this.y+Math.sin(this.heading)*step;
-  if(this.allowed(x,y,env)){this.x=x;this.y=y;if(this.spec.mode!=='air')this.gait+=step/((running?(this.kind==='boar'?.27:.42):this.spec.stride)*this.size);}
+  if(this.allowed(x,y,env)){this.x=x;this.y=y;if(this.spec.mode!=='air')this.gait+=step/((running?(this.kind==='boar'?.27:this.kind==='zebra'?.40:.42):this.spec.stride)*this.size);}
   else{this.motor.stop();this.state='rest';this.timer=.3;}
   if(this.spec.mode==='air'){
    this.gait=this.flight.advance(this.gait,dt,this.targetAltitude-this.altitude,this.pace*this.tripPace,this.random,BIRD_FLIGHT[this.kind]!);

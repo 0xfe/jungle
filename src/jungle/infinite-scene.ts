@@ -1,3 +1,5 @@
+import { ACCENT_FORMS } from './accents';
+import { restingSprite } from './resting';
 import { patchRoots, isGrove, isGroundPatch } from './patches';
 import { crownBands, rustleWeight } from './landscape-wind';
 import { CONFIG } from '../config';
@@ -235,9 +237,10 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
         if(piece.style!=='water'&&rank<CONFIG.world.patches.accentCoverage){
           const x=piece.x+(hash(index,8,world.seed)-.5)*1.3,y=piece.y+(hash(index,9,world.seed)-.5)*1.3;
           if((world.tileAt(x,y)?.materialAt(x,y)??TerrainKind.Deep)<TerrainKind.Shallow){
-            const name=piece.style==='flowers'||index%3===0?'flowers':'bush',s=atlas.sprites[`accent-${name}`];
+            const form=Math.floor(hash(index,10,Math.floor(piece.phase*1e6))*ACCENT_FORMS.length);
+            const name=ACCENT_FORMS[form]!,s=atlas.sprites[`accent-${name}`];
             if(!s)throw new Error(`Missing landscape accent: ${name}`);
-            const base=screen(x,y),z=scale*(.75+rank*.4),lean=Math.sin(phase*.9)*.06;
+            const base=screen(x,y),z=scale*(.60+hash(index,11,world.seed)*.95),lean=(Math.sin(phase*(.7+form*.023))+.25*Math.sin(phase*1.9))*.045;
             const corners=rootedQuad(base,s.width,s.height,s.anchor,z,z,lean),box=quadBounds(corners);
             if(visible(box,view.width,view.height))commands.push({...box,corners,id:`${a.id}:accent:${index}`,region:s.frames[0],color:[255,255,255,255],layer:2,depth:x+y});
             // Wings fold continuously; drifting leaves fade before looping. These
@@ -283,6 +286,12 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
         const vb=quadBounds(vc);
         if(visible(vb,view.width,view.height))commands.push({...vb,corners:vc,id:`${a.id}~vine`,region:v.frames[frame%v.frames.length],color:[255,255,255,255],flip:traits.mirror,layer:2,depth:a.x+a.y});
       }
+    } else if ((a instanceof DeerAgent||a instanceof WildlifeAgent)&&a.repose.active) {
+      const d=a instanceof DeerAgent?sampleDeer(a,alpha):sampleWildlife(a,alpha);
+      const rest=restingSprite(a.kind,a.repose,d.heading,alpha);
+      const size=a.size*(a instanceof DeerAgent?1.05:a instanceof EcologicalAgent?a.spec.displayScale:1);
+      sprite(`${a.id}-shadow`,'shadow',d.x,d.y,.4*a.size,0,1,.2);
+      sprite(a.id,rest.name,d.x,d.y,size,rest.frame,2,1,[255,248,240][a.coat]);
     } else if (a instanceof DeerAgent) {
       const d = sampleDeer(a, alpha), clip = d.state === 'lower' ? 'raise' : d.state, count = DEER_CLIPS[clip];
       let phase = ['walk', 'run', 'turn'].includes(d.state) ? d.gait % 1 : ((time + a.phase) / 1.2) % 1;
@@ -291,6 +300,7 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
       sprite(`${a.id}-shadow`, 'shadow', d.x, d.y, .4*a.size, 0, 1, .35);
       sprite(a.id, `deer-${clip}-${directionIndex(d.heading)}`, d.x, d.y, 1.05*a.size, frame, 2, 1, [255,247,237][a.coat]);
     } else if (a instanceof EcologicalAgent) {
+      if(a.kind==='vulture'&&'homeX' in a&&'homeY' in a)sprite(`${a.id}-remains`,'scavenging-remains',Number(a.homeX)+.16,Number(a.homeY),1,0,1.3);
       const d=sampleWildlife(a,alpha),spec=ECO_SPECS[a.kind];
       const submerged=spec.mode==='amphibious'&&world.tileAt(d.x,d.y)?.materialAt(d.x,d.y)!>=TerrainKind.Shallow;
       const clip=a.kind==='whale'?(d.state==='surface'?'surface':'travel'):submerged&&['beaver','crocodile'].includes(a.kind)&&d.state==='travel'?'swim':d.state;

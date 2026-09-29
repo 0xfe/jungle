@@ -1,3 +1,5 @@
+import { nearestThreat } from '../encounters';
+import { Repose } from '../../agents/repose';
 import { StartleResponse, AgentRandom, BinaryReader, BinaryWriter, SpeedMotor, ease, herdIntent, type Agent, type AgentEnvironment } from '../../agents';
 import { clamp, type Vec2 } from '../../iso/math';
 import { angleDelta, DEER_STRIDE, DEER_RUN_STRIDE, DEER_TURN_RATE, HEAD_SECONDS, TAU } from '../animation';
@@ -8,6 +10,7 @@ export class DeerAgent implements Agent, DeerSample {
   readonly kind = 'deer'; readonly type = 20;
   groupId = ''; leaderId = ''; motherId = ''; juvenile = false; size = 1; coat = 0;
   startle=new StartleResponse();
+  repose=new Repose();
   senseTimer = 0; fear = 0;
   get alarm(): number { return this.fear; }
   readonly random: AgentRandom; readonly motor = new SpeedMotor();
@@ -34,6 +37,7 @@ export class DeerAgent implements Agent, DeerSample {
     this.timer -= dt; this.actionTime += dt;
     this.fear = Math.max(0, this.fear - dt * .15); this.senseTimer -= dt;
     if (this.senseTimer <= 0) { this.senseTimer = .2 + this.curiosity * .12; this.perceive(environment); }
+    if(this.repose.update(dt,this.random,this.fear>.2||this.startle.remaining>0)){this.motor.stop();return;}
     const local = environment.sample(this.x, this.y);
     const weather = local.wind > 1.2 ? 1.15 : local.light < .4 ? .9 : 1;
     this.alertness = ease(this.alertness, 0, 3, dt);
@@ -74,6 +78,7 @@ export class DeerAgent implements Agent, DeerSample {
     } else if (this.state === 'raise') this.enter('look', .6 + this.random.next() * (1 + this.curiosity) * (1 - this.alertness));
     else if (this.state === 'lower') this.enter('graze', (local.light < .4 ? 8 : 3) + this.random.next() * 7);
     else if (this.state === 'look') {
+      if(this.fear<.1&&this.repose.cooldown===0&&this.random.next()<.35){this.repose.begin(this.random);this.timer=2;return;}
       const running = this.fear > .2 || this.random.next() < (local.light < .4 ? .025 : .06) + this.alertness * .15;
       const social = herdIntent(this, environment.nearby(this.x, this.y, 5));
       let target: Vec2 | undefined;
@@ -107,7 +112,7 @@ export class DeerAgent implements Agent, DeerSample {
       this.target={x:this.x+Math.cos(this.startle.heading)*.01,y:this.y+Math.sin(this.startle.heading)*.01};
       this.locomotion='walk';this.motor.stop();this.enter('turn',3);return;
     }
-    const predator = neighbors.filter(n => n.kind === 'jaguar' || n.kind === 'wolf' || n.kind === 'boar').sort((a, b) => Math.hypot(a.x-this.x,a.y-this.y)-Math.hypot(b.x-this.x,b.y-this.y)||a.id.localeCompare(b.id))[0];
+    const predator = nearestThreat('deer',this.x,this.y,neighbors,2.5);
     const danger = predator && Math.hypot(predator.x-this.x,predator.y-this.y) < 2.5;
     const social = herdIntent(this, neighbors);
     if (danger || (social && social.urgency > .5)) {
@@ -123,7 +128,7 @@ export class DeerAgent implements Agent, DeerSample {
           return; }
       }
     }
-    if (!social || this.fear > .2) return;
+    if (this.repose.active || !social || this.fear > .2) return;
     const distance = Math.hypot(social.target.x-this.x,social.target.y-this.y);
     if (distance > (this.juvenile ? .35 : .65) && this.clearPath(social.target.x,social.target.y,env)) {
       this.target = {x: clamp(social.target.x,this.territory[0]+.15,this.territory[2]-.15), y: clamp(social.target.y,this.territory[1]+.15,this.territory[3]-.15)};
@@ -145,7 +150,7 @@ export class DeerAgent implements Agent, DeerSample {
     for (const n of [this.x, this.y, this.heading, this.gait, this.actionTime, this.timer, this.target.x, this.target.y, this.phase,
       this.pace, this.tripPace, this.speed, this.motor.acceleration, this.alertness, this.curiosity, this.turnSpeed, ...this.territory,
       this.previous.x, this.previous.y, this.previous.heading, this.previous.gait, this.previous.actionTime]) w.f64(n);
-    w.u8(states.indexOf(this.previous.state));this.startle.write(w);
+    w.u8(states.indexOf(this.previous.state));this.startle.write(w);this.repose.write(w);
   }
   static read(r: BinaryReader): DeerAgent {
     const id = r.string(), group = r.string(), leader = r.string(), mother = r.string(), juvenile = r.u8(), coat = r.u8(), size = r.f64(), sense = r.f64(), fear = r.f64();
@@ -158,7 +163,7 @@ export class DeerAgent implements Agent, DeerSample {
     a.alertness = r.f64(); a.curiosity = r.f64(); a.turnSpeed = r.f64();
     a.territory = [r.f64(), r.f64(), r.f64(), r.f64()];
     a.previous = { x: r.f64(), y: r.f64(), heading: r.f64(), gait: r.f64(), actionTime: r.f64(), state: states[r.u8()]! };
-    a.startle.read(r);
+    a.startle.read(r);a.repose.read(r);
     if (!a.previous.state) throw new Error('Invalid previous deer state'); return a;
   }
 }
