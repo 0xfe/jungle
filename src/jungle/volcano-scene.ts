@@ -1,10 +1,10 @@
 import { CONFIG } from '../config';
-import { hash, lerp, type Vec2 } from '../iso/math';
+import { clamp, hash, lerp, type Vec2 } from '../iso/math';
 import { quadBounds, type QuadCorners } from '../iso/quad';
 import { visible, type DrawCommand } from '../iso/render';
 import type { AtlasManifest } from './scene';
 import type { InfiniteWorld } from './infinite';
-import { lavaSegments } from './volcanoes';
+import { lavaSegments, lavaPoint, LAVA_SEGMENTS } from './volcanoes';
 import { VolcanicWildlifeAgent } from './agents/volcanic-wildlife';
 
 type SpriteWriter=(id:string,name:string,x:number,y:number,size:number,frame:number,layer:number,opacity?:number,tint?:number,altitude?:number,depth?:number)=>void;
@@ -22,19 +22,26 @@ export function composeVolcanoes(world:InfiniteWorld,atlas:AtlasManifest,command
       const size=.7+hash(i,2,v.phase)*1.5;
       sprite(`${v.id}:rubble:${i}`,'volcano-ash',x,y,size,0,.8,.35+hash(i,3,v.phase)*.5);
     }
-    // Continuous ribbons share endpoints and widths across all chunk boundaries.
-    for(const [index,{a,b}] of lavaSegments(v,time).entries()){
-      const branch=Math.floor(index/32),i=index%32;
-      const ribbon=(ratio:number,layer:number,c:DrawCommand['color'],suffix:string)=>{
-        const aw=a.width*ratio,bw=b.width*ratio;
-        quad(`${v.id}:lava:${branch}:${i}:${suffix}`,[screen(a.x-a.normalX*aw,a.y-a.normalY*aw),screen(a.x+a.normalX*aw,a.y+a.normalY*aw),screen(b.x-b.normalX*bw,b.y-b.normalY*bw),screen(b.x+b.normalX*bw,b.y+b.normalY*bw)],c,layer,(a.x+a.y+b.x+b.y)/2,suffix==='obsidian'||suffix==='crust'?'volcano-crust':suffix==='red'?'volcano-molten':undefined,[{x:0,y:(i%4)/4},{x:1,y:(i%4)/4},{x:0,y:((i%4)+1)/4},{x:1,y:((i%4)+1)/4}]);
+    // The full material spans the whole river. It is never tiled into little bars.
+    // Inlet height blends from the registered mountain anchor onto local terrain.
+    const surface=(p:Vec2,t:number)=>screen(p.x,p.y,lerp(world.heightAt(v.x,v.y),world.heightAt(p.x,p.y),clamp(t/.28,0,1)));
+    for(const [i,{a,b}] of lavaSegments(v).entries()){
+      const ribbon=(ratio:number,layer:number,suffix:string)=>{
+        const aw=a.width*ratio,bw=b.width*ratio,ta=i/LAVA_SEGMENTS,tb=(i+1)/LAVA_SEGMENTS;
+        const edge=(p:typeof a,w:number,t:number)=>surface({x:p.x+p.normalX*w,y:p.y+p.normalY*w},t);
+        quad(`${v.id}:lava:${i}:${suffix}`,[edge(a,-aw,ta),edge(a,aw,ta),edge(b,-bw,tb),edge(b,bw,tb)],
+          [255,255,255,255],layer,v.x+v.y+(suffix==='obsidian'?.002:.003),suffix==='obsidian'?'volcano-crust':'volcano-molten',
+          [{x:0,y:ta},{x:1,y:ta},{x:0,y:tb},{x:1,y:tb}]);
       };
-      ribbon(1.35,.9,[255,255,255,240],'obsidian');
-      const hot=(a.heat+b.heat)/2;
-      ribbon(1,1,[Math.round(lerp(55,255,hot)),Math.round(lerp(48,255,hot)),Math.round(lerp(46,255,hot)),255],'red');
-      if(hot>.5)ribbon(.16,1.1,[255,204,62,Math.round(hot*175)],'molten');
-      // Moving cooled plates subdivide the bright channel, following its flow.
-      if(i%4===Math.floor((time*1.6+branch)%4))ribbon(.48,1.15,[255,255,255,170],'crust');
+      // Overlap the last painted slope pixels; the mountain cannot hide the join.
+      ribbon(1.28,2,'obsidian');ribbon(1,2,'molten');
+    }
+    // Small incandescent flecks travel over the already-filled river and pool.
+    for(let i=0;i<10;i++){
+      const t=((time*.075+i/10)%1),p=lavaPoint(v,t),side=(hash(i,0,v.phase)-.5)*p.width;
+      const x=p.x+p.normalX*side,y=p.y+p.normalY*side;
+      const h=lerp(world.heightAt(v.x,v.y),world.heightAt(x,y),clamp(t/.28,0,1))-world.heightAt(x,y);
+      sprite(`${v.id}:flow:${i}`,'volcano-flame',x,y,.08,0,2,Math.sin(t*Math.PI)*.65,255,h+2,v.x+v.y+.004);
     }
     sprite(v.id,`volcano-${v.form}`,v.x,v.y,1,0,2);
     // Reviewed approximate mouth positions in the normalized registered sprite.

@@ -94,8 +94,6 @@ export const CONFIG = {
       spacing: 160,
       /** Fraction of cells with an active volcano (about one per 116,000 tiles). */
       frequency: .22,
-      /** Seconds between fresh lava fronts; a continuous vent stays active. */
-      surgePeriod: 48,
       /** Whole-group population multiplier around the outer volcanic belt. */
       animalBoost: 1.8,
       /** Cartoon burn duration and minimum replacement delay, in seconds. */

@@ -278,7 +278,20 @@ function loop(now: number): void {
   cpuSamples[sampleCursor++ % cpuSamples.length] = performance.now() - cpuStart; sampleCount = Math.min(sampleCount + 1, cpuSamples.length);
   frameCount++; fpsElapsed += elapsed;
   if (fpsElapsed >= CONFIG.interface.statsInterval) { el('fps').textContent = String(Math.round(frameCount / fpsElapsed)); el('draws').textContent = String(frame.commands.length); el('cpu').textContent = cpuSamples.slice(0, sampleCount).sort()[Math.floor(sampleCount * .95)]!.toFixed(1); ['stream-cpu','sim-cpu','compose-cpu','render-cpu'].forEach((id,i)=>el(id).textContent=stageSamples[i]!.slice(0,sampleCount).sort()[Math.floor(sampleCount*.95)]!.toFixed(1)); updateStats(frame.commands.length); frameCount = 0; fpsElapsed = 0; }
-  requestAnimationFrame(loop);
+  requestAnimationFrame(animate);
+}
+/** A runtime exception must leave a useful diagnosis instead of a silently frozen canvas. */
+function animate(now:number):void {
+  try { loop(now); }
+  catch(error){
+    console.error('Jungle frame failed',error);
+    paused=true;syncUI();
+    const notice=el('loading');notice.hidden=false;notice.setAttribute('role','alert');
+    const message=document.createElement('p');message.textContent=`The jungle stopped: ${error instanceof Error?error.message:String(error)}`;
+    const reload=document.createElement('button');reload.textContent='Reload jungle';reload.addEventListener('click',()=>location.reload());
+    notice.replaceChildren(message,reload);canvas.setAttribute('aria-busy','false');
+    audio.dispose();
+  }
 }
 function updateStats(quads: number): void {
   const stats = world.stats;

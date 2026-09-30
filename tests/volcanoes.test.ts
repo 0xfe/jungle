@@ -3,7 +3,7 @@ import { DEFAULT_SETTINGS } from '../src/jungle/settings';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CONFIG } from '../src/config';
-import { nearestVolcano, volcanoSite, volcanoesIn, volcanicGround, lavaPoint, lavaDanger, lavaSegments } from '../src/jungle/volcanoes';
+import { nearestVolcano, volcanoSite, volcanoesIn, volcanicGround, lavaPoint, lavaDanger, lavaSegments, volcanicClearance, VOLCANO_OUTLETS, VOLCANO_ART_SCALE, LAVA_SEGMENTS } from '../src/jungle/volcanoes';
 import { InfiniteWorld } from '../src/jungle/infinite';
 import { TerrainChunk, TerrainKind, terrainFields } from '../src/jungle/terrain';
 import { DeerAgent, VolcanicWildlifeAgent, jungleAgents } from '../src/jungle/agents';
@@ -16,7 +16,7 @@ import type { AtlasManifest } from '../src/jungle/scene';
 const seed=2718,v=nearestVolcano(seed),dt=1/60;
 const env:VolcanoEnvironment={time:0,sample:()=>({moisture:.5,light:.8,wind:0,elevation:0,water:false}),canMove:()=>true,nearby:()=>[],spawnHidden:()=>true};
 function trapped(){
-  const p=lavaPoint(v,1,.1,0),deer=new DeerAgent('volcanic-herd:mother',p.x,p.y,71);
+  const p=lavaPoint(v,.7,0),deer=new DeerAgent('volcanic-herd:mother',p.x,p.y,71);
   deer.groupId='volcanic-herd';deer.leaderId=deer.id;deer.territory=[v.x-10,v.y-10,v.x+10,v.y+10];
   return new VolcanicWildlifeAgent(deer,v);
 }
@@ -41,13 +41,21 @@ test('volcanic terrain and sparse vegetation share signed borders and keep the c
   assert.ok(a.tile(Math.floor(negative.x)-cx*4,Math.floor(negative.y)-cy*4).materialAt(negative.x,negative.y)<TerrainKind.Shallow);
 });
 
-test('lava contact follows the visible shared ribbon and distal surges cool to obsidian',()=>{
-  const at=lavaPoint(v,1,.1,0);assert.ok(lavaDanger(v,at.x,at.y,0).distance<0);assert.ok(lavaDanger(v,at.x,at.y,0).heat>.7);
-  const hotTime=18-v.phase,coldTime=46-v.phase;
-  assert.ok(lavaPoint(v,1,.7,hotTime).heat>lavaPoint(v,1,.7,coldTime).heat);
-  const segments=lavaSegments(v,hotTime);assert.equal(segments.length,96);
-  for(let branch=0;branch<3;branch++)for(let i=0;i<31;i++)assert.deepEqual(segments[branch*32+i]!.b,segments[branch*32+i+1]!.a);
-  assert.equal(lavaDanger(v,v.x-15,v.y-15,0).distance>1,true);
+test('short filled lava channels retain registered outlets, irregular banks and rounded pools',()=>{
+  for(let form=0;form<4;form++){
+    const site={...v,form},outlet=VOLCANO_OUTLETS[form]!,start=lavaPoint(site,0),end=lavaPoint(site,1);
+    const x=(start.x-v.x)-(start.y-v.y),y=(start.x-v.x)+(start.y-v.y);
+    assert.ok(Math.abs(x*96-(outlet.x-52)*VOLCANO_ART_SCALE)<1e-9);
+    assert.ok(Math.abs(y*48-(outlet.y-71.5)*VOLCANO_ART_SCALE)<1e-9);
+    assert.equal(start.width,outlet.width);assert.ok(end.width<1e-7);
+    assert.ok(Math.hypot(end.x-start.x,end.y-start.y)<2.4);
+    assert.ok(lavaPoint(site,.77).width>lavaPoint(site,.4).width*1.3);
+    const at=lavaPoint(site,.7);assert.ok(lavaDanger(site,at.x,at.y).distance<0);
+    assert.deepEqual(lavaPoint(site,.7,0),lavaPoint(site,.7,100));
+    const segments=lavaSegments(site,0);assert.equal(segments.length,LAVA_SEGMENTS);
+    assert.equal(lavaSegments(site,17),segments,'time must not allocate new geometry');
+    for(let i=0;i<segments.length-1;i++)assert.equal(segments[i]!.b,segments[i+1]!.a);
+  }
 });
 
 test('wildlife turns and escapes hot lava with distance-driven feet',()=>{
@@ -61,7 +69,7 @@ test('trapped wildlife burns, leaves ash, waits for offscreen space and preserve
   const clone=jungleAgents.decode(jungleAgents.encode([a]))[0] as VolcanicWildlifeAgent;
   step(a,4,blocked);step(clone,4,blocked);assert.equal(a.phase,'waiting');assert.ok(a.ashRemaining>0);assert.deepEqual(jungleAgents.encode([a]),jungleAgents.encode([clone]));
   step(a,20,{...env,spawnHidden:()=>false});assert.equal(a.phase,'waiting');
-  const home={x:a.x,y:a.y};a.update(dt,env);assert.equal(a.phase,'alive');assert.equal(a.cycles,1);assert.ok(Math.hypot(a.x-home.x,a.y-home.y)>3);
+  const home={x:a.x,y:a.y};for(let i=0;i<180&&a.phase==='waiting';i++)a.update(dt,env);assert.equal(a.phase,'alive');assert.equal(a.cycles,1);assert.ok(Math.hypot(a.x-home.x,a.y-home.y)>3);
   assert.equal(a.animal.groupId,'volcanic-herd');assert.equal(a.animal.leaderId,a.id);assert.deepEqual(a.animal.target,home);
   assert.deepEqual(a.animal.previous,a.animal.sample());assert.ok(a.ashRemaining>0);
   const resumed=jungleAgents.decode(jungleAgents.encode([a]))[0] as VolcanicWildlifeAgent;
@@ -93,7 +101,9 @@ test('volcano composition includes grounded scar, crust, active vent and dramati
   w.ensure({minX:v.x-9,minY:v.y-9,maxX:v.x+9,maxY:v.y+9});w.time=18-v.phase;
   const a=trapped();a.phase='burn';a.elapsed=a.previousElapsed=2;w.agents.push(a);
   const f=composeInfinite(w,atlas,view),ids=f.commands.map(c=>c.id);
-  assert.ok(ids.includes(v.id));assert.ok(ids.some(id=>id?.includes(':molten')));assert.ok(ids.some(id=>id?.includes(':obsidian')));assert.ok(ids.some(id=>id?.includes(':smoke')));assert.ok(ids.some(id=>id?.includes(':fire')));
+  assert.ok(ids.includes(v.id));
+  const bank=f.commands.findIndex(c=>c.id===`${v.id}:lava:30:obsidian`),molten=f.commands.findIndex(c=>c.id===`${v.id}:lava:30:molten`);
+  assert.ok(bank>=0&&molten>bank,'molten surface must draw above its opaque crust bank');assert.ok(ids.some(id=>id?.includes(':molten')));assert.ok(ids.some(id=>id?.includes(':obsidian')));assert.ok(ids.some(id=>id?.includes(':smoke')));assert.ok(ids.some(id=>id?.includes(':fire')));
   assert.equal(w.spawnHidden!(view.cameraX,view.cameraY),false);assert.equal(w.spawnHidden!(view.cameraX+100,view.cameraY),true);
 });
 
@@ -119,4 +129,48 @@ test('volcanic clearings preserve connected river centerlines',()=>{
     }
   }
   assert.ok(near>0,'fixture must exercise river/volcano overlap');
+});
+
+
+test('ordinary wildlife rejects lava and ash during normal travel, while safe outer ground stays usable',()=>{
+  const a=trapped(),point=lavaPoint(v,.8);
+  a.animal.x=v.x+4;a.animal.y=v.y+2;
+  let checked=false;
+  a.animal.update=(_dt,e)=>{
+    assert.equal(e.canMove(point.x,point.y),false);
+    assert.equal(e.canMove(v.x+1,v.y+1),false);
+    assert.equal(e.canMove(v.x+4,v.y+2),true);checked=true;
+  };
+  a.update(dt,env);assert.ok(checked);
+});
+
+test('failed replacement and escape searches have bounded retry work and exact continuation',()=>{
+  const a=trapped();let probes=0;
+  step(a,2,{...env,canMove:()=>{probes++;return false;}});
+  assert.ok(probes<150,`blocked escape made ${probes} probes`);
+  a.phase='waiting';a.elapsed=20;probes=0;
+  step(a,5,{...env,spawnHidden:()=>{probes++;return false;}});
+  assert.ok(probes<=96,`invisible spawn search made ${probes} probes`);
+  assert.ok(probes>=32);
+  const clone=jungleAgents.decode(jungleAgents.encode([a]))[0] as VolcanicWildlifeAgent;
+  step(a,4);step(clone,4);assert.deepEqual(jungleAgents.encode([a]),jungleAgents.encode([clone]));
+});
+
+test('seeded ground wildlife starts outside volcanic exclusion zones',()=>{
+  const w=new InfiniteWorld(seed);w.ensure({minX:v.x-7,minY:v.y-7,maxX:v.x+7,maxY:v.y+7});
+  const population=w.agents.filter(a=>a instanceof VolcanicWildlifeAgent&&a.altitude<8);
+  assert.ok(population.length>10);
+  for(const a of population)assert.ok(volcanicClearance(v,a.x,a.y)>=.25,`${a.id} spawned in ash/lava`);
+});
+
+
+test('a normal travelling animal brakes before entering the hot bank',()=>{
+  const a=trapped(),p=lavaPoint(v,.8);
+  a.animal.x=p.x-p.normalX*1.5;a.animal.y=p.y-p.normalY*1.5;
+  assert.ok(volcanicClearance(v,a.x,a.y)>.12);
+  a.animal.heading=Math.atan2(p.y-a.y,p.x-a.x);a.animal.target={x:p.x,y:p.y};
+  const deer=a.animal as DeerAgent;deer.state='walk';deer.timer=100;deer.senseTimer=100;
+  for(let i=0;i<600;i++){
+    a.update(dt,env);assert.ok(volcanicClearance(v,a.x,a.y)>=.119);assert.equal(a.phase,'alive');
+  }
 });

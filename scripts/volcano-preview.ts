@@ -20,7 +20,7 @@ for(let form=0;form<4;form++){
   for(const variant of ['landscape','burn'] as const){
     if(variant==='burn'){
       const a=(world.agents.find(a=>a instanceof VolcanicWildlifeAgent&&a.animal.kind==='deer')??world.agents.find(a=>a instanceof VolcanicWildlifeAgent)) as VolcanicWildlifeAgent|undefined;
-      if(a){const p=lavaPoint(v,1,.46,world.time);a.animal.x=p.x;a.animal.y=p.y;a.animal.previous=a.animal.sample();a.phase='burn';a.elapsed=a.previousElapsed=2.5;a.ashX=p.x+.6;a.ashY=p.y+.4;a.ashRemaining=30;}
+      if(a){const p=lavaPoint(v,.7,world.time);a.animal.x=p.x;a.animal.y=p.y;a.animal.previous=a.animal.sample();a.phase='burn';a.elapsed=a.previousElapsed=2.5;a.ashX=p.x+.6;a.ashY=p.y+.4;a.ashRemaining=30;}
     }
     const frame=composeInfinite(world,atlas,view);renderer.render(frame);
     await sharp(renderer.pixels.data,{raw:{width:view.width,height:view.height,channels:4}}).png().toFile(`artifacts/volcano-${form}-${variant}.png`);

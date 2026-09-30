@@ -1,4 +1,4 @@
-import { volcanicGround, volcanoesIn, nearestVolcano, type Volcano } from './volcanoes';
+import { volcanicGround, volcanicClearance, volcanoesIn, nearestVolcano, type Volcano } from './volcanoes';
 import { VolcanicWildlifeAgent } from './agents/volcanic-wildlife';
 import { CANOPY_BIRDS } from './flight';
 import { populationRange } from './encounters';
@@ -84,8 +84,9 @@ export class InfiniteWorld {
     // Streaming terrain uses compound landscapes only. The finite regression
     // fixture retains its old individual sprites, but none are spawned here.
     for(const tile of generatedTiles)if(track)this.explored.add(coordinateHash(tile.x,tile.y,671));
+    const sites=volcanoesIn({minX:cx*4,minY:cy*4,maxX:cx*4+4,maxY:cy*4+4},this.seed);
     const dry = (x: number, y: number) => {
-      if(volcanicGround(x,y,this.seed).core)return false;
+      if(sites.some(v=>volcanicClearance(v,x,y)<.25))return false;
       const tx = Math.floor(x) - cx * CHUNK_SIZE, ty = Math.floor(y) - cy * CHUNK_SIZE;
       return tx >= 0 && tx < 4 && ty >= 0 && ty < 4 && generatedTiles[ty*4+tx]!.materialAt(x, y) < TerrainKind.Shallow && !clearanceTrees.some(t => Math.hypot(t.x - x, t.y - y) < .18);
     };
@@ -185,7 +186,6 @@ export class InfiniteWorld {
       }
     }
     if(track)this.generated += CHUNK_SIZE ** 2;
-    const sites=volcanoesIn({minX:cx*4,minY:cy*4,maxX:cx*4+4,maxY:cy*4+4},this.seed);
     const population=agents.map(a=>{
       const v=sites.find(v=>Math.hypot(a.x-v.x,a.y-v.y)<11);
       const ground=a instanceof DeerAgent||(a instanceof WildlifeAgent&&!(a instanceof EcologicalAgent&&['water','air','shore'].includes(a.spec.mode)));
@@ -279,7 +279,7 @@ export class InfiniteWorld {
       const record = { terrain: a.terrain.data, agents: jungleAgents.encode(a.agents) };
       this.cache.put(a.x, a.y, record, record.terrain.length + record.agents.length + 256, this.pinned);
     }
-    const w = new BinaryWriter(); w.u32(0x4a4e474c); w.u8(19); w.u32(this.seed);
+    const w = new BinaryWriter(); w.u32(0x4a4e474c); w.u8(20); w.u32(this.seed);
     for(const key of SETTING_KEYS)w.f64(this.settings[key]);
     w.u8(['rainforest', 'flowering', 'wetland'].indexOf(this.habitat)); w.u8(['sun', 'rain', 'dusk'].indexOf(this.weather));
     for (const n of [this.time, this.previousTime, this.generated, this.renderedTotal, this.cache.expired]) w.f64(n);
@@ -290,7 +290,7 @@ export class InfiniteWorld {
   static restore(bytes: Uint8Array, budget = DEFAULT_WORLD_BUDGET): InfiniteWorld {
     if (bytes.length > budget.maxBytes + 65536) throw new Error('Checkpoint exceeds memory budget');
     const r = new BinaryReader(bytes);
-    if (r.u32() !== 0x4a4e474c || r.u8() !== 19) throw new Error('Unsupported world checkpoint');
+    if (r.u32() !== 0x4a4e474c || r.u8() !== 20) throw new Error('Unsupported world checkpoint');
     const seed = r.u32(), settings=Object.fromEntries(SETTING_KEYS.map(k=>[k,r.f64()])) as unknown as WorldSettings;
     for(const k of SETTING_KEYS)if(settings[k]!==normalizeSettings(settings)[k])throw new Error('Invalid world settings');
     const habitat = (['rainforest', 'flowering', 'wetland'] as const)[r.u8()], weather = (['sun', 'rain', 'dusk'] as const)[r.u8()];

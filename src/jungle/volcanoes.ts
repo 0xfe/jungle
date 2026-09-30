@@ -1,5 +1,6 @@
 import { CONFIG } from '../config';
-import { clamp, hash, lerp } from '../iso/math';
+import { TILE } from './geometry';
+import { clamp, hash, lerp, unproject } from '../iso/math';
 
 /** Stateless landmarks: one eligible site per widely separated ownership cell. */
 export interface Volcano { id:string; x:number; y:number; form:number; radius:number; phase:number; heading:number }
@@ -28,40 +29,59 @@ export function volcanicGround(x:number,y:number,seed:number):{scar:number;core:
   for(const v of sites){const d=Math.hypot(x-v.x,y-v.y);scar=Math.max(scar,clamp((8.5-d)/4.5,0,1));core ||= d<v.radius+.3;}
   return{scar,core};
 }
-/** Fixed downhill lobes branch at the foot; pulse fronts cool into a persistent black crust. */
-export function lavaPoint(v:Volcano,branch:number,t:number,time:number):LavaPoint {
-  const angle=v.heading+(branch-1)*.67;
-  const d=v.radius*.35+t*(5.1+hash(branch,v.form,8131)*1.5);
-  const bend=Math.sin(t*5+v.phase+branch)*t*.5;
-  // A shared analytic tangent welds ribbon edges between adjacent segments.
-  const bendSlope=Math.sin(t*5+v.phase+branch)*.5+Math.cos(t*5+v.phase+branch)*t*2.5;
-  const length=5.1+hash(branch,v.form,8131)*1.5;
-  const dx=Math.cos(angle)*length-Math.sin(angle)*bendSlope,dy=Math.sin(angle)*length+Math.cos(angle)*bendSlope,n=Math.hypot(dx,dy);
-  const cycle=(time+v.phase+branch*8)%CONFIG.world.volcanoes.surgePeriod;
-  const front=clamp(cycle/9,0,1),age=cycle-t*9;
-  const heat=t<.18?Math.max(.8,clamp(1-Math.max(0,age-7)/24,.06,1)):t<front?clamp(1-Math.max(0,age-7)/24,.06,1):.04;
-  return{x:v.x+Math.cos(angle)*d-Math.sin(angle)*bend,y:v.y+Math.sin(angle)*d+Math.cos(angle)*bend,width:lerp(.21,.085,t)*(1+.22*Math.sin(t*13+branch)),heat,normalX:-dy/n,normalY:dx/n};
+/** Reviewed outlets in the baker's 104 × 88 registered images, before logical scaling.
+ * Each channel begins on the painted lava, with the same width and downhill direction.
+ */
+export const VOLCANO_OUTLETS = [
+  {x:64,y:77,width:.13,heading:1.35},
+  {x:62,y:76,width:.12,heading:1.2},
+  {x:46,y:74,width:.14,heading:1.25},
+  {x:68,y:79,width:.16,heading:.6},
+] as const;
+export const VOLCANO_ART_SCALE=512/104;
+export const LAVA_SEGMENTS=48;
+
+/** A permanently filled channel widens into a short, rounded terminal pool. */
+export function lavaPoint(v:Volcano,t:number,_time=0):LavaPoint {
+  const outlet=VOLCANO_OUTLETS[v.form]!,offset=unproject({x:(outlet.x-52)*VOLCANO_ART_SCALE,y:(outlet.y-71.5)*VOLCANO_ART_SCALE},TILE);
+  const angle=outlet.heading,length=1.9+hash(v.form,0,v.phase)*.35;
+  const bend=.22*Math.sin(t*6)*t,derivative=.22*(Math.sin(t*6)+6*t*Math.cos(t*6));
+  const dx=Math.cos(angle)*length-Math.sin(angle)*derivative,dy=Math.sin(angle)*length+Math.cos(angle)*derivative,n=Math.hypot(dx,dy);
+  const bank=1+t*(.12*Math.sin(t*39+v.phase)+.08*Math.sin(t*73));
+  const channel=lerp(outlet.width,.22,Math.min(1,t*3));
+  const pool=t>.55?.36*Math.sqrt(Math.max(0,1-((t-.77)/.23)**2)):0;
+  const cap=t>.93?Math.sqrt(Math.max(0,1-((t-.93)/.07)**2)):1;
+  return{x:v.x+offset.x+Math.cos(angle)*length*t-Math.sin(angle)*bend,
+    y:v.y+offset.y+Math.sin(angle)*length*t+Math.cos(angle)*bend,
+    width:Math.max(channel*cap,pool)*bank,heat:1,normalX:-dy/n,normalY:dx/n};
 }
-export const LAVA_SEGMENTS=32;
-interface LavaSegment { a:LavaPoint; b:LavaPoint }
-// Geometry is shared across perception calls in one tick, capped across sites/time.
-const lavaCache=new Map<string,{time:number;segments:LavaSegment[]}>();
-export function lavaSegments(v:Volcano,time:number):readonly LavaSegment[] {
-  const key=v.id+':'+v.phase;const cached=lavaCache.get(key);if(cached?.time===time)return cached.segments;
-  const segments:LavaSegment[]=[];
-  for(let branch=0;branch<3;branch++)for(let i=0;i<LAVA_SEGMENTS;i++)segments.push({a:lavaPoint(v,branch,i/LAVA_SEGMENTS,time),b:lavaPoint(v,branch,(i+1)/LAVA_SEGMENTS,time)});
+export interface LavaSegment { a:LavaPoint; b:LavaPoint }
+// Static geometry is shared by every tick, presentation frame and movement probe.
+// Capped across streamed sites; time never invalidates it.
+const lavaCache=new Map<string,readonly LavaSegment[]>();
+export function lavaSegments(v:Volcano,_time=0):readonly LavaSegment[] {
+  const key=`${v.id}:${v.x}:${v.y}:${v.form}:${v.phase}`,cached=lavaCache.get(key);if(cached)return cached;
+  const points=Array.from({length:LAVA_SEGMENTS+1},(_,i)=>lavaPoint(v,i/LAVA_SEGMENTS));
+  const segments=points.slice(1).map((b,i)=>({a:points[i]!,b}));
   if(lavaCache.size>=8)lavaCache.delete(lavaCache.keys().next().value!);
-  lavaCache.set(key,{time,segments});return segments;
+  lavaCache.set(key,segments);return segments;
 }
-/** Segment distance is shared by visible ribbon geometry and physical contact. */
-export function lavaDanger(v:Volcano,x:number,y:number,time:number):{heat:number;distance:number;away:number} {
-  let distance=Infinity,heat=0,away=Math.atan2(y-v.y,x-v.x);
-  for(const {a,b} of lavaSegments(v,time)){
+/** Signed bank distance; both molten channel and pooled end stay hazardous. */
+export function lavaDanger(v:Volcano,x:number,y:number,_time=0):{heat:number;distance:number;away:number} {
+  let distance=Infinity,away=Math.atan2(y-v.y,x-v.x);
+  for(const {a,b} of lavaSegments(v)){
     const dx=b.x-a.x,dy=b.y-a.y,t=clamp(((x-a.x)*dx+(y-a.y)*dy)/(dx*dx+dy*dy),0,1),px=a.x+dx*t,py=a.y+dy*t;
     const d=Math.hypot(x-px,y-py)-lerp(a.width,b.width,t);
-    if(Math.max(a.heat,b.heat)>.35&&d<distance){distance=d;heat=lerp(a.heat,b.heat,t);away=Math.atan2(y-py,x-px);}
+    if(d<distance){distance=d;away=Math.atan2(y-py,x-px);}
   }
-  return{heat,distance,away};
+  return{heat:1,distance,away};
+}
+/** Avoid the inner ash bed as well as the river; the sparse outer belt stays usable. */
+export function volcanicClearance(v:Volcano,x:number,y:number):number {
+  const radial=Math.hypot(x-v.x,y-v.y)-(v.radius*.7+.3);
+  // The entire short flow is within five tiles; distant probes need no segment scan.
+  if(radial>4)return radial;
+  return Math.min(radial,lavaDanger(v,x,y).distance-.5);
 }
 export function nearestVolcano(seed:number,x=0,y=0):Volcano {
   const s=CONFIG.world.volcanoes.spacing,cx=Math.floor(x/s),cy=Math.floor(y/s);let best:Volcano|undefined;

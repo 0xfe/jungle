@@ -1,5 +1,5 @@
 import sharp from 'sharp';
-import { hash } from '../../src/iso/math';
+import { hash, noise } from '../../src/iso/math';
 import type { BakeSprite } from '../../src/iso/bake/atlas';
 /** Four reviewed equal source cells; a single registered pose plus runtime flow/effects. */
 export async function bakeVolcanoes():Promise<BakeSprite[]> {
@@ -22,22 +22,18 @@ export async function bakeVolcanoes():Promise<BakeSprite[]> {
     }
     result.push({id:`volcano-${kind}`,anchor:[16,kind==='smoke'?16:26],frames:[{width,height,data}]});
   }
-  // Shared registered material strips: cellular cooled plates and molten cracks.
+  // A continuous, irregular molten surface in the source art's orange/yellow palette.
+  // Domain-warped rock islands and branching hot seams replace repeated square cells.
   for(const kind of ['molten','crust'] as const){
-    const width=16,height=16,data=new Uint8Array(width*height*4);
+    const width=kind==='molten'?32:16,height=kind==='molten'?96:16,data=new Uint8Array(width*height*4);
     for(let y=0;y<height;y++)for(let x=0;x<width;x++){
-      // Periodic jittered cells create irregular cooled plates with bright seams,
-      // avoiding grid-shaped bricks in the world-space flow ribbons.
-      let first=Infinity,second=Infinity,plate=0;
-      const gx=Math.floor(x/4),gy=Math.floor(y/4);
-      for(let oy=-1;oy<=1;oy++)for(let ox=-1;ox<=1;ox++){
-        const cx=gx+ox,cy=gy+oy,hx=((cx%4)+4)%4,hy=((cy%4)+4)%4;
-        const px=(cx+.15+hash(hx,hy,8181)*.7)*4,py=(cy+.15+hash(hx,hy,8182)*.7)*4;
-        const d=Math.hypot(x-px,y-py);
-        if(d<first){second=first;first=d;plate=hash(hx,hy,8183);}else second=Math.min(second,d);
-      }
-      const grain=hash(x,y,8184),crack=second-first<.5;
-      const c=kind==='crust'?[38+plate*25,34+plate*20,35+plate*22]:crack?[255,182+grain*50,45]:[175+plate*70,48+plate*40,19];
+      const warp=noise(x/13,y/19,8180)*9,u=x+warp,v=y+noise(x/17,y/11,8181)*12;
+      const field=noise(u/8,v/12,8182)*.7+noise(u/3,v/5,8183)*.3;
+      const edge=Math.abs(x-width/2)/(width/2),grain=hash(x,y,8184);
+      const seam=Math.abs(field-.5),plate=seam>.105+(.95-edge)*.07;
+      const c=kind==='crust'?[43+grain*35,35+grain*27,34+grain*26]:
+        (edge>.87&&field>.42)||plate?[67+grain*38,36+grain*17,29+grain*14]:
+        seam<.035?[255,218+grain*32,39+grain*25]:seam<.085?[255,130+grain*60,8]:[229+grain*26,48+grain*40,6];
       data.set([...c.map(Math.round),255],(y*width+x)*4);
     }
     result.push({id:`volcano-${kind}`,anchor:[0,0],trim:false,frames:[{width,height,data}]});

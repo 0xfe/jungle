@@ -1,3 +1,4 @@
+import { VOLCANO_ART_SCALE } from '../src/jungle/volcanoes';
 import { bakeVolcanoes } from './art/volcanoes';
 import { REPOSE_CLIPS } from './art/repose';
 import { scavengingRemains } from './art/raptor-model';
@@ -255,7 +256,7 @@ for(const s of inputs)if(/^(tree|plant)-/.test(s.id)){
 }
 const { image, manifest } = packAtlas(inputs, 4096, 4096);
 for(const [id,s] of Object.entries(manifest.sprites)){
- const scale=/^volcano-[0-3]$/.test(id)?4*128/104:/^(tree|plant)-/.test(id)?2:id.startsWith('deer-')?28/21:id.startsWith('jaguar-')?28/25:id.startsWith('elephant-')?21/17.5:id.startsWith('patch-')?patchLogicalScale(id):/^ground-\d/.test(id)?2:1;
+ const scale=/^volcano-[0-3]$/.test(id)?VOLCANO_ART_SCALE:/^(tree|plant)-/.test(id)?2:id.startsWith('deer-')?28/21:id.startsWith('jaguar-')?28/25:id.startsWith('elephant-')?21/17.5:id.startsWith('patch-')?patchLogicalScale(id):/^ground-\d/.test(id)?2:1;
  if(scale!==1){s.width*=scale;s.height*=scale;s.anchor=[s.anchor[0]*scale,s.anchor[1]*scale];}
 }
 // The broad, soft legacy-island shadow needs fewer texels, with the same logical bounds.
