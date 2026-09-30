@@ -38,7 +38,9 @@ export const VOLCANO_OUTLETS = [
   {x:46,y:74,width:.14,heading:1.25},
   {x:68,y:79,width:.16,heading:.6},
 ] as const;
+/** Art registration stays in the original coordinate system; texels are baked 3× denser. */
 export const VOLCANO_ART_SCALE=512/104;
+export const VOLCANO_TEXEL_SCALE=3;
 export const LAVA_SEGMENTS=48;
 
 /** A permanently filled channel widens into a short, rounded terminal pool. */

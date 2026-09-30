@@ -96,6 +96,12 @@ export const CONFIG = {
       frequency: .22,
       /** Whole-group population multiplier around the outer volcanic belt. */
       animalBoost: 1.8,
+      /** Lava travel cycles per second; slope particles use shorter, faster paths. */
+      lavaFlowSpeed: .1,
+      /** Shared pixel trails on each ground river, plus source-registered slope trails. */
+      lavaParticles: 64,
+      /** Small rising wisps per surface (ground river and mountain slope). */
+      lavaSmoke: 8,
       /** Cartoon burn duration and minimum replacement delay, in seconds. */
       burnSeconds: 3.5,
       /** Sustained hot contact before the cartoon burn begins. */

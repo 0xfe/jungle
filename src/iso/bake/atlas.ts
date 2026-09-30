@@ -44,9 +44,26 @@ export function packAtlas(inputs: BakeSprite[], width = 2048, maxHeight = 2048):
   }
   const ordered = [...unique.values()].sort((a, b) => b.image.height - a.image.height || b.image.width - a.image.width);
   const shelves:{x:number;y:number;height:number}[]=[];
+  // Shorter frames leave usable rectangles beneath them in a taller shelf.
+  // Reclaim those gaps without rotating artwork or changing the gutter contract.
+  const gaps:{x:number;y:number;width:number;height:number}[]=[];
   let bottom=2,occupiedPixels=1;
   for(const {image,region} of ordered){
     if(image.width+4>width)throw new Error('Sprite exceeds atlas width');
+    occupiedPixels+=image.width*image.height;
+    let gapIndex=-1,gapWaste=Infinity;
+    for(let i=0;i<gaps.length;i++){
+      const gap=gaps[i]!,waste=gap.width*gap.height-image.width*image.height;
+      if(gap.width>=image.width&&gap.height>=image.height&&waste<gapWaste){gapIndex=i;gapWaste=waste;}
+    }
+    if(gapIndex>=0){
+      const gap=gaps.splice(gapIndex,1)[0]!;
+      region.x=gap.x;region.y=gap.y;
+      const right=gap.width-image.width-1,below=gap.height-image.height-1;
+      if(right>0)gaps.push({x:gap.x+image.width+1,y:gap.y,width:right,height:gap.height});
+      if(below>0)gaps.push({x:gap.x,y:gap.y+image.height+1,width:image.width,height:below});
+      continue;
+    }
     // Nearest-neighbor sampling without mipmaps needs one fully transparent gutter.
     // Keep original artwork/poses at full resolution while sharing one texture page.
     let shelf:typeof shelves[number]|undefined,best=Infinity;
@@ -55,8 +72,9 @@ export function packAtlas(inputs: BakeSprite[], width = 2048, maxHeight = 2048):
       if(row.height>=image.height&&remaining>=0&&remaining<best){shelf=row;best=remaining;}
     }
     if(!shelf){shelf={x:2,y:bottom,height:image.height};shelves.push(shelf);bottom+=image.height+1;}
-    region.x=shelf.x;region.y=shelf.y;shelf.x+=image.width+1;
-    occupiedPixels+=image.width*image.height;
+    region.x=shelf.x;region.y=shelf.y;
+    if(shelf.height-image.height>1)gaps.push({x:shelf.x,y:shelf.y+image.height+1,width:image.width,height:shelf.height-image.height-1});
+    shelf.x+=image.width+1;
   }
   const height=Math.ceil(bottom/4)*4;
   if (height > maxHeight) throw new Error(`Atlas requires ${width} × ${height}; budget is ${width} × ${maxHeight}. Split pages or review frames.`);

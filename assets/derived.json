@@ -1,10 +1,11 @@
 {
   "pipeline": 6,
-  "fingerprint": "527be9e8d33827ce15857af17627e205c2561561a4815b7375a5478a272f571a",
+  "fingerprint": "aa65850948c94794e7f5206fe050660263b988c001805e9bf0c2975773b55c9b",
   "sources": {
+    "src/jungle/volcano-animation.ts": "425939731d0fe6b45b8a116c25a417b29f91c37c2aeecca764a1f821ec7a8ef8",
     "src/jungle/agents/volcanic-wildlife.ts": "b9897e7fd4933697a25ae708014f4cfa92e20f1e130b6f161ff951dd66752e3a",
-    "scripts/art/volcanoes.ts": "92cbc297a49f1d0a22b62e870c2ab5a110be86c9acbc0c629890cea841c14ad8",
-    "src/jungle/volcanoes.ts": "d18ccc397c6a9ac198c7c8b4e6676004d79fc58873806b3f24dafb7d0ac1185b",
+    "scripts/art/volcanoes.ts": "4142aacc7f390f92155dceee21885b9d1d5eb8dc21974459de3b61083ca513b2",
+    "src/jungle/volcanoes.ts": "abc77aecea01cdbaa8c5ef92ef0150983119d5fdd71c27a560a327dc1639c3d4",
     "assets/source/volcano-forms.png": "03ee2054e799919c2762d73d6772d9efb244bad47ebd8b8298ee3f02443b1a41",
     "assets/volcano-prompts.json": "c4bb6db8476c1cb68fd303dd6ab7198c3b1efe79c2f47ecd7bf9d98e81a32a47",
     "scripts/art/accent-rustle.ts": "ad913ebe2e8309bfb16d85d2bd181e8b225f73290227f330c0671051ed7b4472",
@@ -49,7 +50,7 @@
     "assets/source/forest-forms.png": "8daf5ecc4fd3ad82ab23d8e0839897dc4d900038b60c40a2cfcd6739dd2c7a09",
     "scripts/art/vines.ts": "a4fa068030af8dc2c0607c82fa07331f8965d5c6f3f6f72eb2329a6e1a615a63",
     "scripts/art/foliage.ts": "4377b32d8bc83b1dadc2853c2881e886c27fd79ef8e537b85796a4ee9c47ae91",
-    "scripts/prepare-assets.ts": "407db5f51f0e410a76153c406d47a8f5a9fe6c4f386b2c61983e5b1a2bb79d94",
+    "scripts/prepare-assets.ts": "7f55d9adaed4192e87d22b217329c8c5d83113c39f524ae427db2f9cd215e5ef",
     "scripts/art/ecology-model.ts": "987b6cb2440661454ad96dbf419b2790b5c873f4ef270f8830631d5eff616050",
     "src/jungle/ecology.ts": "d127357943813a44be57b752bafd93b13b5aa80720b6fc5aab7ba9f90fb3862b",
     "src/jungle/agents/ecological.ts": "337fc138ac484cd35c5a5587de0164ffecae82cb479a1f1ff7059ea1db74d778",
@@ -61,7 +62,7 @@
     "scripts/art/wind.ts": "906275d6754191e8b9bc8b95f62b63c750c34c00a9540eee28d3fa004a6b54b2",
     "src/iso/bake/mesh.ts": "9cdb46dfe9e580d920edb79ac052789feb0d8820241a59852d171cdd8850d285",
     "src/iso/bake/rasterize.ts": "e955726d9c90fe79422f6822afd99a85ff3091761b26462af72c43aef7b3a405",
-    "src/iso/bake/atlas.ts": "714b07c4e0e1325cf9bcf1d238e4c80cd00e39bd1334f9e6cd707c508f7501c8",
+    "src/iso/bake/atlas.ts": "87064a5f7dd09306c663f0a95e22d04191298f6a6b87559ec2a9d86fbf3ba478",
     "src/iso/math.ts": "be93f50e955d3bc3ddd416967e79d6f1032956394fe1b85d6ebe2f09f6759c02",
     "src/iso/spatial.ts": "c1cccb375e965b5fd3c6590dc85ec8f326eb1818a1c46d454bcdea07efe648e1",
     "src/jungle/animation.ts": "f1c58940a264d41832eaa6f76b322b115db660020aab9c30e760f14a6d3a9632",
@@ -77,8 +78,8 @@
     "assets/source/plants.png": "5d3ed79bf3dc8f41965560a67c01a884ff7fefb81ba2133de884e3e1129752af",
     "package-lock.json": "d29825da6fa7d8bae4afa0e1fd29f4a3cb0c77740895f2fcd7c39cb2c9ce1115"
   },
-  "atlas": "b65f1c07fb06e2ab48f641fa4260edfc47a90e2a0c75470c0877b3b0062302e8",
-  "manifest": "f9cbece8c296e74df65a224abd0b4009c8154660053c4e8415cb142e16ae8470",
+  "atlas": "03d639edb69e612d86c9d6c64ac30363080cb3c7e9b513cd134fff57e2864e78",
+  "manifest": "ca232c8b6986179a92bde503b9fafa300971ac4ac3442af6806e94a9d9cc6c4c",
   "model": "0d0cd2882702f54381c800ec39e3213e6068ee8bbd18c075fb93c29856df3d3d",
   "models": {
     "toucan": "bb6af94ed9486cfc6aa0a018fa94f7727091e63f59819570abe12b80b3d2f57f",
@@ -109,10 +110,10 @@
   "stats": {
     "frames": 15747,
     "uniqueFrames": 12936,
-    "rgbaBytes": 66977792,
-    "occupiedPixels": 15330342,
-    "pngBytes": 3296874,
+    "rgbaBytes": 66650112,
+    "occupiedPixels": 15545190,
+    "pngBytes": 3838831,
     "width": 4096,
-    "height": 4088
+    "height": 4068
   }
 }

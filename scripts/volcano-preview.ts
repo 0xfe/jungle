@@ -27,3 +27,18 @@ for(let form=0;form<4;form++){
   }
 }
 console.log('Four volcano forms, active lava and cartoon burn fixtures → artifacts/volcano-*.png');
+
+// Optional short motion proof: the same composer at successive presentation times.
+if(process.argv.includes('--motion')){
+  const v=sites.find(v=>v.form===0)!,world=new InfiniteWorld(2718);
+  const view={width:640,height:640,pixelRatio:1,zoom:1,grid:false,cameraX:v.x-1,cameraY:v.y-1};
+  world.ensure(cameraBounds(view));
+  const frames:Buffer[]=[];
+  for(let i=0;i<48;i++){
+    world.time=world.previousTime=120-v.phase+i/12;
+    renderer.render(composeInfinite(world,atlas,view));frames.push(Buffer.from(renderer.pixels.data));
+  }
+  await sharp(Buffer.concat(frames),{raw:{width:640,height:640*frames.length,channels:4,pageHeight:640}})
+    .webp({lossless:true,loop:0,delay:Array(frames.length).fill(83)}).toFile('artifacts/volcano-motion.webp');
+  console.log('Four-second lava motion preview → artifacts/volcano-motion.webp');
+}

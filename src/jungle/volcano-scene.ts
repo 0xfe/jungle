@@ -1,10 +1,11 @@
+import { FIRE_COLORS, flowPhase, slopeParticle } from './volcano-animation';
 import { CONFIG } from '../config';
 import { clamp, hash, lerp, type Vec2 } from '../iso/math';
 import { quadBounds, type QuadCorners } from '../iso/quad';
 import { visible, type DrawCommand } from '../iso/render';
 import type { AtlasManifest } from './scene';
 import type { InfiniteWorld } from './infinite';
-import { lavaSegments, lavaPoint, LAVA_SEGMENTS } from './volcanoes';
+import { lavaSegments, lavaPoint, LAVA_SEGMENTS, VOLCANO_ART_SCALE } from './volcanoes';
 import { VolcanicWildlifeAgent } from './agents/volcanic-wildlife';
 
 type SpriteWriter=(id:string,name:string,x:number,y:number,size:number,frame:number,layer:number,opacity?:number,tint?:number,altitude?:number,depth?:number)=>void;
@@ -36,12 +37,51 @@ export function composeVolcanoes(world:InfiniteWorld,atlas:AtlasManifest,command
       // Overlap the last painted slope pixels; the mountain cannot hide the join.
       ribbon(1.28,2,'obsidian');ribbon(1,2,'molten');
     }
-    // Small incandescent flecks travel over the already-filled river and pool.
-    for(let i=0;i<10;i++){
-      const t=((time*.075+i/10)%1),p=lavaPoint(v,t),side=(hash(i,0,v.phase)-.5)*p.width;
-      const x=p.x+p.normalX*side,y=p.y+p.normalY*side;
-      const h=lerp(world.heightAt(v.x,v.y),world.heightAt(x,y),clamp(t/.28,0,1))-world.heightAt(x,y);
-      sprite(`${v.id}:flow:${i}`,'volcano-flame',x,y,.08,0,2,Math.sin(t*Math.PI)*.65,255,h+2,v.x+v.y+.004);
+    const tuning=CONFIG.world.volcanoes;
+    const art=atlas.volcanoLava?.[v.form];
+    if(!art)throw new Error('Missing registered volcano lava; run npm run build');
+    const face=(p:Vec2):Vec2=>({x:center.x+(p.x-52)*VOLCANO_ART_SCALE*scale,y:center.y+(p.y-71.5)*VOLCANO_ART_SCALE*scale});
+    const pixel=(id:string,p:Vec2,size:number,fire:number,opacity:number)=>{
+      const side=size*scale,c=FIRE_COLORS[fire]!;
+      const box={x:p.x-side/2,y:p.y-side/2,width:side,height:side};
+      if(visible(box,width,height))commands.push({...box,id,layer:2,depth:v.x+v.y+.005,color:[...c,Math.round(clamp(opacity,0,1)*255)]});
+    };
+    const wisp=(id:string,p:Vec2,age:number)=>{
+      const size=(8+age*19)*scale,x=p.x+age*12*scale,y=p.y-age*29*scale;
+      quad(id,[{x:x-size/2,y:y-size},{x:x+size/2,y:y-size},{x:x-size/2,y},{x:x+size/2,y}],
+        [255,255,255,Math.round(Math.sin(age*Math.PI)*140)],2,v.x+v.y+.006,'volcano-smoke');
+    };
+    // Several differently colored pixel trails move over the filled surface. Each
+    // has its own lane, speed and phase, so the river never flashes as one unit.
+    for(let i=0;i<tuning.lavaParticles;i++){
+      const speed=tuning.lavaFlowSpeed*(.75+hash(i,1,v.phase)*.5);
+      const t=flowPhase(time+v.phase,hash(i,2,v.phase),speed),lane=(hash(i,3,v.phase)-.5)*1.65;
+      for(let tail=2;tail>=0;tail--){
+        const u=t-tail*.008;if(u<0)continue;
+        const p=lavaPoint(v,u),point=surface({x:p.x+p.normalX*lane*p.width,y:p.y+p.normalY*lane*p.width},u);
+        const fade=clamp(Math.min(t*15,(1-t)*12),0,1)*(1-tail*.22);
+        pixel(`${v.id}:flow:${i}:${tail}`,point,2.2+hash(i,4,v.phase)*2.6,(i+tail)%FIRE_COLORS.length,fade);
+      }
+    }
+    // Source-pixel registration keeps descending embers and travelling heat waves
+    // on the painted lava, including the branching channels and active crater.
+    for(const [i,trail] of art.trails.entries()){
+      const t=flowPhase(time+v.phase,hash(i,5,v.phase),tuning.lavaFlowSpeed*(5+hash(i,6,v.phase)*3));
+      for(let tail=2;tail>=0;tail--){
+        const u=t-tail*.065;if(u<0)continue;
+        pixel(`${v.id}:slope-flow:${i}:${tail}`,face(slopeParticle(trail,u)),2.2+hash(i,7,v.phase)*1.6,
+          (i+tail)%FIRE_COLORS.length,Math.sin(t*Math.PI)*(.95-tail*.22));
+      }
+    }
+    for(const [i,p] of art.glow.entries()){
+      const heat=Math.max(0,Math.sin((time+v.phase)*tuning.lavaFlowSpeed*40-p.y*.55+p.x*.12))**5;
+      if(heat>.15)pixel(`${v.id}:slope-heat:${i}`,face(p),2.2,3+i%2,heat*.6);
+    }
+    for(let i=0;i<tuning.lavaSmoke;i++){
+      const age=flowPhase(time+v.phase,hash(i,8,v.phase),.32),p=lavaPoint(v,.2+hash(i,9,v.phase)*.75);
+      wisp(`${v.id}:flow-smoke:${i}`,surface(p,.2+hash(i,9,v.phase)*.75),age);
+      const trail=art.trails[(i*11)%art.trails.length]!;
+      wisp(`${v.id}:slope-smoke:${i}`,face(trail[Math.floor(trail.length/2)]!),flowPhase(time+v.phase,hash(i,10,v.phase),.27));
     }
     sprite(v.id,`volcano-${v.form}`,v.x,v.y,1,0,2);
     // Reviewed approximate mouth positions in the normalized registered sprite.

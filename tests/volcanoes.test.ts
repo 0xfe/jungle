@@ -174,3 +174,42 @@ test('a normal travelling animal brakes before entering the hot bank',()=>{
     a.update(dt,env);assert.ok(volcanicClearance(v,a.x,a.y)>=.119);assert.equal(a.phase,'alive');
   }
 });
+
+test('higher resolution mountains retain logical size and register fire only to molten source pixels',async()=>{
+  const {default:sharp}=await import('sharp');
+  const atlas:AtlasManifest=JSON.parse(await readFile('public/assets/jungle.json','utf8'));
+  const raw=await sharp('public/assets/jungle.png').ensureAlpha().raw().toBuffer();
+  assert.ok(atlas.width*atlas.height*4<=64*1048576);
+  for(let form=0;form<4;form++){
+    const s=atlas.sprites[`volcano-${form}`]!,f=s.frames[0]!,art=atlas.volcanoLava![form]!;
+    assert.ok(f.width>=280&&f.height>=150,'rebake from source at three times the old resolution');
+    assert.ok(s.width>465&&s.width<480,'keep the same world footprint');
+    assert.ok(art.trails.length>=30&&art.trails.length<=72);assert.ok(art.glow.length<=160);
+    const originX=52-s.anchor[0]/VOLCANO_ART_SCALE,originY=71.5-s.anchor[1]/VOLCANO_ART_SCALE;
+    for(const trail of art.trails){
+      assert.ok(trail.length>=7&&trail.length<=19);
+      for(let i=1;i<trail.length;i++)assert.ok(trail[i]!.y>trail[i-1]!.y,'fire moves down the slope');
+    }
+    for(const p of [...art.glow,...art.trails.flat()]){
+      const x=f.x+Math.floor((p.x-originX)*3+1e-6),y=f.y+Math.floor((p.y-originY)*3+1e-6),i=(y*atlas.width+x)*4;
+      assert.ok(raw[i]!>235&&raw[i+1]!>60&&raw[i+2]!<85&&raw[i+3]!>220,'effects must be registered to incandescent art');
+    }
+  }
+});
+
+test('ground and slope lava pixels travel, emit smoke and freeze with presentation time',async()=>{
+  const atlas:AtlasManifest=JSON.parse(await readFile('public/assets/jungle.json','utf8'));
+  const world=new InfiniteWorld(seed),view={width:1200,height:850,pixelRatio:1,zoom:1,grid:false,cameraX:v.x,cameraY:v.y-.75};
+  world.ensure({minX:v.x-8,minY:v.y-8,maxX:v.x+8,maxY:v.y+8});
+  const saved=jungleAgents.encode(world.agents);
+  const effects=(time:number)=>{world.time=world.previousTime=time;return composeInfinite(world,atlas,view).commands.filter(c=>c.id.startsWith(v.id)&&/:(flow|slope)/.test(c.id));};
+  const first=effects(1),second=effects(1.4);
+  for(const type of [':flow:',':slope-flow:',':flow-smoke:',':slope-smoke:']){
+    const before=first.filter(c=>c.id.includes(type)),after=new Map(second.map(c=>[c.id,c]));
+    assert.ok(before.length>5,`${type} must be visibly populated`);
+    assert.ok(before.some(c=>{const d=after.get(c.id);return d&&Math.hypot(d.x-c.x,d.y-c.y)>1;}),`${type} must actually move`);
+  }
+  assert.ok(new Set(first.filter(c=>c.id.includes(':flow:')).map(c=>c.color.slice(0,3).join(','))).size>=4);
+  assert.deepEqual(effects(1.4),second,'pause holds the exact visible flow');
+  assert.deepEqual(jungleAgents.encode(world.agents),saved,'presentation never consumes simulation RNG/state');
+});

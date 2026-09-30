@@ -32,6 +32,7 @@ npm run motion:preview # close-up supported monkey swing sequence
 npm run elephants:preview # staged drinking / spraying pose review
 npm run audio:preview  # generated stereo sound previews
 npm run volcanoes:preview # volcano forms, lava and cartoon wildlife effects
+npm run volcanoes:preview -- --motion # animated lava preview
 npm run patches:preview # generated landscape groups and their trunk templates
 ```
 

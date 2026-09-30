@@ -157,3 +157,12 @@ test('shelf packing reuses earlier row gaps without overlapping frames or their 
   const a=packed.manifest.sprites.a!.frames[0]!,c=packed.manifest.sprites.c!.frames[0]!;
   assert.equal(c.y,a.y);assert.ok(c.x>=a.x+a.width+1);assert.ok(packed.image.height<=28);
 });
+
+test('atlas packing reuses vertical shelf gaps while keeping transparent gutters',()=>{
+  const sprite=(id:string,width:number,height:number)=>({id,trim:false,anchor:[0,0] as [number,number],frames:[{width,height,data:new Uint8Array(width*height*4).fill(id.charCodeAt(0))}]});
+  const inputs=[sprite('a',20,12),sprite('b',8,8),sprite('c',8,3)];
+  const packed=packAtlas(inputs,34,16),b=packed.manifest.sprites.b!.frames[0]!,c=packed.manifest.sprites.c!.frames[0]!;
+  assert.equal(c.x,b.x);assert.equal(c.y,b.y+b.height+1);assert.equal(packed.image.height,16);
+  for(let x=b.x;x<b.x+b.width;x++)assert.equal(packed.image.data[((b.y+b.height)*34+x)*4+3],0);
+  assert.deepEqual(packAtlas(inputs,34,16).manifest,packed.manifest);
+});

@@ -1,3 +1,4 @@
+import type { VolcanoLavaArt } from './volcano-animation';
 import { restingSprite } from './resting';
 import { PlantAgent } from './agents';
 import { project, hash, lerp, clamp } from '../iso/math';
@@ -6,7 +7,7 @@ import { TILE, waterAt, type World, type Deer, type DeerSample, type Plant, HABI
 import { DEER_CLIPS, directionIndex, PLANT_FPS, HEAD_SECONDS, angleDelta } from './animation';
 import { SpatialGrid } from '../iso/spatial';
 export interface Sprite { frames: Region[]; width: number; height: number; anchor: [number, number] }
-export interface AtlasManifest { version: number; width: number; height: number; sprites: Record<string, Sprite>; stats?: { frames: number; uniqueFrames: number; rgbaBytes: number; occupiedPixels: number } }
+export interface AtlasManifest { volcanoLava?:VolcanoLavaArt[]; version: number; width: number; height: number; sprites: Record<string, Sprite>; stats?: { frames: number; uniqueFrames: number; rgbaBytes: number; occupiedPixels: number } }
 export interface View { width: number; height: number; panX: number; panY: number; zoom: number; grid: boolean }
 
 /** Presentation is one fixed tick behind simulation; no prediction or frame-rate-dependent physics. */
