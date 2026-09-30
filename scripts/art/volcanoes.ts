@@ -23,7 +23,7 @@ export async function bakeVolcanoes():Promise<BakeSprite[]> {
       if(kind==='ash'&&dx*dx+dy*dy*5<.8&&grain>.3)data.set([59+Math.floor(grain*35),55+Math.floor(grain*35),54+Math.floor(grain*35),Math.round((1-d)*240)],(y*width+x)*4);
       if(kind==='flame'&&Math.abs(dx)<(.15+(y/32)*.65)*(1+Math.sin(y*.7)*.3)&&y>3)data.set([255,y>18?170:85,y>22?40:16,Math.round((1-y/45)*255)],(y*width+x)*4);
     }
-    result.push({id:`volcano-${kind}`,anchor:[16,kind==='smoke'?16:26],frames:[{width,height,data}]});
+    result.push({id:`volcano-${kind}`,anchor:[16,kind==='flame'?26:16],frames:[{width,height,data}]});
   }
   // A continuous, irregular molten surface in the source art's orange/yellow palette.
   // Domain-warped rock islands and branching hot seams replace repeated square cells.
@@ -37,7 +37,9 @@ export async function bakeVolcanoes():Promise<BakeSprite[]> {
       const c=kind==='crust'?[43+grain*35,35+grain*27,34+grain*26]:
         (edge>.87&&field>.42)||plate?[67+grain*38,36+grain*17,29+grain*14]:
         seam<.035?[255,218+grain*32,39+grain*25]:seam<.085?[255,130+grain*60,8]:[229+grain*26,48+grain*40,6];
-      data.set([...c.map(Math.round),255],(y*width+x)*4);
+      // Feather the crust with grain, keeping the central lava bed opaque.
+      const coverage=kind==='crust'?Math.max(0,Math.min(1,(1-edge)/.38+(grain-.5)*.45)):1;
+      data.set([...c.map(Math.round),Math.round(coverage*255)],(y*width+x)*4);
     }
     result.push({id:`volcano-${kind}`,anchor:[0,0],trim:false,frames:[{width,height,data}]});
   }

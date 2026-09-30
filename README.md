@@ -57,7 +57,7 @@ The browser console prints a startup banner and repository link, followed by an 
 | `N` | Visit dry scrub, meadow, lake, forest, then a stream |
 | `V` | Visit the nearest rare active volcano |
 | `O` / Settings | With overlays visible: adjust vegetation, wildlife, water, lake size, clearings, hills and sound |
-| `?` | Open Help, even with the menu hidden: FPS, per-stage CPU timing, world/cache/memory statistics and keyboard guide |
+| `?` | Open Help, even with the menu hidden: FPS, per-stage CPU timing, world/cache/memory statistics and expanded, tappable keyboard commands |
 | `R` | Generate a new seeded world |
 | `1` / `2` / `3` | Rainforest / flowering / wetland preset |
 | `T` | Sun / rain / dusk |
@@ -67,6 +67,8 @@ The browser console prints a startup banner and repository link, followed by an 
 | `Home` / `0` | Return to the seeded starting forest |
 | `G` | Show tile seams |
 | `Esc` | Close settings or the field guide |
+
+The field guide commands also work as buttons on mobile and desktop. Tap individual arrows to move one step, or choose a habitat or zoom direction directly.
 
 ## Artifacts
 

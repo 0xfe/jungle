@@ -59,16 +59,20 @@ test('short filled lava channels retain registered outlets, irregular banks and 
   }
 });
 
-test('wildlife turns and escapes hot lava with distance-driven feet',()=>{
-  const a=trapped(),start={x:a.x,y:a.y};a.animal.heading=0;
+test('wildlife turns away from the lava bank with distance-driven feet',()=>{
+  const a=trapped(),p=lavaPoint(v,.82);
+  a.animal.x=p.x+p.normalX*(p.width+.3);a.animal.y=p.y+p.normalY*(p.width+.3);
+  const start={x:a.x,y:a.y};a.animal.heading=0;
   a.update(dt,env);assert.ok(Math.hypot(a.x-start.x,a.y-start.y)<.01);
   step(a,5);assert.equal(a.phase,'alive');assert.ok(Math.hypot(a.x-start.x,a.y-start.y)>.4);
 });
 
 test('trapped wildlife burns, leaves ash, waits for offscreen space and preserves family replacement',()=>{
-  const a=trapped(),blocked={...env,canMove:()=>false};step(a,3,blocked);assert.equal(a.phase,'burn');assert.equal(a.speed,undefined);
+  const a=trapped(),blocked={...env,canMove:()=>false};step(a,.2,blocked);assert.equal(a.phase,'burn');assert.equal(a.speed,undefined);
   const clone=jungleAgents.decode(jungleAgents.encode([a]))[0] as VolcanicWildlifeAgent;
-  step(a,4,blocked);step(clone,4,blocked);assert.equal(a.phase,'waiting');assert.ok(a.ashRemaining>0);assert.deepEqual(jungleAgents.encode([a]),jungleAgents.encode([clone]));
+  const position={x:a.x,y:a.y,heading:a.heading};
+  step(a,.2,blocked);step(clone,.2,blocked);assert.deepEqual({x:a.x,y:a.y,heading:a.heading},position,'the brief flame flash stays planted');
+  step(a,.3,blocked);step(clone,.3,blocked);assert.equal(a.phase,'waiting');assert.ok(a.ashRemaining>0);assert.deepEqual(jungleAgents.encode([a]),jungleAgents.encode([clone]));
   step(a,20,{...env,spawnHidden:()=>false});assert.equal(a.phase,'waiting');
   const home={x:a.x,y:a.y};for(let i=0;i<180&&a.phase==='waiting';i++)a.update(dt,env);assert.equal(a.phase,'alive');assert.equal(a.cycles,1);assert.ok(Math.hypot(a.x-home.x,a.y-home.y)>3);
   assert.equal(a.animal.groupId,'volcanic-herd');assert.equal(a.animal.leaderId,a.id);assert.deepEqual(a.animal.target,home);
@@ -95,16 +99,21 @@ test('volcano world checkpoints retain bounded lifecycle state and exact continu
   const sleeping=jungleAgents.encode(w.agents);w.ensure({minX:v.x+14,minY:v.y,maxX:v.x+15,maxY:v.y+1});w.ensure(bounds);assert.deepEqual(jungleAgents.encode(w.agents),sleeping);
 });
 
-test('volcano composition includes grounded scar, crust, active vent and dramatic burn without new textures',async()=>{
+test('volcano composition includes grounded scar, crust, active vent and brief flame/smoke/ash without new textures',async()=>{
   const atlas:AtlasManifest=JSON.parse(await readFile('public/assets/jungle.json','utf8'));
   for(let i=0;i<4;i++)assert.ok(atlas.sprites[`volcano-${i}`]);assert.ok(atlas.width<=4096&&atlas.height<=4096);
   const w=new InfiniteWorld(seed),view={width:1000,height:750,pixelRatio:1,zoom:1,grid:false,cameraX:v.x,cameraY:v.y+2};
   w.ensure({minX:v.x-9,minY:v.y-9,maxX:v.x+9,maxY:v.y+9});w.time=18-v.phase;
-  const a=trapped();a.phase='burn';a.elapsed=a.previousElapsed=2;w.agents.push(a);
+  const a=trapped();a.phase='burn';a.elapsed=a.previousElapsed=.1;w.agents.push(a);
   const f=composeInfinite(w,atlas,view),ids=f.commands.map(c=>c.id);
   assert.ok(ids.includes(v.id));
   const bank=f.commands.findIndex(c=>c.id===`${v.id}:lava:30:obsidian`),molten=f.commands.findIndex(c=>c.id===`${v.id}:lava:30:molten`);
-  assert.ok(bank>=0&&molten>bank,'molten surface must draw above its opaque crust bank');assert.ok(ids.some(id=>id?.includes(':molten')));assert.ok(ids.some(id=>id?.includes(':obsidian')));assert.ok(ids.some(id=>id?.includes(':smoke')));assert.ok(ids.some(id=>id?.includes(':fire')));
+  assert.ok(bank>=0&&molten>bank,'molten surface must draw above its opaque crust bank');assert.ok(ids.some(id=>id?.includes(':molten')));assert.ok(ids.some(id=>id?.includes(':obsidian')));assert.ok(ids.some(id=>id?.includes(':bank-ash')));assert.ok(ids.some(id=>id?.includes(':fire')));
+  a.phase='waiting';a.elapsed=a.previousElapsed=.3;a.ashRemaining=60;a.ashX=a.x;a.ashY=a.y;
+  const remains=composeInfinite(w,atlas,view).commands.filter(c=>c.id?.startsWith(a.id));
+  assert.equal(remains.filter(c=>c.id?.includes(':poof:')).length,11);
+  assert.ok(remains.some(c=>c.id===`${a.id}:ash`&&c.layer===2),'ash remains visible above the lava');
+  assert.ok(remains.every(c=>c.id===`${a.id}:ash`||c.id?.includes(':poof:')),'the smoke replaces the body');
   assert.equal(w.spawnHidden!(view.cameraX,view.cameraY),false);assert.equal(w.spawnHidden!(view.cameraX+100,view.cameraY),true);
 });
 

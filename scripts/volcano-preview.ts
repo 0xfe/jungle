@@ -17,16 +17,16 @@ for(let form=0;form<4;form++){
   const v=sites.find(v=>v.form===form);if(!v)throw new Error(`Missing volcano preview form ${form}`);
   const world=new InfiniteWorld(2718),view={width:1200,height:850,pixelRatio:1,zoom:1,grid:false,cameraX:v.x,cameraY:v.y-.75};
   world.ensure(cameraBounds(view));world.time=world.previousTime=120-v.phase;
-  for(const variant of ['landscape','burn'] as const){
-    if(variant==='burn'){
+  for(const variant of ['landscape','burn','poof','ash'] as const){
+    if(variant!=='landscape'){
       const a=(world.agents.find(a=>a instanceof VolcanicWildlifeAgent&&a.animal.kind==='deer')??world.agents.find(a=>a instanceof VolcanicWildlifeAgent)) as VolcanicWildlifeAgent|undefined;
-      if(a){const p=lavaPoint(v,.7,world.time);a.animal.x=p.x;a.animal.y=p.y;a.animal.previous=a.animal.sample();a.phase='burn';a.elapsed=a.previousElapsed=2.5;a.ashX=p.x+.6;a.ashY=p.y+.4;a.ashRemaining=30;}
+      if(a){const p=lavaPoint(v,.7,world.time);a.animal.x=p.x;a.animal.y=p.y;a.animal.previous=a.animal.sample();a.phase=variant==='burn'?'burn':'waiting';a.elapsed=a.previousElapsed=variant==='burn'?.12:variant==='poof'?.3:2;a.ashX=p.x;a.ashY=p.y;a.ashRemaining=variant==='burn'?0:30;}
     }
     const frame=composeInfinite(world,atlas,view);renderer.render(frame);
     await sharp(renderer.pixels.data,{raw:{width:view.width,height:view.height,channels:4}}).png().toFile(`artifacts/volcano-${form}-${variant}.png`);
   }
 }
-console.log('Four volcano forms, active lava and cartoon burn fixtures → artifacts/volcano-*.png');
+console.log('Four volcano forms, active lava and brief flame, smoke puff and ash fixtures → artifacts/volcano-*.png');
 
 // Optional short motion proof: the same composer at successive presentation times.
 if(process.argv.includes('--motion')){

@@ -102,16 +102,16 @@ export const CONFIG = {
       lavaParticles: 64,
       /** Small rising wisps per surface (ground river and mountain slope). */
       lavaSmoke: 8,
-      /** Cartoon burn duration and minimum replacement delay, in seconds. */
-      burnSeconds: 3.5,
+      /** Brief flame flash before the smoke puff, in seconds. */
+      burnSeconds: .45,
       /** Sustained hot contact before the cartoon burn begins. */
-      contactSeconds: 2.25,
+      contactSeconds: .12,
       /** Per-site adventurous-walker opportunities, seconds between nominations. */
       encounterMinSeconds: 10,
       encounterMaxSeconds: 20,
       /** Maximum walking excursion; ignition follows actual contact, in seconds. */
       approachSeconds: 16,
-      encounterContactSeconds: .25,
+      encounterContactSeconds: .1,
       respawnSeconds: 14,
     },
     regions: {

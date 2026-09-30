@@ -103,7 +103,7 @@ export class VolcanicWildlifeAgent implements Agent {
     a.update(dt,safe);
     const contact=lavaDanger(this.volcano,a.x,a.y,env.time);
     this.exposure=this.altitude<8&&contact.distance<0&&contact.heat>.55?this.exposure+dt:Math.max(0,this.exposure-dt*2);
-    if(this.exposure>(adventurous?CONFIG.world.volcanoes.encounterContactSeconds:CONFIG.world.volcanoes.contactSeconds)){a.motor.stop();this.approachRemaining=0;this.phase='burn';this.elapsed=0;this.previousElapsed=0;}
+    if(this.exposure>(adventurous?CONFIG.world.volcanoes.encounterContactSeconds:CONFIG.world.volcanoes.contactSeconds)){a.motor.stop();a.previous=a.sample();this.approachRemaining=0;this.phase='burn';this.elapsed=0;this.previousElapsed=0;}
   }
   /** Turn/brake/stride remain the species motor's responsibility; only danger intent changes. */
   private escape(env:AgentEnvironment,away:number):void {

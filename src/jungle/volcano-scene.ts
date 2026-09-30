@@ -26,6 +26,14 @@ export function composeVolcanoes(world:InfiniteWorld,atlas:AtlasManifest,command
     // The full material spans the whole river. It is never tiled into little bars.
     // Inlet height blends from the registered mountain anchor onto local terrain.
     const surface=(p:Vec2,t:number)=>screen(p.x,p.y,lerp(world.heightAt(v.x,v.y),world.heightAt(p.x,p.y),clamp(t/.28,0,1)));
+    // Uneven, porous ash shoulders extend beyond the cooling crust into the soil.
+    // Shared flecks follow ground height and remain fixed as the lava animates.
+    for(let i=0;i<72;i++){
+      const t=.16+hash(i,21,v.phase)*.84,p=lavaPoint(v,t),side=i%2?1:-1;
+      const spread=.08+hash(i,22,v.phase)*.38,d=side*(p.width*1.2+spread);
+      sprite(`${v.id}:bank-ash:${i}`,'volcano-ash',p.x+p.normalX*d,p.y+p.normalY*d,
+        1+hash(i,23,v.phase)*1.5,0,1.3,.18+(1-spread/.46)*.36);
+    }
     for(const [i,{a,b}] of lavaSegments(v).entries()){
       const ribbon=(ratio:number,layer:number,suffix:string)=>{
         const aw=a.width*ratio,bw=b.width*ratio,ta=i/LAVA_SEGMENTS,tb=(i+1)/LAVA_SEGMENTS;
@@ -35,7 +43,7 @@ export function composeVolcanoes(world:InfiniteWorld,atlas:AtlasManifest,command
           [{x:0,y:ta},{x:1,y:ta},{x:0,y:tb},{x:1,y:tb}]);
       };
       // Overlap the last painted slope pixels; the mountain cannot hide the join.
-      ribbon(1.28,2,'obsidian');ribbon(1,2,'molten');
+      ribbon(1.8,2,'obsidian');ribbon(1,2,'molten');
     }
     const tuning=CONFIG.world.volcanoes;
     const art=atlas.volcanoLava?.[v.form];
@@ -102,12 +110,21 @@ export function composeVolcanoes(world:InfiniteWorld,atlas:AtlasManifest,command
     }
   }
   for(const a of world.agents)if(a instanceof VolcanicWildlifeAgent){
-    if(a.ashRemaining>0)sprite(`${a.id}:ash`,'volcano-ash',a.ashX,a.ashY,.6,0,1.3,Math.min(1,a.ashRemaining/8));
+    if(a.ashRemaining>0)sprite(`${a.id}:ash`,'volcano-ash',a.ashX,a.ashY,1.4,0,2,Math.min(1,a.ashRemaining/8));
     if(a.phase==='burn'){
-      const t=lerp(a.previousElapsed,a.elapsed,alpha),fade=Math.min(1,(CONFIG.world.volcanoes.burnSeconds-t)*2);
-      for(let i=0;i<5;i++)sprite(`${a.id}:fire:${i}`,'volcano-flame',a.x+Math.sin(t*13+i)*.07,a.y+Math.cos(t*17+i)*.07,.4+Math.sin(t*21+i)*.15,0,2,fade,255,5+i*4,a.x+a.y+.015);
-      for(let i=0;i<5;i++){const age=(t*.7+i/5)%1;sprite(`${a.id}:smoke:${i}`,'volcano-smoke',a.x+age*.2,a.y-age*.2,.5+age,0,2,Math.sin(age*Math.PI)*.8,255,15+age*60,a.x+a.y+.03);}
+      const t=lerp(a.previousElapsed,a.elapsed,alpha),fade=clamp(1-t/CONFIG.world.volcanoes.burnSeconds,0,1);
+      for(let i=0;i<5;i++)sprite(`${a.id}:fire:${i}`,'volcano-flame',a.x+Math.sin(i*2.4)*.06,a.y+Math.cos(i*2.4)*.06,
+        .65+Math.sin(t*18+i)*.08,0,2,fade,255,6+i*7,a.x+a.y+.015);
     }
-    if(a.phase==='waiting'&&a.elapsed<2)for(let i=0;i<7;i++)sprite(`${a.id}:poof:${i}`,'volcano-smoke',a.x+Math.sin(i)*a.elapsed*.12,a.y+Math.cos(i)*a.elapsed*.12,.7+a.elapsed*.7,0,2,(1-a.elapsed/2)*.8,255,15+a.elapsed*30,a.x+a.y+.04);
+    // A single expanding cloud replaces the body, then reveals the ash beneath it.
+    if(a.phase==='waiting'&&a.elapsed<1.6){
+      const t=lerp(a.previousElapsed,a.elapsed,alpha),progress=clamp(t/1.6,0,1),spread=1-Math.exp(-t*5);
+      for(let i=0;i<11;i++){
+        const angle=i*2.4,radius=(.12+hash(i,31,a.volcano.phase)*.22)*spread;
+        sprite(`${a.id}:poof:${i}`,'volcano-smoke',a.x+Math.sin(angle)*radius,a.y+Math.cos(angle)*radius,
+          1.4+spread*1.7+hash(i,32,a.volcano.phase)*.5,0,2,(1-progress)**1.3*.95,255,
+          18+hash(i,33,a.volcano.phase)*34+t*26,a.x+a.y+.04);
+      }
+    }
   }
 }

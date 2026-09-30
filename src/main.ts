@@ -113,7 +113,13 @@ function nextWildlife():void { pauseDrift();
   const next=world.wildlifeLandmark(kind,view.cameraX,view.cameraY);view.cameraX=next.x;view.cameraY=next.y;cameraVX=cameraVY=0;
   syncUI();announce(`Watching ${kind==='blackBear'?'black bear':kind} habitat.`);
 }
-function help(open = !uiVisible || el('help').hidden): void { if(open&&!uiVisible)toggleUI(); if(open)showSettings(false); el('help').hidden = !open; el('help-button').setAttribute('aria-expanded', String(open)); keepMenuAwake(); }
+function help(open = !uiVisible || el('help').hidden): void {
+  if(open&&!uiVisible)toggleUI();
+  if(open){showSettings(false);el<HTMLDetailsElement>('keyboard-commands').open=true;}
+  el('help').hidden=!open;
+  if(open)el('help').scrollTop=0;
+  el('help-button').setAttribute('aria-expanded',String(open));keepMenuAwake();
+}
 function showSettings(open=el('settings').hidden):void{
   if(open&&!uiVisible)return;
   el('settings').hidden=!open;el('settings-button').setAttribute('aria-expanded',String(open));
@@ -175,15 +181,8 @@ window.addEventListener('pageshow',()=>{syncSound();unlockSound();});
 el('help-button').onclick = () => help(); el('close-help').onclick = () => { help(false); el('help-button').focus(); };
 el('pause').onclick = () => { paused = !paused; syncUI(); };
 el('zoom-in').onclick = () => zoom(CONFIG.camera.zoomStep); el('zoom-out').onclick = () => zoom(-CONFIG.camera.zoomStep);
-window.addEventListener('keydown', e => {
-  // Preserve native keyboard activation for the repository link.
-  if(e.key==='Enter'&&e.target instanceof Element&&e.target.closest('#github-link'))return;
-  if(e.key==='Enter'&&!e.metaKey&&!e.ctrlKey&&!e.altKey){e.preventDefault();if(!e.repeat)toggleUI();return;}
-  if (e.metaKey || e.ctrlKey || e.altKey || (e.target instanceof HTMLElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName))) return;
-  const key = e.key.toLowerCase();
-  if (key === 'shift') keys.add(key);
-  if (['arrowleft','arrowright','arrowup','arrowdown','w','a','s','d'].includes(key)) { e.preventDefault(); keys.add(key); pauseDrift(); }
-  if (e.repeat) return;
+/** One action path for physical shortcuts and the tappable field guide. */
+function executeCommand(key:string):void {
   if (key === '?' || key === 'h') help();
   else if (key === 'escape') {help(false);showSettings(false);}
   else if(key==='o')showSettings();
@@ -192,13 +191,40 @@ window.addEventListener('keydown', e => {
   else if (key === 'v') {pauseDrift();const v=world.volcanoLandmark(view.cameraX,view.cameraY);view.cameraX=v.x;view.cameraY=v.y-.75;cameraVX=cameraVY=0;syncUI();announce('Exploring an active volcano.');}
   else if (key === 'n') nextLandscape();
   else if (key === 'j') nextWildlife();
-  else if (key === ' ' && !(e.target instanceof HTMLButtonElement)) { e.preventDefault(); paused = !paused; syncUI(); }
+  else if (key === ' ') { paused = !paused; syncUI(); }
   else if (key === 'p') drift = !drift;
   else if (key === 'g') view.grid = !view.grid;
   else if (key === '+' || key === '=') zoom(CONFIG.camera.zoomStep);
   else if (key === '-') zoom(-CONFIG.camera.zoomStep);
-  else if (key === 'home' || key === '0') { e.preventDefault(); recenter(); }
+  else if (key === 'home' || key === '0') { recenter(); }
   else if (['1','2','3'].includes(key)) regrow(HABITATS[Number(key) - 1]!);
+}
+for(const button of Array.from(document.querySelectorAll<HTMLButtonElement>('[data-command]')))button.onclick=()=>{
+  const key=button.dataset.command!;
+  if(key==='enter'){toggleUI();return;}
+  // Touch arrows take a discrete screen-space step; held keyboard travel stays continuous.
+  const direction=key.replace('fast-',''),fast=key.startsWith('fast-');
+  if(['arrowleft','arrowright','arrowup','arrowdown'].includes(direction)){
+    pauseDrift();cameraVX=cameraVY=0;
+    const distance=(fast?CONFIG.camera.fastMoveSpeed:CONFIG.camera.moveSpeed)*.25*view.pixelRatio;
+    panCamera(view,(direction==='arrowright'?1:direction==='arrowleft'?-1:0)*distance,
+      (direction==='arrowdown'?1:direction==='arrowup'?-1:0)*distance);
+    syncUI();return;
+  }
+  executeCommand(key);
+};
+window.addEventListener('keydown', e => {
+  // Preserve native activation for links and the actionable guide buttons.
+  if(e.key==='Enter'&&e.target instanceof Element&&e.target.closest('#github-link, [data-command]'))return;
+  if(e.key==='Enter'&&!e.metaKey&&!e.ctrlKey&&!e.altKey){e.preventDefault();if(!e.repeat)toggleUI();return;}
+  if (e.metaKey || e.ctrlKey || e.altKey || (e.target instanceof HTMLElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName))) return;
+  const key = e.key.toLowerCase();
+  if (key === 'shift') keys.add(key);
+  if (['arrowleft','arrowright','arrowup','arrowdown','w','a','s','d'].includes(key)) { e.preventDefault(); keys.add(key); pauseDrift(); }
+  if (e.repeat) return;
+  if(key===' '&&e.target instanceof HTMLButtonElement)return;
+  if([' ','home','0','?'].includes(key))e.preventDefault();
+  executeCommand(key);
 });
 window.addEventListener('keyup', e => { if (keys.delete(e.key.toLowerCase())&&e.key.toLowerCase()!=='shift') pauseDrift(); });
 function clearNavigation(): void { if(pointers.navigating||keys.size>Number(keys.has('shift')))pauseDrift(); keys.clear(); pointers.clear(); menuTap.clear(); menuPointers.clear();keepMenuAwake();cameraVX = cameraVY = 0; }

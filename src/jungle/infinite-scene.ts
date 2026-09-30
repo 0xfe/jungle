@@ -115,10 +115,8 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
     const command: DrawCommand = { id, x: p.x - s.anchor[0] * z, y: p.y - s.anchor[1] * z, width: s.width * z, height: s.height * z,
       region: s.frames[frame % s.frames.length], color: [255, tint, tint, Math.round(opacity * 255)], layer, depth };
     if(burning&&layer===2){
-      const t=lerp(burning.previousElapsed,burning.elapsed,alpha),fade=clamp((CONFIG.world.volcanoes.burnSeconds-t)*2,0,1);
-      const jitter=Math.sin(t*38)*.06,base=screen(x+jitter,y-jitter,world.heightAt(x,y)+altitude+Math.abs(Math.sin(t*17))*9);
-      command.corners=rootedQuad(base,s.width,s.height,s.anchor,z,z,Math.sin(t*24)*.35);
-      Object.assign(command,quadBounds(command.corners));command.color=[110,75,65,Math.round(opacity*fade*255)];
+      const t=lerp(burning.previousElapsed,burning.elapsed,alpha),fade=clamp(1-t/CONFIG.world.volcanoes.burnSeconds,0,1);
+      command.color=[110,75,65,Math.round(opacity*fade*255)];
     }
     if (visible(command, view.width, view.height)) commands.push(command);
   };
