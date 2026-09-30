@@ -1,3 +1,4 @@
+import { volcanicApproaches } from '../src/jungle/volcanic-encounters';
 import { riverPaths } from '../src/jungle/rivers';
 import { DEFAULT_SETTINGS } from '../src/jungle/settings';
 import test from 'node:test';
@@ -212,4 +213,42 @@ test('ground and slope lava pixels travel, emit smoke and freeze with presentati
   assert.ok(new Set(first.filter(c=>c.id.includes(':flow:')).map(c=>c.color.slice(0,3).join(','))).size>=4);
   assert.deepEqual(effects(1.4),second,'pause holds the exact visible flow');
   assert.deepEqual(jungleAgents.encode(world.agents),saved,'presentation never consumes simulation RNG/state');
+});
+
+
+test('volcanic nominations are bounded, order-independent and respect blocked paths',()=>{
+  const walkers=Array.from({length:8},(_,i)=>{
+    const p=lavaPoint(v,.82),deer=new DeerAgent(`visitor:${i}`,p.x+1+i*.1,p.y+.8,100+i);
+    return new VolcanicWildlifeAgent(deer,v);
+  });
+  const time=20,context={...env,time};
+  const nominations=volcanicApproaches(walkers,time-.1,context)!;
+  assert.equal(nominations.size,1);
+  assert.deepEqual(volcanicApproaches([...walkers].reverse(),time-.1,context),nominations);
+  assert.equal(volcanicApproaches(walkers,time+.1,{...context,time:time+.2}),undefined,'no 60 Hz searches');
+  assert.equal(volcanicApproaches(walkers,time-.1,{...context,canMove:()=>false})!.size,0);
+  const selected=walkers.find(a=>nominations.has(a.id))!;
+  const selectedEnv:VolcanoEnvironment={...context,approaches:nominations};
+  selected.update(dt,selectedEnv);
+  assert.ok(selected.approachRemaining>0);
+  assert.equal(volcanicApproaches(walkers,time+.9,{...context,time:time+1})!.size,0,'only one excursion per opportunity');
+  const clone=jungleAgents.decode(jungleAgents.encode([selected]))[0] as VolcanicWildlifeAgent;
+  step(selected,8);step(clone,8);assert.deepEqual(jungleAgents.encode([selected]),jungleAgents.encode([clone]));
+});
+
+test('a populated volcano produces roughly one real lava ignition every 10–20 seconds',()=>{
+  const w=new InfiniteWorld(seed);w.ensure({minX:v.x-8,minY:v.y-8,maxX:v.x+8,maxY:v.y+8});w.spawnHidden=()=>true;
+  const wildlife=w.agents.filter(a=>a instanceof VolcanicWildlifeAgent),times:number[]=[];
+  for(let tick=0;tick<7200;tick++){
+    const before=wildlife.map(a=>({phase:a.phase,x:a.x,y:a.y,approach:a.approachRemaining}));w.update(dt);
+    for(const [i,a] of wildlife.entries()){
+      if(before[i]!.phase==='alive'&&before[i]!.approach>0)assert.ok(Math.hypot(a.x-before[i]!.x,a.y-before[i]!.y)<.05,'walkers must not teleport');
+      if(a.phase==='burn'&&before[i]!.phase!=='burn'){
+        times.push(w.time);assert.ok(lavaDanger(v,a.x,a.y).distance<0,'only actual molten contact ignites');
+      }
+    }
+  }
+  assert.ok(times.length>=6&&times.length<=10,`ignitions in 120 seconds: ${times}`);
+  const mean=(times.at(-1)!-times[0]!)/(times.length-1);
+  assert.ok(mean>=10&&mean<=20,`mean interval ${mean}`);
 });

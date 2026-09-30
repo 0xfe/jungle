@@ -1,9 +1,9 @@
 {
   "pipeline": 6,
-  "fingerprint": "aa65850948c94794e7f5206fe050660263b988c001805e9bf0c2975773b55c9b",
+  "fingerprint": "58bd16d6e6401e07c8c8533951c89a2d7e2d17908f189bf4b2f5857692c817fe",
   "sources": {
     "src/jungle/volcano-animation.ts": "425939731d0fe6b45b8a116c25a417b29f91c37c2aeecca764a1f821ec7a8ef8",
-    "src/jungle/agents/volcanic-wildlife.ts": "b9897e7fd4933697a25ae708014f4cfa92e20f1e130b6f161ff951dd66752e3a",
+    "src/jungle/agents/volcanic-wildlife.ts": "e311734989f5b8cf8774b67d70bfe81a09e6a17ac0f33e905fd0632d3bd03d33",
     "scripts/art/volcanoes.ts": "4142aacc7f390f92155dceee21885b9d1d5eb8dc21974459de3b61083ca513b2",
     "src/jungle/volcanoes.ts": "abc77aecea01cdbaa8c5ef92ef0150983119d5fdd71c27a560a327dc1639c3d4",
     "assets/source/volcano-forms.png": "03ee2054e799919c2762d73d6772d9efb244bad47ebd8b8298ee3f02443b1a41",
@@ -69,7 +69,7 @@
     "src/jungle/world.ts": "16da99c8fa2285716de3ccbaf9ca9b9b169afc8461f5db8e91d3dd36f1d2643d",
     "src/jungle/agents/deer.ts": "339ed2f9b582d8aa592528a8523a52caf3ac32e0d3b11842f0a256edee86997f",
     "src/jungle/agents/fixed.ts": "cdec7ac2e883f44b17640cc7248d68329bbd96e64ceb4cca9413f53b322be41a",
-    "src/jungle/agents/index.ts": "85c521d76a19356b10fc5a23e25cd478f1fbb8b747214d2f8795d75d999ba2a0",
+    "src/jungle/agents/index.ts": "2410b6e0d01f671a08f93c948789b1aba25d0bf72425ce7b3d6666b2b6938649",
     "src/agents/core.ts": "ef6ec1d32bcbbcb7128f77362d7a3c6b7f2c19bdce0817b907fc68bc6da1df9d",
     "src/agents/motion.ts": "8acb7e8bbf74bc90de54e00e59f58d5e7830339f4c07a41809e9374a7cfe2cb6",
     "src/agents/system.ts": "9afec620fdbde2c653bd9ccec652ad3c33ba7e3d9c1776ec2950b787e5d27abe",

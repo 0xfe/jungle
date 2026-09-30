@@ -106,6 +106,12 @@ export const CONFIG = {
       burnSeconds: 3.5,
       /** Sustained hot contact before the cartoon burn begins. */
       contactSeconds: 2.25,
+      /** Per-site adventurous-walker opportunities, seconds between nominations. */
+      encounterMinSeconds: 10,
+      encounterMaxSeconds: 20,
+      /** Maximum walking excursion; ignition follows actual contact, in seconds. */
+      approachSeconds: 16,
+      encounterContactSeconds: .25,
       respawnSeconds: 14,
     },
     regions: {

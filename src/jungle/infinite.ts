@@ -1,4 +1,6 @@
-import { volcanicGround, volcanicClearance, volcanoesIn, nearestVolcano, type Volcano } from './volcanoes';
+import { volcanicApproaches } from './volcanic-encounters';
+import type { VolcanoEnvironment } from './agents/volcanic-wildlife';
+import { volcanicGround, volcanicClearance, lavaPoint, volcanoesIn, nearestVolcano, type Volcano } from './volcanoes';
 import { VolcanicWildlifeAgent } from './agents/volcanic-wildlife';
 import { CANOPY_BIRDS } from './flight';
 import { populationRange } from './encounters';
@@ -242,7 +244,11 @@ export class InfiniteWorld {
   tileAt(x: number, y: number): TerrainTile | undefined { return this.tileMap.get(chunkKey(Math.floor(x), Math.floor(y))); }
   heightAt(x: number, y: number): number { return this.tileAt(x, y)?.heightAt(x, y) ?? landscape(x, y, this.seed,this.settings).elevation; }
   canMove(x: number, y: number): boolean {
-    if(this.volcanoes.some(v=>Math.hypot(x-v.x,y-v.y)<v.radius*.82))return false;
+    if(this.volcanoes.some(v=>{
+      if(Math.hypot(x-v.x,y-v.y)>=v.radius*.82)return false;
+      // The visible terminal pool sits in front of the mountain, not inside solid rock.
+      const pool=lavaPoint(v,.82);return Math.hypot(x-pool.x,y-pool.y)>1;
+    }))return false;
     const tile = this.tileAt(x, y); if (!tile || tile.materialAt(x, y) >= TerrainKind.Shallow) return false;
     let blocked = false;
     this.trunks.visit(x - .13, y - .13, x + .13, y + .13, p => { if ((p.x - x) ** 2 + (p.y - y) ** 2 < .13 ** 2) blocked = true; });
@@ -250,7 +256,7 @@ export class InfiniteWorld {
   }
   update(dt: number): void {
     this.previousTime = this.time; this.time += dt;
-    this.system.step(this.agents, dt, {
+    const environment:Omit<VolcanoEnvironment,'nearby'>={
       ...{spawnHidden:this.spawnHidden},
       perches: (x,y,radius) => {const result: {x:number;y:number;height:number;root:{x:number;y:number}}[]=[];this.trunks.visit(x-radius,y-radius,x+radius,y+radius,p=>{if(Math.hypot(p.x-x,p.y-y)<=radius)result.push({x:p.x+.17,y:p.y,height:treePerchHeight(p),root:{x:p.x,y:p.y}});});return result.sort((a,b)=>a.x-b.x||a.y-b.y);},
       time: this.time, canMove: (x, y) => this.canMove(x, y),
@@ -262,7 +268,9 @@ export class InfiniteWorld {
           beach:material===TerrainKind.Dry&&tile.fieldAt(x,y,0)<.024,bank:material!<TerrainKind.Shallow&&tile.fieldAt(x,y,0)<.14,light,wind};
         return {...terrainEnvironment(x,y,this.seed,this.settings),light,wind};
       },
-    });
+    };
+    environment.approaches=volcanicApproaches(this.agents,this.previousTime,environment);
+    this.system.step(this.agents,dt,environment);
   }
   markRendered(tiles: readonly TerrainTile[]): void {
     this.renderedNow = tiles.length; this.renderedTotal += tiles.length;
@@ -279,7 +287,7 @@ export class InfiniteWorld {
       const record = { terrain: a.terrain.data, agents: jungleAgents.encode(a.agents) };
       this.cache.put(a.x, a.y, record, record.terrain.length + record.agents.length + 256, this.pinned);
     }
-    const w = new BinaryWriter(); w.u32(0x4a4e474c); w.u8(20); w.u32(this.seed);
+    const w = new BinaryWriter(); w.u32(0x4a4e474c); w.u8(21); w.u32(this.seed);
     for(const key of SETTING_KEYS)w.f64(this.settings[key]);
     w.u8(['rainforest', 'flowering', 'wetland'].indexOf(this.habitat)); w.u8(['sun', 'rain', 'dusk'].indexOf(this.weather));
     for (const n of [this.time, this.previousTime, this.generated, this.renderedTotal, this.cache.expired]) w.f64(n);
@@ -290,7 +298,7 @@ export class InfiniteWorld {
   static restore(bytes: Uint8Array, budget = DEFAULT_WORLD_BUDGET): InfiniteWorld {
     if (bytes.length > budget.maxBytes + 65536) throw new Error('Checkpoint exceeds memory budget');
     const r = new BinaryReader(bytes);
-    if (r.u32() !== 0x4a4e474c || r.u8() !== 20) throw new Error('Unsupported world checkpoint');
+    if (r.u32() !== 0x4a4e474c || r.u8() !== 21) throw new Error('Unsupported world checkpoint');
     const seed = r.u32(), settings=Object.fromEntries(SETTING_KEYS.map(k=>[k,r.f64()])) as unknown as WorldSettings;
     for(const k of SETTING_KEYS)if(settings[k]!==normalizeSettings(settings)[k])throw new Error('Invalid world settings');
     const habitat = (['rainforest', 'flowering', 'wetland'] as const)[r.u8()], weather = (['sun', 'rain', 'dusk'] as const)[r.u8()];

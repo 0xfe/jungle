@@ -10,7 +10,8 @@ import { habitatAllows } from '../ecology';
 import type { AgentRegistry } from '../../agents';
 
 export type VolcanicAnimal=DeerAgent|WildlifeAgent;
-export interface VolcanoEnvironment extends AgentEnvironment { spawnHidden?(x:number,y:number):boolean }
+export interface VolcanoApproach { x:number; y:number; slot:number }
+export interface VolcanoEnvironment extends AgentEnvironment { approaches?:ReadonlyMap<string,VolcanoApproach>; spawnHidden?(x:number,y:number):boolean }
 /** One owned lifecycle record replaces a mobile record near a volcano. No global tombstones. */
 export class VolcanicWildlifeAgent implements Agent {
   /** Supplied once by the content registry, avoiding an initialization cycle. */
@@ -21,6 +22,8 @@ export class VolcanicWildlifeAgent implements Agent {
   ashX=0;ashY=0;ashRemaining=0;
   /** Failed searches back off instead of repeating at 60 Hz. Both clocks survive sleep. */
   escapeRetry=0;respawnRetry=0;
+  /** One nominated excursion, owned and checkpointed by this animal. */
+  encounterSlot=-1;approachRemaining=0;approachX=0;approachY=0;
   readonly template:Uint8Array;
   private readonly dangerSeed:number;
   constructor(public animal:VolcanicAnimal,readonly volcano:Volcano,template?:Uint8Array){this.template=template??VolcanicWildlifeAgent.registry.encode([animal]);this.dangerSeed=[...animal.id].reduce((n,c)=>(Math.imul(n,31)+c.charCodeAt(0))>>>0,0);}
@@ -66,15 +69,32 @@ export class VolcanicWildlifeAgent implements Agent {
       }
       return;
     }
+    const nomination=env.approaches?.get(this.id);
+    if(nomination&&nomination.slot>this.encounterSlot){
+      this.encounterSlot=nomination.slot;this.approachRemaining=CONFIG.world.volcanoes.approachSeconds;
+      this.approachX=nomination.x;this.approachY=nomination.y;
+      // A bounded excursion may cross the owner's chunk edge; ownership stays put.
+      a.territory=[Math.min(a.territory[0],nomination.x-.4),Math.min(a.territory[1],nomination.y-.4),Math.max(a.territory[2],nomination.x+.4),Math.max(a.territory[3],nomination.y+.4)];
+    }
+    const adventurous=this.approachRemaining>0;
+    this.approachRemaining=Math.max(0,this.approachRemaining-dt);
+    if(adventurous){
+      a.target={x:this.approachX,y:this.approachY};a.timer=2;a.tripPace=2;
+      a.startle.remaining=.5;a.startle.heading=Math.atan2(a.target.y-a.y,a.target.x-a.x);
+      if(a instanceof DeerAgent){
+        a.senseTimer=1;a.locomotion='walk';
+        if(a.state!=='walk'&&a.state!=='turn')a.state='turn';
+      }else{a.decision=1;a.state='travel';a.targetAltitude=0;}
+    }
     const danger=lavaDanger(this.volcano,a.x,a.y,env.time);
     const clearance=volcanicClearance(this.volcano,a.x,a.y);
-    const reckless=hash(this.dangerSeed,this.cycles,this.volcano.phase)<.025;
+    const reckless=adventurous;
     // Ordinary target selection AND every motor step reject lava and the inner ash.
     // An animal already inside the exclusion may move outward, never farther in.
     const safe:AgentEnvironment={...env,canMove:(x,y)=>env.canMove(x,y)&&(this.altitude>=8||reckless||
       volcanicClearance(this.volcano,x,y)>=Math.min(.12,clearance-.001))};
     if(this.altitude<8&&(danger.distance<.9||clearance<.12)){
-      const hesitate=reckless&&this.exposure<CONFIG.world.volcanoes.contactSeconds;
+      const hesitate=reckless;
       if(!hesitate){
         const away=clearance<danger.distance-.5?Math.atan2(a.y-this.volcano.y,a.x-this.volcano.x):danger.away;
         this.escape(safe,away);
@@ -83,7 +103,7 @@ export class VolcanicWildlifeAgent implements Agent {
     a.update(dt,safe);
     const contact=lavaDanger(this.volcano,a.x,a.y,env.time);
     this.exposure=this.altitude<8&&contact.distance<0&&contact.heat>.55?this.exposure+dt:Math.max(0,this.exposure-dt*2);
-    if(this.exposure>CONFIG.world.volcanoes.contactSeconds){a.motor.stop();this.phase='burn';this.elapsed=0;this.previousElapsed=0;}
+    if(this.exposure>(adventurous?CONFIG.world.volcanoes.encounterContactSeconds:CONFIG.world.volcanoes.contactSeconds)){a.motor.stop();this.approachRemaining=0;this.phase='burn';this.elapsed=0;this.previousElapsed=0;}
   }
   /** Turn/brake/stride remain the species motor's responsibility; only danger intent changes. */
   private escape(env:AgentEnvironment,away:number):void {
@@ -114,7 +134,7 @@ export class VolcanicWildlifeAgent implements Agent {
     w.blob(VolcanicWildlifeAgent.registry.encode([this.animal]));w.blob(this.template);
     w.string(this.volcano.id);for(const n of [this.volcano.x,this.volcano.y,this.volcano.form,this.volcano.radius,this.volcano.phase,this.volcano.heading])w.f64(n);
     w.u8(['alive','burn','waiting'].indexOf(this.phase));
-    for(const n of [this.elapsed,this.previousElapsed,this.exposure,this.cycles,this.ashX,this.ashY,this.ashRemaining,this.escapeRetry,this.respawnRetry])w.f64(n);
+    for(const n of [this.elapsed,this.previousElapsed,this.exposure,this.cycles,this.ashX,this.ashY,this.ashRemaining,this.escapeRetry,this.respawnRetry,this.encounterSlot,this.approachRemaining,this.approachX,this.approachY])w.f64(n);
   }
   /** A nested record must contain exactly one ordinary animal, never another lifecycle. */
   private static decodeAnimal(bytes:Uint8Array):VolcanicAnimal {
@@ -128,7 +148,7 @@ export class VolcanicWildlifeAgent implements Agent {
     const volcano={id:r.string(),x:r.f64(),y:r.f64(),form:r.f64(),radius:r.f64(),phase:r.f64(),heading:r.f64()};
     const a=new VolcanicWildlifeAgent(animal,volcano,template),phase=(['alive','burn','waiting'] as const)[r.u8()];
     if(!phase||!Number.isInteger(volcano.form)||volcano.form<0||volcano.form>3||volcano.radius<2||volcano.radius>3)throw new Error('Invalid volcano state');
-    a.phase=phase;a.elapsed=r.f64();a.previousElapsed=r.f64();a.exposure=r.f64();a.cycles=r.f64();a.ashX=r.f64();a.ashY=r.f64();a.ashRemaining=r.f64();a.escapeRetry=r.f64();a.respawnRetry=r.f64();
-    if(a.escapeRetry<0||a.escapeRetry>1||a.respawnRetry<0||a.respawnRetry>3||a.elapsed<0||a.exposure<0||a.ashRemaining<0||a.cycles<0||!Number.isInteger(a.cycles))throw new Error('Invalid volcanic lifecycle');return a;
+    a.phase=phase;a.elapsed=r.f64();a.previousElapsed=r.f64();a.exposure=r.f64();a.cycles=r.f64();a.ashX=r.f64();a.ashY=r.f64();a.ashRemaining=r.f64();a.escapeRetry=r.f64();a.respawnRetry=r.f64();a.encounterSlot=r.f64();a.approachRemaining=r.f64();a.approachX=r.f64();a.approachY=r.f64();
+    if(!Number.isInteger(a.encounterSlot)||a.encounterSlot< -1||a.approachRemaining<0||a.approachRemaining>CONFIG.world.volcanoes.approachSeconds||a.escapeRetry<0||a.escapeRetry>1||a.respawnRetry<0||a.respawnRetry>3||a.elapsed<0||a.exposure<0||a.ashRemaining<0||a.cycles<0||!Number.isInteger(a.cycles))throw new Error('Invalid volcanic lifecycle');return a;
   }
 }
