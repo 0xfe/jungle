@@ -1,3 +1,5 @@
+import { volcanicGround, volcanoesIn, nearestVolcano, type Volcano } from './volcanoes';
+import { VolcanicWildlifeAgent } from './agents/volcanic-wildlife';
 import { CANOPY_BIRDS } from './flight';
 import { populationRange } from './encounters';
 import { planArrangement, pieceSupports, treePerchHeight, schoolWater, type TreeSupport } from './patches';
@@ -42,6 +44,9 @@ export class InfiniteWorld {
   groundCover: {x:number;y:number;radius:number;opacity:number;variant:number}[] = [];
   agents: Agent[] = []; tiles: TerrainTile[] = []; private tileMap = new Map<string, TerrainTile>();
   rivers: RiverPath[] = [];
+  volcanoes: Volcano[] = [];
+  /** Presentation provides a conservative visibility test for replacement admission. */
+  spawnHidden: ((x:number,y:number)=>boolean)|undefined;
   bankCover: RiverBank[] = [];
   time = 0; previousTime = 0; weather: Weather = CONFIG.startup.weather; generated = 0; renderedNow = 0; renderedTotal = 0;
   private membership = ''; private pinned = new Set<string>();
@@ -52,7 +57,9 @@ export class InfiniteWorld {
   populationPlan(cx:number,cy:number) {
     const x=cx*4+2,y=cy*4+2;
     const canopy=Math.min(1,this.settings.plants*journeyDensity(x,y,this.origin).plants*forestRegion(x,y,this.seed).canopy*groundVegetation(interpolatedFields(x,y,this.seed,this.settings)));
-    return faunaPlan(cx,cy,this.seed,this.settings.animals*journeyDensity(x,y,this.origin).animals,canopy);
+    const volcanic=volcanicGround(x,y,this.seed);
+    const boost=volcanic.scar>0&&!volcanic.core?CONFIG.world.volcanoes.animalBoost:1;
+    return faunaPlan(cx,cy,this.seed,this.settings.animals*journeyDensity(x,y,this.origin).animals*boost,canopy);
   }
   private generate(cx: number, cy: number, track = true): ChunkRecord {
     const terrain = TerrainChunk.generate(cx, cy, this.seed,this.settings);
@@ -78,6 +85,7 @@ export class InfiniteWorld {
     // fixture retains its old individual sprites, but none are spawned here.
     for(const tile of generatedTiles)if(track)this.explored.add(coordinateHash(tile.x,tile.y,671));
     const dry = (x: number, y: number) => {
+      if(volcanicGround(x,y,this.seed).core)return false;
       const tx = Math.floor(x) - cx * CHUNK_SIZE, ty = Math.floor(y) - cy * CHUNK_SIZE;
       return tx >= 0 && tx < 4 && ty >= 0 && ty < 4 && generatedTiles[ty*4+tx]!.materialAt(x, y) < TerrainKind.Shallow && !clearanceTrees.some(t => Math.hypot(t.x - x, t.y - y) < .18);
     };
@@ -177,7 +185,13 @@ export class InfiniteWorld {
       }
     }
     if(track)this.generated += CHUNK_SIZE ** 2;
-    return { terrain: terrain.data, agents: jungleAgents.encode(agents) };
+    const sites=volcanoesIn({minX:cx*4,minY:cy*4,maxX:cx*4+4,maxY:cy*4+4},this.seed);
+    const population=agents.map(a=>{
+      const v=sites.find(v=>Math.hypot(a.x-v.x,a.y-v.y)<11);
+      const ground=a instanceof DeerAgent||(a instanceof WildlifeAgent&&!(a instanceof EcologicalAgent&&['water','air','shore'].includes(a.spec.mode)));
+      return v&&ground?new VolcanicWildlifeAgent(a as DeerAgent|WildlifeAgent,v):a;
+    });
+    return { terrain: terrain.data, agents: jungleAgents.encode(population) };
   }
   /** Synchronize only when the camera crosses chunk bounds; inactive state sleeps as bytes. */
   ensure(bounds: WorldBounds): void {
@@ -204,7 +218,7 @@ export class InfiniteWorld {
       this.active.set(key, { x, y, terrain, tiles, agents: jungleAgents.decode(record.agents) });
     }
     this.agents = []; this.tiles = []; this.tileMap.clear(); this.trunks.clear();
-    for (const chunk of this.active.values()) {
+    for (const chunk of [...this.active.values()].sort((a,b)=>a.y-b.y||a.x-b.x)) {
       this.agents.push(...chunk.agents); this.tiles.push(...chunk.tiles);
       for (const tile of chunk.tiles) this.tileMap.set(chunkKey(tile.x, tile.y), tile);
       for (const a of chunk.agents) {
@@ -220,6 +234,7 @@ export class InfiniteWorld {
       const corners=[[-1,-1],[1,-1],[-1,1],[1,1]];
       if(corners.every(([dx,dy])=>{const x=a.x+dx!*radius,y=a.y+dy!*radius,t=this.tileAt(x,y);return t && t.materialAt(x,y)<TerrainKind.Shallow;}))this.groundCover.push({x:a.x,y:a.y,radius,opacity:.28+Math.min(3,neighbors)*.035,variant:coordinateHash(Math.floor(a.x*20),Math.floor(a.y*20),this.seed)%4});
     }
+    this.volcanoes=volcanoesIn({minX:x0*4,minY:y0*4,maxX:(x1+1)*4,maxY:(y1+1)*4},this.seed);
     this.rivers=riverPaths({minX:x0*4,minY:y0*4,maxX:(x1+1)*4,maxY:(y1+1)*4},this.seed,this.settings);
     this.bankCover=riverBanks(this.rivers,this.settings.water,this.seed,(x,y)=>this.tileAt(x,y)?.fieldAt(x,y,0));
     this.membership = signature; this.pinned = pinned;
@@ -227,6 +242,7 @@ export class InfiniteWorld {
   tileAt(x: number, y: number): TerrainTile | undefined { return this.tileMap.get(chunkKey(Math.floor(x), Math.floor(y))); }
   heightAt(x: number, y: number): number { return this.tileAt(x, y)?.heightAt(x, y) ?? landscape(x, y, this.seed,this.settings).elevation; }
   canMove(x: number, y: number): boolean {
+    if(this.volcanoes.some(v=>Math.hypot(x-v.x,y-v.y)<v.radius*.82))return false;
     const tile = this.tileAt(x, y); if (!tile || tile.materialAt(x, y) >= TerrainKind.Shallow) return false;
     let blocked = false;
     this.trunks.visit(x - .13, y - .13, x + .13, y + .13, p => { if ((p.x - x) ** 2 + (p.y - y) ** 2 < .13 ** 2) blocked = true; });
@@ -235,6 +251,7 @@ export class InfiniteWorld {
   update(dt: number): void {
     this.previousTime = this.time; this.time += dt;
     this.system.step(this.agents, dt, {
+      ...{spawnHidden:this.spawnHidden},
       perches: (x,y,radius) => {const result: {x:number;y:number;height:number;root:{x:number;y:number}}[]=[];this.trunks.visit(x-radius,y-radius,x+radius,y+radius,p=>{if(Math.hypot(p.x-x,p.y-y)<=radius)result.push({x:p.x+.17,y:p.y,height:treePerchHeight(p),root:{x:p.x,y:p.y}});});return result.sort((a,b)=>a.x-b.x||a.y-b.y);},
       time: this.time, canMove: (x, y) => this.canMove(x, y),
       sample: (x, y) => {
@@ -254,7 +271,7 @@ export class InfiniteWorld {
   get stats() {
     return { worldSize: this.explored.estimate, renderedUnique: this.drawn.estimate, renderedNow: this.renderedNow, renderedTotal: this.renderedTotal,
       generated: this.generated, resident: this.cache.size * 16, active: this.tiles.length, expired: this.cache.expired * 16,
-      cachedBytes: this.cache.bytes, estimatedBytes: this.cache.bytes + this.agents.length * 896 + this.agents.reduce((n,a)=>n+(a instanceof LandscapePatchAgent?a.pieces.length*224+a.supports.length*104:0),0) + this.tiles.length * 6144 + 8192 + 512 * 1024 + this.rivers.length * 4096 + this.bankCover.length * 128, agents: this.agents.length, animals: this.agents.filter(a=>a.speed!==undefined).length, herds: new Set(this.agents.filter(a=>a instanceof DeerAgent && a.groupId).map(a=>(a as DeerAgent).groupId)).size };
+      cachedBytes: this.cache.bytes, estimatedBytes: this.cache.bytes + this.agents.length * 896 + this.agents.reduce((n,a)=>n+(a instanceof LandscapePatchAgent?a.pieces.length*224+a.supports.length*104:a instanceof VolcanicWildlifeAgent?a.template.byteLength+1024:0),0) + this.tiles.length * 6144 + 8192 + 512 * 1024 + this.rivers.length * 4096 + this.bankCover.length * 128, agents: this.agents.length, animals: this.agents.filter(a=>a.speed!==undefined).length, herds: new Set(this.agents.filter(a=>(a instanceof DeerAgent||(a instanceof VolcanicWildlifeAgent&&a.animal instanceof DeerAgent&&a.phase==='alive'))&&a.groupId).map(a=>a.groupId)).size };
   }
   /** Capture active state before taking a compact checkpoint. Cache eviction remains intentional. */
   checkpoint(): Uint8Array {
@@ -262,7 +279,7 @@ export class InfiniteWorld {
       const record = { terrain: a.terrain.data, agents: jungleAgents.encode(a.agents) };
       this.cache.put(a.x, a.y, record, record.terrain.length + record.agents.length + 256, this.pinned);
     }
-    const w = new BinaryWriter(); w.u32(0x4a4e474c); w.u8(18); w.u32(this.seed);
+    const w = new BinaryWriter(); w.u32(0x4a4e474c); w.u8(19); w.u32(this.seed);
     for(const key of SETTING_KEYS)w.f64(this.settings[key]);
     w.u8(['rainforest', 'flowering', 'wetland'].indexOf(this.habitat)); w.u8(['sun', 'rain', 'dusk'].indexOf(this.weather));
     for (const n of [this.time, this.previousTime, this.generated, this.renderedTotal, this.cache.expired]) w.f64(n);
@@ -273,7 +290,7 @@ export class InfiniteWorld {
   static restore(bytes: Uint8Array, budget = DEFAULT_WORLD_BUDGET): InfiniteWorld {
     if (bytes.length > budget.maxBytes + 65536) throw new Error('Checkpoint exceeds memory budget');
     const r = new BinaryReader(bytes);
-    if (r.u32() !== 0x4a4e474c || r.u8() !== 18) throw new Error('Unsupported world checkpoint');
+    if (r.u32() !== 0x4a4e474c || r.u8() !== 19) throw new Error('Unsupported world checkpoint');
     const seed = r.u32(), settings=Object.fromEntries(SETTING_KEYS.map(k=>[k,r.f64()])) as unknown as WorldSettings;
     for(const k of SETTING_KEYS)if(settings[k]!==normalizeSettings(settings)[k])throw new Error('Invalid world settings');
     const habitat = (['rainforest', 'flowering', 'wetland'] as const)[r.u8()], weather = (['sun', 'rain', 'dusk'] as const)[r.u8()];
@@ -304,6 +321,7 @@ export class InfiniteWorld {
     }
     return{x:fromX,y:fromY};
   }
+  volcanoLandmark(fromX=0,fromY=0):Volcano {return nearestVolcano(this.seed,fromX,fromY);}
   /** A visible channel midpoint, also used by the landscape tour and visual fixtures. */
   riverLandmark(fromX=0,fromY=0):{x:number;y:number} {
     const paths=riverPaths({minX:fromX-32,minY:fromY-32,maxX:fromX+32,maxY:fromY+32},this.seed,this.settings);

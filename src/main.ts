@@ -189,6 +189,7 @@ window.addEventListener('keydown', e => {
   else if(key==='o')showSettings();
   else if (key === 'r') regrow();
   else if (key === 't') weather();
+  else if (key === 'v') {pauseDrift();const v=world.volcanoLandmark(view.cameraX,view.cameraY);view.cameraX=v.x;view.cameraY=v.y-.75;cameraVX=cameraVY=0;syncUI();announce('Exploring an active volcano.');}
   else if (key === 'n') nextLandscape();
   else if (key === 'j') nextWildlife();
   else if (key === ' ' && !(e.target instanceof HTMLButtonElement)) { e.preventDefault(); paused = !paused; syncUI(); }

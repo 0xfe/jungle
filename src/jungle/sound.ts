@@ -1,3 +1,4 @@
+import { VolcanicWildlifeAgent } from './agents/volcanic-wildlife';
 import { CONFIG } from '../config';
 import type { BirdKind, SoundScene, SoundEmitter } from '../audio';
 import { DeerAgent, WildlifeAgent, PlantAgent, LandscapePatchAgent } from './agents';
@@ -8,7 +9,9 @@ const calls:Readonly<Record<string,BirdKind|'elephant'>>={elephant:'elephant',to
 export function jungleSound(world:InfiniteWorld,x:number,y:number):SoundScene{
  let water=0,trees=0,total=0;const emitters:SoundEmitter[]=[];
  for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){const tile=world.tileAt(x+dx,y+dy);if(tile){total++;water+=Number(tile.materialAt(x+dx,y+dy)>=TerrainKind.Shallow);}}
- for(const a of world.agents){
+ for(const record of world.agents){
+  if(record instanceof VolcanicWildlifeAgent&&record.phase!=='alive')continue;
+  const a=record instanceof VolcanicWildlifeAgent?record.animal:record;
   if(a instanceof LandscapePatchAgent){trees+=a.supports.filter(p=>Math.hypot(p.x-x,p.y-y)<=CONFIG.audio.radius).length;continue;}
   if(Math.hypot(a.x-x,a.y-y)>CONFIG.audio.radius)continue;
   if(a instanceof PlantAgent){trees+=Number(a.kind==='tree');continue;}

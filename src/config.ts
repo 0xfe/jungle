@@ -89,6 +89,21 @@ export const CONFIG = {
       /** Fraction of configured group density at the starting clearing. */
       animals: .85,
     },
+    volcanoes: {
+      /** Eligible cell width in tiles; jitter leaves at least 112 tiles between sites. */
+      spacing: 160,
+      /** Fraction of cells with an active volcano (about one per 116,000 tiles). */
+      frequency: .22,
+      /** Seconds between fresh lava fronts; a continuous vent stays active. */
+      surgePeriod: 48,
+      /** Whole-group population multiplier around the outer volcanic belt. */
+      animalBoost: 1.8,
+      /** Cartoon burn duration and minimum replacement delay, in seconds. */
+      burnSeconds: 3.5,
+      /** Sustained hot contact before the cartoon burn begins. */
+      contactSeconds: 2.25,
+      respawnSeconds: 14,
+    },
     regions: {
       /** Wavelength in tiles for recurring open, flowering, fruiting and wet regions. */
       scale: 24,

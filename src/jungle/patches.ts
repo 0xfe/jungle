@@ -1,3 +1,4 @@
+import { volcanicGround } from './volcanoes';
 import { CONFIG } from '../config';
 import { hash, noise, clamp, unproject } from '../iso/math';
 import { journeyDensity } from './journey';
@@ -47,7 +48,9 @@ export function planArrangement(cx:number,cy:number,seed:number,settings:Readonl
  const at=(x:number,y:number)=>{const key=`${x}:${y}`;let p=samples.get(key);if(!p){p=sample(x,y);samples.set(key,p);}return p;};
  const candidate=(ix:number,iy:number):Candidate|undefined=>{
   const key=`${ix}:${iy}`;if(candidates.has(key))return candidates.get(key);
-  const {x,y}=position(ix,iy,seed),f=at(x,y).fields,density=settings.plants*journeyDensity(x,y,origin).plants;
+  const {x,y}=position(ix,iy,seed),volcanic=volcanicGround(x,y,seed);
+  if(volcanic.core||volcanic.scar>.82){candidates.set(key,undefined);return;}
+  const f=at(x,y).fields,density=settings.plants*journeyDensity(x,y,origin).plants;
   let style:PatchKind,opacity=1;
   const wet=f[0],cover=groundVegetation(f),stand=noise(x/5.8,y/5.8,seed+7185);
   if(wet<0){
@@ -64,7 +67,7 @@ export function planArrangement(cx:number,cy:number,seed:number,settings:Readonl
    // Local glades ease from trees through bush into grass; most of the field
    // retains its original density. Coordinates, not chunk visits, own the gaps.
    const region=forestRegion(x,y,seed);
-   const canopy=clamp(density*cover*CONFIG.world.patches.coverage,0,1.4)*(1-clearing*CONFIG.world.patches.clearingAmount)*region.canopy;
+   const canopy=clamp(density*cover*(1-volcanic.scar)*CONFIG.world.patches.coverage,0,1.4)*(1-clearing*CONFIG.world.patches.clearingAmount)*region.canopy;
    const groveThreshold=.13+canopy*.64;
    if(wet<.13){style='wet';opacity=clamp(wet*24,0,1);}
    else if(cover>.25&&stand<groveThreshold){style='grove';}
@@ -80,6 +83,7 @@ export function planArrangement(cx:number,cy:number,seed:number,settings:Readonl
    }else if((style==='grass'||style==='bush')&&cover>.15&&accent<.72*region.flowers+.08){style='flowers';opacity=.85;}
    if(!isGrove(style))opacity*=Math.min(1,density*2.6);
   }
+  if(volcanic.scar>.25){style=volcanic.scar>.55?'grass':'bush';opacity*=1-volcanic.scar;}
   if(opacity<.05){candidates.set(key,undefined);return;}
   const variant=(Math.floor(hash(ix,iy,seed+7188)*4)+((ix+iy)&3))%4;
   // Color varies over whole stands, so neighbors share compatible foliage.

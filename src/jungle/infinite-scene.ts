@@ -1,3 +1,5 @@
+import { composeVolcanoes } from './volcano-scene';
+import { VolcanicWildlifeAgent } from './agents/volcanic-wildlife';
 import { ACCENT_FORMS } from './accents';
 import { restingSprite } from './resting';
 import { patchRoots, isGrove, isGroundPatch } from './patches';
@@ -42,6 +44,12 @@ export function gestureCamera(view: InfiniteView, gesture: PointerTransform, min
   panCamera(view,
     (gesture.from.x - view.width / 2) * ratio - (gesture.to.x - view.width / 2),
     (gesture.from.y - view.height / 2) * ratio - (gesture.to.y - view.height / 2));
+}
+/** Recompute projection from the current view: zoom/pan may change before the next composition. */
+export function spawnOutsideView(world:InfiniteWorld,view:InfiniteView,x:number,y:number):boolean {
+  const scale=cameraScale(view),p=project({x:x-view.cameraX,y:y-view.cameraY},TILE),margin=220*scale;
+  const sx=view.width/2+p.x*scale,sy=view.height/2+(p.y-world.heightAt(x,y))*scale;
+  return sx<-margin||sx>view.width+margin||sy<-margin||sy>view.height+margin;
 }
 interface Surface { uvCorners?:QuadCorners; corners: QuadCorners; bounds: ReturnType<typeof quadBounds>; region: Region; suffix: string }
 interface PreparedTerrain { atlas: AtlasManifest; surfaces: Surface[]; bounds: ReturnType<typeof quadBounds>; corners: QuadCorners; shade: number }
@@ -98,11 +106,20 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
     const p = project({ x: x - view.cameraX, y: y - view.cameraY }, TILE);
     return { x: view.width / 2 + p.x * scale, y: view.height / 2 + (p.y - height) * scale };
   };
+  // A full sprite margin prevents visible respawn even at the viewport edges.
+  world.spawnHidden=(x,y)=>spawnOutsideView(world,view,x,y);
+  let burning:VolcanicWildlifeAgent|undefined;
   const sprite = (id: string, name: string, x: number, y: number, size: number, frame: number, layer: number, opacity = 1, tint = 255, altitude = 0, depth = x + y) => {
     const s = atlas.sprites[name]; if (!s) throw new Error(`Unknown sprite: ${name}`);
     const p = screen(x, y, world.heightAt(x,y)+altitude), z = scale * size;
     const command: DrawCommand = { id, x: p.x - s.anchor[0] * z, y: p.y - s.anchor[1] * z, width: s.width * z, height: s.height * z,
       region: s.frames[frame % s.frames.length], color: [255, tint, tint, Math.round(opacity * 255)], layer, depth };
+    if(burning&&layer===2){
+      const t=lerp(burning.previousElapsed,burning.elapsed,alpha),fade=clamp((CONFIG.world.volcanoes.burnSeconds-t)*2,0,1);
+      const jitter=Math.sin(t*38)*.06,base=screen(x+jitter,y-jitter,world.heightAt(x,y)+altitude+Math.abs(Math.sin(t*17))*9);
+      command.corners=rootedQuad(base,s.width,s.height,s.anchor,z,z,Math.sin(t*24)*.35);
+      Object.assign(command,quadBounds(command.corners));command.color=[110,75,65,Math.round(opacity*fade*255)];
+    }
     if (visible(command, view.width, view.height)) commands.push(command);
   };
   const rect = (id: string, x: number, y: number, w: number, h: number, hex: string, opacity: number, layer: number) => {
@@ -165,7 +182,11 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
     line('main',x,y,bx,by,wood?1.2:.7);
     if(wood)line('twig',lerp(x,bx,.6),lerp(y,by,.6),bx+Math.cos(p.heading+.8)*.07,by+Math.sin(p.heading+.8)*.07,.65);
   }
-  for (const a of world.agents) {
+  composeVolcanoes(world,atlas,commands,screen,sprite,time,scale,view.width,view.height,alpha);
+  for (const record of world.agents) {
+    if(record instanceof VolcanicWildlifeAgent&&record.phase==='waiting')continue;
+    const a=record instanceof VolcanicWildlifeAgent?record.animal:record;
+    burning=record instanceof VolcanicWildlifeAgent&&record.phase==='burn'?record:undefined;
     // Ground-anchor rejection includes a conservative canopy margin before frame selection.
     const point = screen(a.x, a.y);
     if (!(a instanceof LandscapePatchAgent) && (point.x < -220 * scale || point.x > view.width + 220 * scale || point.y < -180 * scale || point.y > view.height + 300 * scale)) continue;

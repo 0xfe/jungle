@@ -31,6 +31,7 @@ npm run plants:preview # all tree and understory forms
 npm run motion:preview # close-up supported monkey swing sequence
 npm run elephants:preview # staged drinking / spraying pose review
 npm run audio:preview  # generated stereo sound previews
+npm run volcanoes:preview # volcano forms, lava and cartoon wildlife effects
 npm run patches:preview # generated landscape groups and their trunk templates
 ```
 
@@ -53,6 +54,7 @@ The browser console prints a startup banner and repository link, followed by an 
 | Shift + arrows / WASD | Travel faster |
 | `J` | Cycle all 25 animal habitats; briefly pause camera drift (whales surface intermittently) |
 | `N` | Visit dry scrub, meadow, lake, forest, then a stream |
+| `V` | Visit the nearest rare active volcano |
 | `O` / Settings | With overlays visible: adjust vegetation, wildlife, water, lake size, clearings, hills and sound |
 | `?` | Open Help, even with the menu hidden: FPS, per-stage CPU timing, world/cache/memory statistics and keyboard guide |
 | `R` | Generate a new seeded world |
@@ -110,6 +112,7 @@ The browser console prints a startup banner and repository link, followed by an 
 ## Documentation
 
 - [Snake behavior, rigs and tree wrapping](docs/SNAKES.md)
+- [Rare volcanoes, lava hazards and replacement wildlife](docs/VOLCANOES.md)
 - [Shared landscape artwork, navigation templates and memory](docs/LANDSCAPE-PATCHES.md)
 - [Recurring colorful regions, canopy wildlife and black bears](docs/REGIONAL-VARIETY.md)
 - [Application defaults and per-sound tuning](docs/CONFIGURATION.md)

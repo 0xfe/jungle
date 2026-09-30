@@ -30,7 +30,7 @@ test('atlas frames are disjoint, in bounds and transparent; keyed sources have n
         // alpha-authored flowers deliberately include vivid pink/purple petals.
         if (/^(tree|plant)-/.test(name))assert.ok(!(atlas.data[i]! > 180 && atlas.data[i + 2]! > 180 && atlas.data[i + 1]! < 90 && atlas.data[i + 3]! > 0), `${name}: chroma key leaked`);
       }
-      assert.ok((transparent > 0 || name.startsWith('terrain-') || name.startsWith('ground-blend-')) && opaque > 0, `${name}: expected isolated artwork`);
+      assert.ok((transparent > 0 || name.startsWith('terrain-') || name.startsWith('ground-blend-') || name==='volcano-molten' || name==='volcano-crust') && opaque > 0, `${name}: expected isolated artwork`);
     }
   }
 });

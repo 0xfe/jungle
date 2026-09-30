@@ -7,8 +7,8 @@ import { writeQuads } from '../src/iso/batch';
 const atlas: AtlasManifest = JSON.parse(await readFile('public/assets/jungle.json', 'utf8'));
 const results = [];
 const stats = (values: number[]) => { values.sort((a, b) => a - b); return { median: +values[Math.floor(values.length * .5)]!.toFixed(3), p95: +values[Math.floor(values.length * .95)]!.toFixed(3), max: +values.at(-1)!.toFixed(3) }; };
-for (const scenario of ['forest', 'outer-forest', 'wide-rain', 'travel'] as const) {
-  const world = new InfiniteWorld(), start = world.landmark(TerrainKind.Forest,scenario==='outer-forest'||scenario==='wide-rain'?64:0,0);
+for (const scenario of ['forest', 'outer-forest', 'wide-rain', 'travel', 'volcano'] as const) {
+  const world = new InfiniteWorld(), start = scenario==='volcano'?world.volcanoLandmark():world.landmark(TerrainKind.Forest,scenario==='outer-forest'||scenario==='wide-rain'?64:0,0);
   if (scenario === 'wide-rain') world.weather = 'rain';
   const view = { width: 1440, height: 900, pixelRatio: 1, zoom: scenario === 'wide-rain' ? .65 : 1, grid: false, cameraX: start.x, cameraY: start.y };
   let buffer = new Float32Array(0), quads = 0;

@@ -1,3 +1,4 @@
+import { volcanicGround } from '../src/jungle/volcanoes';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {normalizeSettings,DEFAULT_SETTINGS} from '../src/jungle/settings';
@@ -9,10 +10,10 @@ import {MemoryRenderer, type DrawCommand} from '../src/iso/render';
 import {writeQuads} from '../src/iso/batch';
 
 test('default landscape strongly favors jungle and controls alter coverage and feature scale',()=>{
- const counts=(settings=DEFAULT_SETTINGS)=>{const c=[0,0,0,0,0,0];for(let y=-150;y<150;y+=2)for(let x=-150;x<150;x+=2)c[landscape(x,y,2718,settings).kind]!++;return c;};
+ const counts=(settings=DEFAULT_SETTINGS)=>{const c=[0,0,0,0,0,0,0];for(let y=-150;y<150;y+=2)for(let x=-150;x<150;x+=2)c[volcanicGround(x,y,2718).scar>0?6:landscape(x,y,2718,settings).kind]!++;return c;};
  const normal=counts(),wet=counts(normalizeSettings({water:.8})),dry=counts(normalizeSettings({barren:.8})),allForest=counts(normalizeSettings({water:0,barren:0,meadow:0,hills:0}));
- assert.ok(normal[0]!/22500>.75);assert.ok((normal[4]!+normal[5]!)/22500<.16);assert.ok(normal[2]!/22500<.08);
- assert.ok(wet[4]!+wet[5]!>(normal[4]!+normal[5]!)*2);assert.ok(dry[2]!>normal[2]!*2);assert.equal(allForest[0],22500);
+ assert.ok(normal[0]!/(22500-normal[6]!)>.75);assert.ok((normal[4]!+normal[5]!)/22500<.16);assert.ok(normal[2]!/22500<.08);
+ assert.ok(wet[4]!+wet[5]!>(normal[4]!+normal[5]!)*2);assert.ok(dry[2]!>normal[2]!*2);assert.ok(allForest[0]!>22300);assert.equal(allForest[0]!+allForest[6]!,22500); // Rare volcanic scars remain dry even with ordinary clearings disabled.
  const transitions=(size:number)=>{let changes=0;for(let y=-80;y<80;y+=3){let previous=false;for(let x=-100;x<100;x+=.5){const water=landscape(x,y,19,normalizeSettings({water:.5,waterSize:size})).water;changes+=Number(water!==previous);previous=water;}}return changes;};
  assert.ok(transitions(0)>transitions(1)*1.4,'small lakes should create more frequent shorter water intervals');
 });

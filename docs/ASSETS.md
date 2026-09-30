@@ -154,3 +154,5 @@ The landscape wind pass separates four original flower-carpet petal masks from t
 Current sound, input, bears/zebras, giraffe proportions, elephant sampling, shared landscape accents and schema 17/14 are documented in [wildlife refinements](WILDLIFE-REFINEMENTS.md).
 
 Sixteen more original generated flower/shrub forms are retained in `assets/source/landscape-accent-variety.png`, with exact prompt and crop provenance in `assets/accent-variety-prompts.json`. Hawks/vultures and ground-rest poses use original articulated mesh sources; the offline baker retains their OBJ references and hashes. See [wildlife refinements](WILDLIFE-REFINEMENTS.md) for sampling and atlas tradeoffs.
+
+Volcano source forms are retained in `assets/source/volcano-forms.png`, with exact ImageGen prompt, tool and hash in `assets/volcano-prompts.json`. Four reviewed 627×627 cells bake to registered 104×88 poses with compensating logical size. Shared procedural smoke/fire/ash and molten/crust material strips animate in the renderer without per-site textures. See [volcano artwork and lifecycle](VOLCANOES.md).

@@ -164,3 +164,9 @@ Current sound, input, bears/zebras, giraffe proportions, elephant sampling, shar
 Implemented: 25% faster drift and larger bears; sixteen shared flower/shrub overlays at varied sizes; quiet ground rest for deer, zebras, jaguars and bears; occasional zebra runs; complementary hunter/prey population ranges and prey-owned escape; rare circling hawks with fixed missed dives and ground-scavenging vultures with return flights. State is exactly checkpointed under world 18 / agent 14. Durable migration, real predation, reproduction and carcass creation remain future work.
 
 Implemented: fourteen-phase local leaf/petal rustle for all sixteen accent forms, quieter vulture/seagull populations, and occasional bounded canopy-bird river crossings to actual dry perches. Root pixels stay fixed; atlas size stays below 64 MiB with no extra per-instance textures. Birds remain owned by their originating chunks; persistent migration remains future work.
+
+## Rare volcanic landmarks
+
+Implemented: widely separated seeded multi-tile volcanoes with four generated forms, shared ash/vegetation scars, animated lava fronts and cooling crust, continuous mouth smoke and occasional explosive visual spurts. Hot ground lava causes species-owned escape intent or a bounded cartoon burn/smoke/ash lifecycle. Replacement records wait for clear off-screen resident ground, preserve family links and return toward their original home belt. World/agent schemas are 19/15; one atlas remains capped at 64 MiB. Sleeping lifecycles resume; expired chunks regenerate their initial populations. See [volcano design](docs/VOLCANOES.md).
+
+Future: fluid hydrology, lava/water interactions, permanent lava terrain edits, durable mortality/history and actual cross-chunk ecological migration. Explosive clasts are currently visual; ground ribbons own contact damage. Off-screen replacement is bounded by the active region and may wait while the whole ring is visible.

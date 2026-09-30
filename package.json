@@ -30,7 +30,8 @@
     "upload": "bash upload.sh",
     "upload:dev": "bash upload.sh dev",
     "upload:prod": "bash upload.sh prod",
-    "serve:cached": "node scripts/serve.mjs --cache"
+    "serve:cached": "node scripts/serve.mjs --cache",
+    "volcanoes:preview": "tsx scripts/volcano-preview.ts"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
