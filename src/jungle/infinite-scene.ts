@@ -184,7 +184,7 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
   }
   composeVolcanoes(world,atlas,commands,screen,sprite,time,scale,view.width,view.height,alpha);
   for (const record of world.agents) {
-    if(record instanceof SpacecraftAgent){burning=undefined;composeSpacecraft(record,sprite,alpha);
+    if(record instanceof SpacecraftAgent){burning=undefined;composeSpacecraft(record,sprite,alpha,time,atlas.spacecraftParts);
       const p=record.presentation(alpha),center=screen(p.x,p.y,world.heightAt(p.x,p.y)+p.altitude);
       if(center.x>-110*scale&&center.x<view.width+110*scale&&center.y>-90*scale&&center.y<view.height+90*scale)
         commands.push(...composeFlightField(record,time,alpha,center,scale));

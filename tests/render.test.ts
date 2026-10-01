@@ -14,6 +14,10 @@ const view = { width: 720, height: 480, panX: 0, panY: 0, zoom: 1, grid: false }
 const digest = (data: Uint8Array) => createHash('sha256').update(data).digest('hex');
 
 test('atlas frames are disjoint, in bounds and transparent; keyed sources have no magenta leaks', () => {
+  // Registered ship pieces can be solid interior pixels, or empty in individual
+  // poses. Their complete silhouettes are reconstructed in spacecraft.test.ts.
+  const spacecraftParts=new Set(Object.values(manifest.spacecraftParts??{}).flat());
+  for(const name of spacecraftParts)assert.ok(manifest.sprites[name],`missing spacecraft part ${name}`);
   const occupied = new Set<number>();
   const shared = new Set<string>();
   for (const [name, sprite] of Object.entries(manifest.sprites)) {
@@ -30,7 +34,7 @@ test('atlas frames are disjoint, in bounds and transparent; keyed sources have n
         // alpha-authored flowers deliberately include vivid pink/purple petals.
         if (/^(tree|plant)-/.test(name))assert.ok(!(atlas.data[i]! > 180 && atlas.data[i + 2]! > 180 && atlas.data[i + 1]! < 90 && atlas.data[i + 3]! > 0), `${name}: chroma key leaked`);
       }
-      assert.ok((transparent > 0 || name.startsWith('terrain-') || name.startsWith('ground-blend-') || name==='volcano-molten' || name==='volcano-crust') && opaque > 0, `${name}: expected isolated artwork`);
+      assert.ok(spacecraftParts.has(name)||((transparent > 0 || name.startsWith('terrain-') || name.startsWith('ground-blend-') || name==='volcano-molten' || name==='volcano-crust') && opaque > 0), `${name}: expected isolated artwork`);
     }
   }
 });

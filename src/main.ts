@@ -1,3 +1,4 @@
+import { SPACE_KINDS } from './jungle/ecology';
 import { mobileDevice, startupSeed } from './platform';
 import { AnimationBudget } from './iso/animation-budget';
 import atlasManifestUrl from '../public/assets/jungle.json?url';
@@ -181,6 +182,8 @@ window.addEventListener('pageshow',()=>{syncSound();unlockSound();});
 el('help-button').onclick = () => help(); el('close-help').onclick = () => { help(false); el('help-button').focus(); };
 el('pause').onclick = () => { paused = !paused; syncUI(); };
 el('zoom-in').onclick = () => zoom(CONFIG.camera.zoomStep); el('zoom-out').onclick = () => zoom(-CONFIG.camera.zoomStep);
+/** The explicit call shortcut cycles designs without disturbing other visiting crews. */
+let nextCalledShip=0;
 /** One action path for physical shortcuts and the tappable field guide. */
 function executeCommand(key:string):void {
   if (key === '?' || key === 'h') help();
@@ -190,10 +193,11 @@ function executeCommand(key:string):void {
   else if (key === 't') weather();
   else if (key === 'v') {pauseDrift();const v=world.volcanoLandmark(view.cameraX,view.cameraY);view.cameraX=v.x;view.cameraY=v.y-.75;cameraVX=cameraVY=0;syncUI();announce('Exploring an active volcano.');}
   else if(key==='shift+u'){
-    const ship=world.callSpacecraft(view.cameraX,view.cameraY);
+    const ship=world.callSpacecraft(view.cameraX,view.cameraY,SPACE_KINDS[nextCalledShip]);
     if(!ship){announce('No safe landing area nearby. Explore toward a dry clearing and try Shift+U again.');return;}
     pauseDrift();drift=false;paused=false;view.cameraX=ship.x;view.cameraY=ship.y;cameraVX=cameraVY=0;syncUI();
-    announce('Spacecraft called. Watching its landing area; P resumes automatic travel.');
+    nextCalledShip=(nextCalledShip+1)%SPACE_KINDS.length;
+    announce(`${ship.kind[0]!.toUpperCase()+ship.kind.slice(1)} called. Shift+U calls the next design; P resumes automatic travel.`);
   }
   else if (key === 'u') {
     const site=world.spacecraftLandmark(view.cameraX,view.cameraY);

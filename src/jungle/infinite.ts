@@ -18,7 +18,7 @@ import { SpatialGrid } from '../iso/spatial';
 import { chunkKey, ChunkCache, Cardinality, type CacheBudget } from '../streaming';
 import { ECO_CLASSES, EcologicalAgent, DeerAgent, ToucanAgent, OrangutanAgent, JaguarAgent, WildlifeAgent, PlantAgent, jungleAgents } from './agents';
 import { CHUNK_SIZE, coordinateHash, landscape, TerrainChunk, TerrainKind, TerrainTile, terrainEnvironment, terrainMoisture, interpolatedFields, terrainFields, type TerrainFields } from './terrain';
-import { ECO_KINDS, ECO_SPECS, habitatAllows, type EcoKind } from './ecology';
+import { ECO_KINDS, ECO_SPECS, habitatAllows, type EcoKind, type SpaceKind } from './ecology';
 import { journeyDensity } from './journey';
 import { hash } from '../iso/math';
 import type { Habitat, Weather } from './world';
@@ -357,15 +357,17 @@ export class InfiniteWorld {
   }
   volcanoLandmark(fromX=0,fromY=0):Volcano {return nearestVolcano(this.seed,fromX,fromY);}
   /** Explicit user call: bounded active-chunk search, normal landing safety and persistence. */
-  callSpacecraft(fromX:number,fromY:number):SpacecraftAgent|undefined {
+  callSpacecraft(fromX:number,fromY:number,kind?:SpaceKind):SpacecraftAgent|undefined {
     // Repeated presses focus an existing visit, never pile ships into the same clearing.
-    const visiting=this.visitors.filter(a=>a.state!=='waiting').sort((a,b)=>Math.hypot(a.x-fromX,a.y-fromY)-Math.hypot(b.x-fromX,b.y-fromY))[0];
+    const visiting=this.visitors.filter(a=>a.state!=='waiting'&&(!kind||a.kind===kind)).sort((a,b)=>Math.hypot(a.x-fromX,a.y-fromY)-Math.hypot(b.x-fromX,b.y-fromY))[0];
     if(visiting)return visiting;
     const chunks=[...this.active.values()].sort((a,b)=>Math.hypot(a.x*4+2-fromX,a.y*4+2-fromY)-Math.hypot(b.x*4+2-fromX,b.y*4+2-fromY));
     for(const chunk of chunks){
       const existing=chunk.agents.find((a):a is SpacecraftAgent=>a instanceof SpacecraftAgent);
+      if(existing&&kind&&existing.kind!==kind)continue;
       const kinds=Object.values(SPACE_CLASSES),hash=coordinateHash(chunk.x,chunk.y,this.seed^0x43414c4c);
-      const ship=existing??new kinds[hash%kinds.length]!(`called-ship:${chunk.x}:${chunk.y}`,chunk.x*4+2,chunk.y*4+2,hash);
+      const C=kind?SPACE_CLASSES[kind]:kinds[hash%kinds.length]!;
+      const ship=existing??new C(`called-ship:${chunk.x}:${chunk.y}`,chunk.x*4+2,chunk.y*4+2,hash);
       const clear=(x:number,y:number)=>this.canLand(x,y)&&!this.agents.some(a=>a!==ship&&a.speed!==undefined&&(a.altitude??0)<45&&Math.hypot(a.x-x,a.y-y)<ship.radius+.3);
       if(!ship.chooseSite(clear))continue;
       ship.beginApproach();

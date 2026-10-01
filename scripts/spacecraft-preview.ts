@@ -41,10 +41,23 @@ const contactRenderer=new MemoryRenderer({width:raw.info.width,height:raw.info.h
 for(const [row,kind] of SPACE_KINDS.entries())for(let d=0;d<8;d++)for(const alien of [false,true]){
   const names=alien?[`alien-${['sprout','ember','reed'][row]}-inspect-${d}`]:[`ship-${kind}-${d}`,`ship-${kind}-hatch-${d}`];
   const factor=alien?3.1:1.4;
-  const commands=names.map((name,i)=>{const s=atlas.sprites[name];return{id:String(i),x:75-s.anchor[0]*factor,y:90-s.anchor[1]*factor,
+  const commands=names.flatMap(name=>atlas.spacecraftParts?.[name]??[name]).map((name,i)=>{const s=atlas.sprites[name];return{id:String(i),x:75-s.anchor[0]*factor,y:90-s.anchor[1]*factor,
     width:s.width*factor,height:s.height*factor,region:s.frames[alien?1:0],color:[255,255,255,255] as [number,number,number,number],layer:2,depth:0};});
   contactRenderer.render({width:150,height:110,clear:[53,72,62,255],commands});
   contacts.push({input:Buffer.from(contactRenderer.pixels.data),raw:{width:150,height:110,channels:4},left:d*150,top:row*220+(alien?110:0)});
 }
 await sharp({create:{width:1200,height:660,channels:4,background:'#35483e'}}).composite(contacts).png().toFile('artifacts/spacecraft-directions.png');
 console.log('Spacecraft/crew contact sheets and five-stage sequences → artifacts/spacecraft-*.png');
+
+// Eight samples of each baked flight cycle at one common root, with no live transforms.
+const flightPanels:sharp.OverlayOptions[]=[];
+for(const [row,kind] of SPACE_KINDS.entries())for(let phase=0;phase<8;phase++){
+  const name=kind==='scout'?'ship-scout-flight-0':`ship-${kind}-flight`,parts=atlas.spacecraftParts[name];
+  const count=Math.max(...parts.map((name:string)=>atlas.sprites[name].frames.length)),frame=Math.floor(phase*count/8),factor=1.5;
+  contactRenderer.render({width:180,height:150,clear:[53,72,62,255],commands:parts.map((name:string,i:number)=>{
+    const s=atlas.sprites[name];return{id:String(i),x:90-s.anchor[0]*factor,y:125-s.anchor[1]*factor,width:s.width*factor,height:s.height*factor,
+      region:s.frames[frame%s.frames.length],color:[255,255,255,255] as const,layer:2,depth:0};
+  })});
+  flightPanels.push({input:Buffer.from(contactRenderer.pixels.data),raw:{width:180,height:150,channels:4},left:phase*180,top:row*150});
+}
+await sharp({create:{width:1440,height:450,channels:4,background:'#35483e'}}).composite(flightPanels).png().toFile('artifacts/spacecraft-flight.png');

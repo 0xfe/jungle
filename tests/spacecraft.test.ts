@@ -1,3 +1,4 @@
+import { SHIP_SPIN_FRAMES, SHIP_BANK_FRAMES, SHIP_LIGHT_FRAMES, shipFlightFrame } from '../src/jungle/space-animation';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -91,14 +92,33 @@ test('rare candidates are deterministic and species-local; real encounters sleep
 
 test('visitor rigs keep transparent margins, fit the shared atlas and compose registered crew sprites',async()=>{
   const baked=bakeSpaceVisitors();
+  const assemble=(id:string,frame=0)=>{
+    const data=new Uint8Array(88*80*4),parts=baked.filter(s=>s.id.startsWith(`${id}:tile:`));assert.ok(parts.length,id);
+    for(const s of parts){const f=s.frames[frame%s.frames.length]!,x=44-s.anchor[0],y=59-s.anchor[1];
+      for(let row=0;row<f.height;row++)data.set(f.data.subarray(row*f.width*4,(row+1)*f.width*4),((y+row)*88+x)*4);
+    }
+    return {width:88,height:80,data};
+  };
   for(const kind of SPACE_KINDS)for(let d=0;d<8;d++){
-    const base=baked.find(s=>s.id===`ship-${kind}-${d}`)!,hatch=baked.find(s=>s.id===`ship-${kind}-hatch-${d}`)!;
-    const image=base.frames[0]!,delta=hatch.frames[0]!,combined=image.data.slice();
+    const image=assemble(`ship-${kind}-${d}`),delta=assemble(`ship-${kind}-hatch-${d}`),combined=image.data.slice();
     for(let i=0;i<combined.length;i+=4)if(delta.data[i+3])combined.set(delta.data.subarray(i,i+4),i);
-    const full=bakeMesh(spacecraftMesh(kind,true),d/8*Math.PI*2,{width:image.width,height:image.height,anchor:base.anchor,scale:18});
-    assert.deepEqual(combined,full.data,'shared hull plus hatch reproduces the complete baked pose exactly');
+    const full=bakeMesh(spacecraftMesh(kind,true),d/8*Math.PI*2,{width:88,height:80,anchor:[44,59],scale:18});
+    assert.deepEqual(combined,full.data,'registered hull/hatch tiles reconstruct the exact open mesh');
+    for(let phase=0;phase<SHIP_LIGHT_FRAMES;phase++){
+      const light=assemble(`ship-${kind}-lights-${d}`,phase),lit=image.data.slice();
+      for(let i=0;i<lit.length;i+=4)if(light.data[i+3])lit.set(light.data.subarray(i,i+4),i);
+      assert.deepEqual(lit,bakeMesh(spacecraftMesh(kind,false,phase),d/8*Math.PI*2,{width:88,height:80,anchor:[44,59],scale:18}).data);
+    }
   }
-  for(const sprite of baked)for(const frame of sprite.frames){
+  for(const kind of SPACE_KINDS)for(let d=0;d<(kind==='scout'?8:1);d++)for(let frame=0;frame<(kind==='scout'?SHIP_BANK_FRAMES:SHIP_SPIN_FRAMES);frame++){
+    const image=assemble(`ship-${kind}-flight${kind==='scout'?`-${d}`:''}`,frame);
+    const heading=kind==='scout'?d/8*Math.PI*2:frame/SHIP_SPIN_FRAMES*Math.PI*2;
+    const bank=kind==='scout'?Math.sin(frame/SHIP_BANK_FRAMES*Math.PI*2)*.12:0;
+    assert.deepEqual(image,bakeMesh(spacecraftMesh(kind,false,frame%SHIP_LIGHT_FRAMES,bank),heading,{width:88,height:80,anchor:[44,59],scale:18}),'flight tiles exactly reconstruct the full posed model');
+    for(let x=0;x<88;x++)assert.ok(!image.data[x*4+3]&&!image.data[((79*88)+x)*4+3]);
+    for(let y=0;y<80;y++)assert.ok(!image.data[(y*88)*4+3]&&!image.data[(y*88+87)*4+3]);
+  }
+  for(const sprite of baked.filter(s=>s.id.startsWith('alien-')))for(const frame of sprite.frames){
     const alpha=(x:number,y:number)=>frame.data[(y*frame.width+x)*4+3];
     for(let x=0;x<frame.width;x++)assert.ok(!alpha(x,0)&&!alpha(x,frame.height-1),sprite.id);
     for(let y=0;y<frame.height;y++)assert.ok(!alpha(0,y)&&!alpha(frame.width-1,y),sprite.id);
@@ -177,4 +197,21 @@ test('spacecraft audio follows flight and exploration without touching simulatio
   const bytes=SOUND_KINDS.filter(k=>CONFIG.audio.sounds[k].enabled).reduce((sum,k)=>sum+synthesize(k,CONFIG.audio.sampleRate,CONFIG.audio.seed,CONFIG.audio.sounds[k]).channels.reduce((n,c)=>n+c.byteLength,0),0);
   const recording=decodePcmWav(await readFile('public/assets/audio/elephant-trumpet.wav'));
   assert.ok(bytes+recording.channels.reduce((n,c)=>n+c.byteLength,0)<10*1048576,'shared PCM remains below 10 MiB');
+});
+
+
+test('explicit design selection cycles all three ships without replacing crews or consuming their RNG',()=>{
+  const w=new InfiniteWorld(2718,'rainforest',undefined,{plants:0,water:0,animals:0,hills:0});w.ensure({minX:-12,minY:-12,maxX:12,maxY:12});
+  const ships=SPACE_KINDS.map(kind=>{const a=w.callSpacecraft(0,0,kind);assert.ok(a);assert.equal(a.kind,kind);return a;});
+  assert.equal(new Set(ships.map(a=>a.id)).size,3);
+  for(const a of ships){const bytes=jungleAgents.encode([a]);assert.equal(w.callSpacecraft(0,0,a.kind),a);assert.deepEqual(jungleAgents.encode([a]),bytes);}
+  assert.equal(w.agents.filter(a=>a instanceof SpacecraftAgent).length,3);
+});
+
+test('flight frames spin round hulls, bank directional scouts and settle onto landing headings',()=>{
+  for(const kind of SPACE_KINDS){
+    const frames=new Set(Array.from({length:100},(_,i)=>shipFlightFrame(kind,0,i*4.2,i/10)));
+    assert.equal(frames.size,kind==='scout'?SHIP_BANK_FRAMES:SHIP_SPIN_FRAMES);
+    if(kind!=='scout')for(let d=0;d<8;d++)assert.equal(shipFlightFrame(kind,d/8*Math.PI*2,0,123),d*SHIP_SPIN_FRAMES/8);
+  }
 });

@@ -32,7 +32,7 @@ const dependencies = ['src/jungle/volcano-animation.ts','src/jungle/agents/volca
   'src/iso/spatial.ts', 'src/jungle/animation.ts', 'src/jungle/world.ts', 'src/jungle/agents/deer.ts', 'src/jungle/agents/fixed.ts', 'src/jungle/agents/index.ts', 'src/agents/core.ts', 'src/agents/motion.ts', 'src/agents/system.ts', 'src/agents/index.ts', 'assets/source/trees.png', 'assets/source/plants.png',
   'package-lock.json'];
 const sources: Record<string, string> = {};
-dependencies.push('scripts/art/space-visitors.ts','src/jungle/agents/spacecraft.ts','src/jungle/space-sites.ts','assets/source/space-visitors-reference.png','assets/space-visitors-prompts.json');
+dependencies.push('src/jungle/space-animation.ts','scripts/art/space-visitors.ts','src/jungle/agents/spacecraft.ts','src/jungle/space-sites.ts','assets/source/space-visitors-reference.png','assets/space-visitors-prompts.json');
 const visitorModels=SPACE_KINDS.flatMap(kind=>[`ship-${kind}`,`alien-${kind}`]);
 for (const file of dependencies) sources[file] = sha(await readFile(file));
 const fingerprint = sha(JSON.stringify(sources));
@@ -260,7 +260,9 @@ for(const s of inputs)if(/^(tree|plant)-/.test(s.id)){
  }));s.anchor=[s.anchor[0]/2,s.anchor[1]/2];
 }
 const { image, manifest } = packAtlas(inputs, 4096, 4096);
-Object.assign(manifest,{volcanoLava});
+const spacecraftParts:Record<string,string[]>={};
+for(const s of inputs)if(s.id.startsWith('ship-')){const id=s.id.split(':tile:')[0]!;(spacecraftParts[id]??=[]).push(s.id);}
+Object.assign(manifest,{volcanoLava,spacecraftParts});
 for(const [id,s] of Object.entries(manifest.sprites)){
  if(id.startsWith('ship-')||id.startsWith('alien-')){const factor=id.startsWith('ship-')?24/18:19/15;s.width*=factor;s.height*=factor;s.anchor=[s.anchor[0]*factor,s.anchor[1]*factor];}
  const scale=/^volcano-[0-3]$/.test(id)?VOLCANO_ART_SCALE/VOLCANO_TEXEL_SCALE:/^(tree|plant)-/.test(id)?2:id.startsWith('deer-')?28/21:id.startsWith('jaguar-')?28/25:id.startsWith('elephant-')?21/17.5:id.startsWith('patch-')?patchLogicalScale(id):/^ground-\d/.test(id)?2:1;

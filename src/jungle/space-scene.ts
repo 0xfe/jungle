@@ -1,3 +1,4 @@
+import { SHIP_LIGHT_FRAMES, shipFlightFrame } from './space-animation';
 import { quadBounds, type QuadCorners } from '../iso/quad';
 import type { DrawCommand } from '../iso/render';
 import type { Vec2 } from '../iso/math';
@@ -8,13 +9,23 @@ type SpritePainter=(id:string,name:string,x:number,y:number,size:number,frame:nu
 const direction=(heading:number)=>(Math.round(heading/(Math.PI*2)*8)%8+8)%8;
 
 /** Shared atlas sprites use normal ground-anchor painter ordering in all three renderers. */
-export function composeSpacecraft(a:SpacecraftAgent,sprite:SpritePainter,alpha:number):void {
+export function composeSpacecraft(a:SpacecraftAgent,sprite:SpritePainter,alpha:number,time=0,parts:Record<string,string[]>={}):void {
   if(a.state==='waiting')return;
+  const hull:SpritePainter=(id,name,x,y,size,frame,layer,opacity,tint,altitude,depth)=>{
+    const tiles=parts[name];if(!tiles)throw new Error(`Missing spacecraft clip: ${name}; rebuild assets`);
+    tiles.forEach((tile,i)=>sprite(i?`${id}:0:tile:${i}`:id,tile,x,y,size,frame,layer,opacity,tint,altitude,depth));
+  };
   const p=a.presentation(alpha),opacity=Math.min(1,(420-p.altitude)/70);
   sprite(`${a.id}:shadow`,'shadow',a.x,a.y,1.9-p.altitude/420,0,1,.28*opacity);
+  const flying=(a.state==='approach'||a.state==='depart')&&p.altitude>10;
+  const heading=direction(a.heading),frame=flying?shipFlightFrame(a.kind,a.heading,p.altitude,time):0;
+  const name=flying?`ship-${a.kind}-flight${a.kind==='scout'?`-${heading}`:''}`:`ship-${a.kind}-${heading}`;
+  // Less than a quarter logical pixel of grounded motor tremor; ramps share the offset.
+  const vibration=flying?0:Math.sin(time*73)*.14+Math.sin(time*109)*.07;
   // Flying craft fade above the canopy; landed craft and crew share the usual depth layer.
-  sprite(a.id,`ship-${a.kind}-${direction(a.heading)}`,p.x,p.y,1.5,0,2,opacity,255,p.altitude);
-  if(p.hatch>.5)sprite(`${a.id}:hatch`,`ship-${a.kind}-hatch-${direction(a.heading)}`,p.x,p.y,1.5,0,2,opacity,255,p.altitude);
+  hull(a.id,name,p.x,p.y,1.5,frame,2,opacity,255,p.altitude+vibration);
+  if(!flying)hull(`${a.id}:lights`,`ship-${a.kind}-lights-${heading}`,p.x,p.y,1.5,Math.floor(time*4)%SHIP_LIGHT_FRAMES,2,opacity,255,p.altitude+vibration);
+  if(p.hatch>.5)hull(`${a.id}:hatch`,`ship-${a.kind}-hatch-${direction(a.heading)}`,p.x,p.y,1.5,0,2,opacity,255,p.altitude+vibration);
   for(const crew of a.crew){
     const c=crew.presentation(alpha);if(c.visibility<=0)continue;
     const clip=crew.speed>.001?'walk':crew.state==='inspect'?'inspect':'rest';

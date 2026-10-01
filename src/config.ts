@@ -325,7 +325,7 @@ export const CONFIG = {
      * Gain/texture may be zero. Large gain/texture can cause distortion.
      * Disabled voices still export individually for auditioning, but are excluded from the chorus mix. */
     sounds: {
-      /** Quiet flight-only propulsion loop; rhythm controls the shallow beating buzz. */
+      /** Quiet flight-only propulsion loop with a faint whistle; rhythm controls buzz and whistle sweep. */
       hover: { enabled:true, gain:.8, speed:1, duration:1.5, pitch:1, rhythm:1, texture:1, intervalScale:1 },
       /** Short alien conversation; intervalScale changes each explorer's phrase spacing. */
       alien: { enabled:true, gain:.8, speed:1, duration:.85, pitch:1, rhythm:1, texture:1, intervalScale:1 },

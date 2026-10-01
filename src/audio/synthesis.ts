@@ -29,7 +29,7 @@ export function synthesize(kind:SoundKind, sampleRate=24000, seed=123, tuning:Pa
  if(!Number.isFinite(seconds)||seconds<=(loop?.5:0)||!Number.isFinite(pitch)||pitch<=0||!Number.isFinite(rhythm)||rhythm<=0||!Number.isFinite(texture)||texture<0)throw new Error(`Invalid sound tuning: ${kind}`);
  const length=Math.round(seconds*sampleRate),channels:Float32Array[]=[];
  for(let channel=0;channel<2;channel++){
-  let state=(seed+channel*7591)>>>0,low=0,mid=0,phase=0;
+  let state=(seed+channel*7591)>>>0,low=0,mid=0,phase=0,whistle=0;
   const samples=new Float32Array(length);
   for(let i=0;i<length;i++){
    state=(Math.imul(state,1664525)+1013904223)>>>0;const noise=(state/2147483648-1)*texture,t=i/sampleRate,rt=t*rhythm;
@@ -68,7 +68,8 @@ export function synthesize(kind:SoundKind, sampleRate=24000, seed=123, tuning:Pa
    // Soft propulsion harmonics with a fast, shallow beating texture, never a siren.
    if(kind==='hover'){
     phase+=Math.PI*2*(145+2*Math.sin(rt*6))*pitch/sampleRate;
-    value=(Math.sin(phase)*.10+Math.sin(phase*2.01)*.035+Math.sin(phase*3)*.012+low*.045)*(.88+.12*Math.sin(rt*54));
+    whistle+=Math.PI*2*(1080+45*Math.sin(rt*3))*pitch/sampleRate;
+    value=Math.sin(whistle)*.025+(Math.sin(phase)*.10+Math.sin(phase*2.01)*.035+Math.sin(phase*3)*.012+low*.045)*(.88+.12*Math.sin(rt*54));
    }
    // Short conversational syllables with formant-like harmonics and tiny noisy consonants.
    if(kind==='alien'){
