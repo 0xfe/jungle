@@ -8,6 +8,22 @@ npm run assets:preview
 
 `check` rebuilds assets, runs strict TypeScript checking, bundles the static site, runs **121 headless tests**, and writes actual RGBA-rendered PNG/JSON snapshots. It requires no browser, display, native Canvas package, GPU or generation service. CI in `.github/workflows/check.yml` runs the check on Node 22 and uploads `artifacts/`; remote CI has not been run from this workspace.
 
+## Project statistics
+
+Run `npm run stats` for a fresh build, the full headless suite under coverage, and a terminal summary. It stops on build/test failure. Reports are local ignored files:
+
+- `artifacts/stats.json`: versioned machine-readable counts, exact byte sizes, per-extension size totals, largest files, bundle gzip estimates, atlas metrics and aggregate coverage.
+- `coverage/index.html`: browsable per-file coverage mapped to TypeScript source.
+- `coverage/coverage-summary.json` and `coverage/lcov.info`: per-file coverage for other tools.
+
+Code counts cover `.ts`, `.js`, `.mjs`, `.cjs`, `.css`, `.html` and `.sh` files under `src/`, `tests/`, `scripts/` and `public/`, plus `upload.sh`. Physical and nonblank lines both include comments; these are not statement counts. Dependencies, generated assets, build output and prose are excluded. A trailing newline does not add a line.
+
+Coverage uses [c8](https://github.com/bcoe/c8) and the existing `npm test` command. All `src/**/*.ts` files, including unimported browser code and the offline baker, enter the denominator; declaration files are excluded. Tests and scripts are outside the coverage scope. Lines, statements, functions and branches are reported without imposing a pass threshold. This measures headless execution, not browser/GPU behavior or test quality. `npm run test:coverage` collects coverage alone using the current assets; run `npm run assets` first if they need rebuilding.
+
+Size inventories separately measure retained artwork/models/provenance (`assets/`), runtime assets (`public/assets/`) and the built deployment (`dist/`). They overlap in content and should not be added together. Sizes are logical bytes, not filesystem allocation; the deployment includes source maps but excludes its local `.build-manifest.json` receipt. JS/CSS gzip sizes are independent compression estimates, not measured network transfers. Atlas memory is width × height × 4 RGBA bytes, compared with the 64 MiB budget; frame references may share deduplicated pixels and do not imply unique allocations.
+
+`npm run stats` refreshes reports; running `node scripts/stats.mjs` directly only summarizes existing build/coverage data, which may be stale. A failed run may leave reports from an earlier successful run. Normal `npm test` and `npm run check` keep their existing behavior and do not collect coverage.
+
 ## Coverage
 
 Study 05 adds parent following, herd separation/alignment, predator acquisition and flight/recovery, social update-order independence, exact new-species codecs, canopy motion, sparse spawning, structural variants, litter placement and every new rig heading/action margin.

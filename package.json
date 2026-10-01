@@ -15,6 +15,8 @@
     "assets:preview": "tsx scripts/art/preview-deer.ts",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts tests/*.test.mjs",
+    "test:coverage": "c8 npm test",
+    "stats": "npm run build && npm run test:coverage && node scripts/stats.mjs",
     "snapshot": "tsx scripts/snapshot.ts",
     "readme:preview": "npm run assets && tsx scripts/readme-preview.ts",
     "check": "npm run build && npm test && npm run snapshot",
@@ -33,8 +35,24 @@
     "serve:cached": "node scripts/serve.mjs --cache",
     "volcanoes:preview": "tsx scripts/volcano-preview.ts"
   },
+  "c8": {
+    "all": true,
+    "include": [
+      "src/**/*.ts"
+    ],
+    "exclude": [
+      "src/**/*.d.ts"
+    ],
+    "reporter": [
+      "text-summary",
+      "json-summary",
+      "html",
+      "lcovonly"
+    ]
+  },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "c8": "^11.0.0",
     "esbuild": "^0.25.0",
     "sharp": "^0.34.0",
     "tsx": "^4.20.0",

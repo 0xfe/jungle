@@ -25,6 +25,8 @@ Open **http://localhost:4173** for the full-screen jungle. **Click the jungle or
 npm run build          # deterministic assets, typecheck, bundle → dist/
 npm run serve          # serve the existing build
 npm run check          # build, headless tests, PNG/JSON snapshots
+npm run stats          # build, test coverage, code/asset sizes → artifacts/stats.json
+npm run test:coverage  # headless coverage → coverage/index.html (uses existing assets)
 npm run benchmark      # streaming, simulation, composition and batching profiles
 npm run assets:preview # animal direction/action contact sheets
 npm run plants:preview # all tree and understory forms
@@ -36,9 +38,11 @@ npm run volcanoes:preview -- --motion # animated lava preview
 npm run patches:preview # generated landscape groups and their trunk templates
 ```
 
+The stats command prints line counts, headless test coverage, asset and bundle sizes, and decoded atlas memory. It also saves JSON, HTML coverage and LCOV reports; see [statistics and measurement details](docs/TESTING.md#project-statistics).
+
 ## Deployment
 
-Copy `dist/` to any static host, including a subdirectory. Source artwork is included; normal builds need no image-generation service, API key, CDN, external font or backend. Development dependencies are TypeScript, esbuild, tsx, sharp and Node types.
+Copy `dist/` to any static host, including a subdirectory. Source artwork is included; normal builds need no image-generation service, API key, CDN, external font or backend. Development dependencies are TypeScript, esbuild, tsx, sharp, c8 and Node types.
 
 Deploy with `./upload.sh dev` to `muthanna.com/jungle-dev/` or `./upload.sh prod` to `muthanna.com/jungle/`. Each command builds first, uploads hashed assets with a one-day TTL, then publishes the index with a five-minute TTL. Add `--clean` to prune the selected environment after a six-minute cache/loading grace period. With no environment, the script prints help. npm aliases: `npm run upload:dev` and `npm run upload:prod -- --clean`. See [deployment and cache details](docs/DEPLOYMENT.md), including cleanup/concurrency limits and local cache previews.
 

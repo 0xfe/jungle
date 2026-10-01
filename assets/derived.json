@@ -1,6 +1,6 @@
 {
   "pipeline": 6,
-  "fingerprint": "cfc7d1e8bb4c3b53b4dfd234ed018a109bb23e356a7678f31ba7fe7b649766d7",
+  "fingerprint": "e4f1ba95c7b3dc583f1e4af15acafbcba4debf43dbc94389b0cccf35c873f940",
   "sources": {
     "src/jungle/volcano-animation.ts": "425939731d0fe6b45b8a116c25a417b29f91c37c2aeecca764a1f821ec7a8ef8",
     "src/jungle/agents/volcanic-wildlife.ts": "423a3888f44b09f420045e04d58597b2a95ce46448b4a130f27c0c73fba71a36",
@@ -76,7 +76,7 @@
     "src/agents/index.ts": "9f2bfbad541fdc5ac4c7eef29f61a18b3489fb2b68ed6fb7a040d2ea32160a07",
     "assets/source/trees.png": "d5f18847ca8d25f5dc1bcb42cb08246ee237b34a0f808b5882abb3dd1e74e021",
     "assets/source/plants.png": "5d3ed79bf3dc8f41965560a67c01a884ff7fefb81ba2133de884e3e1129752af",
-    "package-lock.json": "d29825da6fa7d8bae4afa0e1fd29f4a3cb0c77740895f2fcd7c39cb2c9ce1115"
+    "package-lock.json": "0516c61924ed2331b0c97a756533260c5bb0be36854b13722e75b328722ad404"
   },
   "atlas": "8aea0d549ebadc19c11f99049155c830b56fa2e7952ffaaf6fd98c9990bdc478",
   "manifest": "5eac1c80e19982abd525010f02b0587ea68de9a44373791406c99768ba66a696",
