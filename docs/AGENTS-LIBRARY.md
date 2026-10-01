@@ -102,3 +102,7 @@ Types 53–57 register solitary squirrels, boar, beavers, crocodiles and toads. 
 Study 15 adds shared multi-tile landscape groups, tint masks and static trunk templates. Current world/agent schemas are **18/14**; see [landscape groups](LANDSCAPE-PATCHES.md) for source provenance, animation, navigation and memory details.
 
 Recurring colorful regions, canopy population/perch changes, new generated source provenance and black bear type 58 behavior/rig/codecs are documented in [regional variety](REGIONAL-VARIETY.md). Current world/agent schemas are **18/14**.
+
+## Spacecraft encounters
+
+Three rare spacecraft and their owned alien crews use world/agent schemas **22/18**. See [spacecraft design, retained artwork and validation](SPACECRAFT.md) for landing admission, bounded ownership, timed exploration, exact continuation and preview commands.

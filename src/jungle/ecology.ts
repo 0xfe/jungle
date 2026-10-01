@@ -41,3 +41,16 @@ export function habitatAllows(kind:EcoKind, s:EnvironmentSample):boolean {
 export function ecoDirection(kind:EcoKind, heading:number):number {const n=ECO_SPECS[kind].directions;return (Math.round(heading/(Math.PI*2)*n)%n+n)%n;}
 
 export const MONKEY_GRIP_Z=1.2;
+
+/** Visitors have their own encounter controller, outside the wildlife population/behavior loop. */
+export const SPACE_KINDS = ['saucer', 'lander', 'scout'] as const;
+export type SpaceKind = typeof SPACE_KINDS[number];
+export const SPACE_SPECS = {
+ saucer: {type:64, alienType:67, alien:'sprout', radius:.48},
+ lander: {type:65, alienType:68, alien:'ember', radius:.43},
+ scout: {type:66, alienType:69, alien:'reed', radius:.5},
+} as const;
+export const VISITOR_DIRECTIONS = 8;
+export const VISITOR_CLIPS = {rest:1, walk:6, inspect:3} as const;
+// .28 model-unit stance excursion, 60% stance; bake scale 19, display scale 1.7.
+export const VISITOR_STRIDE = .28 / .6 * 19 * 1.7 * Math.SQRT1_2 / 96;

@@ -89,6 +89,18 @@ export const CONFIG = {
       /** Fraction of configured group density at the starting clearing. */
       animals: .85,
     },
+    spacecraft: {
+      /** Rare encounter candidates per owner chunk; land/clearance checks reduce this further. */
+      frequency: .022,
+      /** First arrival delay and repeat visits, in active simulation seconds. */
+      arrivalMinSeconds: 8,
+      arrivalMaxSeconds: 35,
+      returnMinSeconds: 100,
+      returnMaxSeconds: 220,
+      /** Time the whole crew spends investigating after disembarking. */
+      exploreMinSeconds: 15,
+      exploreMaxSeconds: 30,
+    },
     volcanoes: {
       /** Eligible cell width in tiles; jitter leaves at least 112 tiles between sites. */
       spacing: 160,

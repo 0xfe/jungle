@@ -96,3 +96,7 @@ Recurring colorful regions, canopy population/perch changes, new generated sourc
 Current sound, input, bears/zebras, giraffe proportions, elephant sampling, shared landscape accents and schema 18/14 are documented in [wildlife refinements](WILDLIFE-REFINEMENTS.md).
 
 Volcanic lifecycle records retain bounded owner-chunk replacement excursions; no cross-chunk migration or durable mortality history is implied. See [volcanoes](VOLCANOES.md).
+
+## Spacecraft encounters
+
+Three rare spacecraft and their owned alien crews use world/agent schemas **22/18**. See [spacecraft design, retained artwork and validation](SPACECRAFT.md) for landing admission, bounded ownership, timed exploration, exact continuation and preview commands.

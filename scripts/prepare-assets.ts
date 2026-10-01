@@ -1,4 +1,6 @@
 import { VOLCANO_ART_SCALE, VOLCANO_TEXEL_SCALE } from '../src/jungle/volcanoes';
+import { bakeSpaceVisitors, spacecraftMesh, explorerMesh } from './art/space-visitors';
+import { SPACE_KINDS } from '../src/jungle/ecology';
 import { bakeVolcanoes, bakeVolcanoLava } from './art/volcanoes';
 import { REPOSE_CLIPS } from './art/repose';
 import { scavengingRemains } from './art/raptor-model';
@@ -30,6 +32,8 @@ const dependencies = ['src/jungle/volcano-animation.ts','src/jungle/agents/volca
   'src/iso/spatial.ts', 'src/jungle/animation.ts', 'src/jungle/world.ts', 'src/jungle/agents/deer.ts', 'src/jungle/agents/fixed.ts', 'src/jungle/agents/index.ts', 'src/agents/core.ts', 'src/agents/motion.ts', 'src/agents/system.ts', 'src/agents/index.ts', 'assets/source/trees.png', 'assets/source/plants.png',
   'package-lock.json'];
 const sources: Record<string, string> = {};
+dependencies.push('scripts/art/space-visitors.ts','src/jungle/agents/spacecraft.ts','src/jungle/space-sites.ts','assets/source/space-visitors-reference.png','assets/space-visitors-prompts.json');
+const visitorModels=SPACE_KINDS.flatMap(kind=>[`ship-${kind}`,`alien-${kind}`]);
 for (const file of dependencies) sources[file] = sha(await readFile(file));
 const fingerprint = sha(JSON.stringify(sources));
 // A cache hit validates the artifacts as well as the input hashes. No stale/missing output success.
@@ -39,13 +43,13 @@ try {
       cache.atlas === sha(await readFile('public/assets/jungle.png')) &&
       cache.manifest === sha(await readFile('public/assets/jungle.json')) &&
       cache.model === sha(await readFile('assets/models/deer.obj')) &&
-      (await Promise.all(['toucan','orangutan','jaguar',...ECO_KINDS].map(async kind => cache.models?.[kind] === sha(await readFile(`assets/models/${kind}.obj`))))).every(Boolean)) {
+      (await Promise.all(['toucan','orangutan','jaguar',...ECO_KINDS,...visitorModels].map(async kind => cache.models?.[kind] === sha(await readFile(`assets/models/${kind}.obj`))))).every(Boolean)) {
     console.log('Assets unchanged; verified atlas/model hashes, skipping bake.'); process.exit(0);
   }
 } catch { /* First build, changed dependencies or missing generated outputs: rebuild. */ }
 const started = performance.now();
 const volcanoSprites=await bakeVolcanoes(),volcanoLava=bakeVolcanoLava(volcanoSprites);
-const inputs: BakeSprite[] = [...volcanoSprites,...await bakeLandscapePatches(),...await bakeLandscapeAccents()];
+const inputs: BakeSprite[] = [...bakeSpaceVisitors(),...volcanoSprites,...await bakeLandscapePatches(),...await bakeLandscapeAccents()];
 for (const spec of [
   { file: 'trees', prefix: 'tree' as const, w: 128, h: 96, anchor: [64, 93] as [number, number] },
   { file: 'plants', prefix: 'plant' as const, w: 96, h: 64, anchor: [48, 58] as [number, number] },
@@ -258,6 +262,7 @@ for(const s of inputs)if(/^(tree|plant)-/.test(s.id)){
 const { image, manifest } = packAtlas(inputs, 4096, 4096);
 Object.assign(manifest,{volcanoLava});
 for(const [id,s] of Object.entries(manifest.sprites)){
+ if(id.startsWith('ship-')||id.startsWith('alien-')){const factor=id.startsWith('ship-')?24/18:19/15;s.width*=factor;s.height*=factor;s.anchor=[s.anchor[0]*factor,s.anchor[1]*factor];}
  const scale=/^volcano-[0-3]$/.test(id)?VOLCANO_ART_SCALE/VOLCANO_TEXEL_SCALE:/^(tree|plant)-/.test(id)?2:id.startsWith('deer-')?28/21:id.startsWith('jaguar-')?28/25:id.startsWith('elephant-')?21/17.5:id.startsWith('patch-')?patchLogicalScale(id):/^ground-\d/.test(id)?2:1;
  if(scale!==1){s.width*=scale;s.height*=scale;s.anchor=[s.anchor[0]*scale,s.anchor[1]*scale];}
 }
@@ -269,6 +274,10 @@ for(const id of [...formIDs,...Array.from({length:8},(_,i)=>`tree-${i>>1}-form-$
  sprite.width*=factor;sprite.height*=factor;sprite.anchor=[sprite.anchor[0]*factor,sprite.anchor[1]*factor];
 }
 await mkdir('public/assets', { recursive: true }); await mkdir('assets/models', { recursive: true });
+for(const kind of SPACE_KINDS){
+ await writeFile(`assets/models/ship-${kind}.obj`,meshToObj(spacecraftMesh(kind,true)).replaceAll('deer',`ship-${kind}`));
+ await writeFile(`assets/models/alien-${kind}.obj`,meshToObj(explorerMesh(kind,'rest',0)).replaceAll('deer',`alien-${kind}`));
+}
 for(const kind of ['toucan','orangutan','jaguar'] as WildlifeKind[])await writeFile(`assets/models/${kind}.obj`,meshToObj(wildlifeMesh(kind,'rest',0)).replaceAll('deer',kind));
 for(const kind of ECO_KINDS)await writeFile(`assets/models/${kind}.obj`,meshToObj(ecologyMesh(kind,'rest',0)).replaceAll('deer',kind));
 const model = meshToObj(deerMesh('look', 0));
@@ -277,7 +286,7 @@ await sharp(image.data, { raw: { width: image.width, height: image.height, chann
 const json = JSON.stringify(manifest, null, 2) + '\n';
 await writeFile('public/assets/jungle.json', json);
 const png = await readFile('public/assets/jungle.png');
-const models:Record<string,string>={};for(const kind of ['toucan','orangutan','jaguar',...ECO_KINDS])models[kind]=sha(await readFile(`assets/models/${kind}.obj`));
+const models:Record<string,string>={};for(const kind of ['toucan','orangutan','jaguar',...ECO_KINDS,...visitorModels])models[kind]=sha(await readFile(`assets/models/${kind}.obj`));
 await writeFile('assets/derived.json', JSON.stringify({ pipeline: 6, fingerprint, sources, atlas: sha(png), manifest: sha(json), model: sha(model), models,
   stats: { ...manifest.stats, pngBytes: png.length, width: image.width, height: image.height } }, null, 2) + '\n');
 console.log(`Baked ${manifest.stats.frames} frames (${manifest.stats.uniqueFrames} unique) → ${image.width} × ${image.height}; ${(image.data.length / 1048576).toFixed(2)} MiB RGBA, ${(png.length / 1024).toFixed(0)} KiB PNG; ${((performance.now() - started) / 1000).toFixed(2)}s.`);

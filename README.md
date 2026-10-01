@@ -26,6 +26,7 @@ npm run build          # deterministic assets, typecheck, bundle → dist/
 npm run serve          # serve the existing build
 npm run check          # build, headless tests, PNG/JSON snapshots
 npm run stats          # build, test coverage, code/asset sizes → artifacts/stats.json
+npm run spacecraft:preview # ship/alien contact sheets and complete encounter sequences
 npm run test:coverage  # headless coverage → coverage/index.html (uses existing assets)
 npm run benchmark      # streaming, simulation, composition and batching profiles
 npm run assets:preview # animal direction/action contact sheets
@@ -60,6 +61,7 @@ The browser console prints a startup banner and repository link, followed by an 
 | `J` | Cycle all 25 animal habitats; briefly pause camera drift (whales surface intermittently) |
 | `N` | Visit dry scrub, meadow, lake, forest, then a stream |
 | `V` | Visit the nearest rare active volcano |
+| `U` | Watch a rare spacecraft clearing; stops drift until P resumes it |
 | `O` / Settings | With overlays visible: adjust vegetation, wildlife, water, lake size, clearings, hills and sound |
 | `?` | Open Help, even with the menu hidden: FPS, per-stage CPU timing, world/cache/memory statistics and expanded, tappable keyboard commands |
 | `R` | Generate a new seeded world |
@@ -106,6 +108,8 @@ The field guide commands also work as buttons on mobile and desktop. Tap individ
 
 ### Landscape and atmosphere
 
+- **Rare space visitors:** silver saucers, amber tripod landers and violet scouts bring distinct alien crews that explore for 15–30 seconds, return aboard and fly away. Landings require clear dry ground and change between visits. See [spacecraft encounters](docs/SPACECRAFT.md).
+
 - **Terrain:** forest floor, grassy clearings, meadows, dry scrub, sandy shores, muddy banks and gently raised ground.
 - **Water:** lakes, ponds and connected flowing streams, with ripples, glints, foam and drifting woody debris.
 - **Small details:** fallen leaves, twigs, sparse root litter and weathered bones/hide at vulture feeding spots.
@@ -118,6 +122,7 @@ The field guide commands also work as buttons on mobile and desktop. Tap individ
 
 ## Documentation
 
+- [Rare spacecraft, alien crews, landing safety and retained artwork](docs/SPACECRAFT.md)
 - [Snake behavior, rigs and tree wrapping](docs/SNAKES.md)
 - [Rare volcanoes, lava hazards and replacement wildlife](docs/VOLCANOES.md)
 - [Shared landscape artwork, navigation templates and memory](docs/LANDSCAPE-PATCHES.md)

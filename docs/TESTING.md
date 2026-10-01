@@ -175,3 +175,7 @@ Regional variety and black bear checks add recurrent open/flower/fruit/wet areas
 `tests/landscape-wind.test.ts` verifies crown-band root/color registration, affine quads with contiguous UV rows, moving leaves in every landscape style even with optional detail disabled, stationary ground masks, preserved petal colors and skirt depth, exact pause redraws, and gradual CPU-budget reduction/recovery. `tests/platform.test.ts` covers fresh startup seed selection and explicit seed reproduction. Inspect `artifacts/landscape-wind-strip.png` alongside the actual WebGL/Canvas animation; static images alone cannot establish smooth live playback.
 
 Deployment/build integration tests now cover immutable URL propagation, source maps, local response headers, subdirectory loading, release verification and mocked cloud uploads. See [deployment checks](DEPLOYMENT.md#local-checks).
+
+## Spacecraft encounters
+
+Three rare spacecraft and their owned alien crews use world/agent schemas **22/18**. See [spacecraft design, retained artwork and validation](SPACECRAFT.md) for landing admission, bounded ownership, timed exploration, exact continuation and preview commands.

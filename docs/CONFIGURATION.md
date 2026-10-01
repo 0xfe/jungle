@@ -65,7 +65,9 @@ Current sound, input, bears/zebras, giraffe proportions, elephant sampling, shar
 
 `interface.menuIdleSeconds` defaults to 3. Toolbar interaction restarts this delay; open Settings/Help panels and held controls suspend it. Closing a panel starts a full delay. Enter toggles controls, a single touch tap toggles them, and a double tap leaves them visible. The toolbar fades in/out in 160 ms; reduced-motion preferences remove this transition. The startup loading canopy is independent of menu visibility and remains until the first rendered frame.
 
-`CONFIG.world.volcanoes` controls eligible-cell spacing (tiles), acceptance fraction, outer-belt whole-group animal boost, contact threshold, burn duration and minimum replacement delay (seconds). Spacing/frequency alter the generator and require a new world; shader/material geometry, type 63, and codec layouts remain invariants. The current world/agent schemas are 21/17; see [volcanoes](VOLCANOES.md).
+`CONFIG.world.volcanoes` controls eligible-cell spacing (tiles), acceptance fraction, outer-belt whole-group animal boost, contact threshold, burn duration and minimum replacement delay (seconds). Spacing/frequency alter the generator and require a new world; shader/material geometry, type 63, and codec layouts remain invariants. See [volcanoes](VOLCANOES.md).
+
+`CONFIG.world.spacecraft` controls the rare per-chunk candidate frequency and initial-arrival, repeat-visit and investigation time ranges (active seconds). Terrain/clearance still decide admission. Rebuild after changes; frequency changes need a new world and generator version. Current world/agent schemas are **22/18**; see [spacecraft](SPACECRAFT.md).
 
 Volcanic presentation also exposes `lavaFlowSpeed` (river travel cycles/second, 0.1), `lavaParticles` (64 ground pixel trails) and `lavaSmoke` (8 wisps per ground/slope surface). The shorter source-registered slope trails cycle 5–8 times faster than the river. These affect presentation only; they do not alter contact geometry or checkpoint layouts.
 

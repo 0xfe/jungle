@@ -17,6 +17,7 @@
     "test": "tsx --test tests/*.test.ts tests/*.test.mjs",
     "test:coverage": "c8 npm test",
     "stats": "npm run build && npm run test:coverage && node scripts/stats.mjs",
+    "spacecraft:preview": "npm run assets && tsx scripts/spacecraft-preview.ts",
     "snapshot": "tsx scripts/snapshot.ts",
     "readme:preview": "npm run assets && tsx scripts/readme-preview.ts",
     "check": "npm run build && npm test && npm run snapshot",

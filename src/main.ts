@@ -189,6 +189,12 @@ function executeCommand(key:string):void {
   else if (key === 'r') regrow();
   else if (key === 't') weather();
   else if (key === 'v') {pauseDrift();const v=world.volcanoLandmark(view.cameraX,view.cameraY);view.cameraX=v.x;view.cameraY=v.y-.75;cameraVX=cameraVY=0;syncUI();announce('Exploring an active volcano.');}
+  else if (key === 'u') {
+    const site=world.spacecraftLandmark(view.cameraX,view.cameraY);
+    if(!site){announce('No spacecraft clearing found nearby. Increase animal life in Settings or explore farther.');return;}
+    pauseDrift();drift=false;view.cameraX=site.x;view.cameraY=site.y;cameraVX=cameraVY=0;syncUI();
+    announce('Watching a rare spacecraft clearing. Visitors arrive and depart; P resumes automatic travel.');
+  }
   else if (key === 'n') nextLandscape();
   else if (key === 'j') nextWildlife();
   else if (key === ' ') { paused = !paused; syncUI(); }
