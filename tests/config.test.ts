@@ -47,7 +47,7 @@ test('browser sound options control buffer omission, gains, playback speed and p
   createBuffer:(numberOfChannels:number,length:number)=>{buffers++;return{numberOfChannels,length,copyToChannel(){}};},
   createBufferSource:()=>{const s={...node(),playbackRate:param(),onended:undefined as undefined|(()=>void),start(){},stop(){this.onended?.();}};sources.push(s);return s;}};
  const sink=new WebAudioSink(()=>context as unknown as AudioContext,{...CONFIG.audio,maxVoices:2,sampleRate:8000,recordings:{elephant:{sampleRate:8000,channels:[new Float32Array(8)],loop:false}},sounds:{...CONFIG.audio.sounds,step:{...CONFIG.audio.sounds.step,gain:.25,speed:1.5}}});
- await sink.enable();assert.equal(buffers,11);assert.equal(sources.length,4);
- sink.apply({master:.5,beds:{leaves:0,water:0,rain:0,insects:0},events:[{kind:'warble',gain:1,rate:1,pan:0},...Array.from({length:4},()=>({kind:'step' as const,gain:.8,rate:1,pan:0}))]});
- assert.equal(sink.voiceCount,2);assert.equal(sources.length,6);assert.equal(sources.at(-1)!.playbackRate.value,1.5);assert.ok(parameters.some(p=>p.value===.2));sink.dispose();
+ await sink.enable();assert.equal(buffers,13);assert.equal(sources.length,5);
+ sink.apply({master:.5,beds:{leaves:0,water:0,rain:0,insects:0,hover:0},events:[{kind:'warble',gain:1,rate:1,pan:0},...Array.from({length:4},()=>({kind:'step' as const,gain:.8,rate:1,pan:0}))]});
+ assert.equal(sink.voiceCount,2);assert.equal(sources.length,7);assert.equal(sources.at(-1)!.playbackRate.value,1.5);assert.ok(parameters.some(p=>p.value===.2));sink.dispose();
 });

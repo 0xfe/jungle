@@ -1,6 +1,6 @@
 {
   "pipeline": 6,
-  "fingerprint": "4c66db8ae3bbde72bc1597b04c74ad2b05b5f98aa8947bfbc2a0c2d22794f497",
+  "fingerprint": "e68fbe5b5e43cfb92424ba48840baa5218dd3c964892379e6d50b3e2f3b2531f",
   "sources": {
     "src/jungle/volcano-animation.ts": "425939731d0fe6b45b8a116c25a417b29f91c37c2aeecca764a1f821ec7a8ef8",
     "src/jungle/agents/volcanic-wildlife.ts": "423a3888f44b09f420045e04d58597b2a95ce46448b4a130f27c0c73fba71a36",
@@ -78,7 +78,7 @@
     "assets/source/plants.png": "5d3ed79bf3dc8f41965560a67c01a884ff7fefb81ba2133de884e3e1129752af",
     "package-lock.json": "0516c61924ed2331b0c97a756533260c5bb0be36854b13722e75b328722ad404",
     "scripts/art/space-visitors.ts": "21b7dd6fe2a655daa7b56324c53e152493a45674519e0eb9da886279aafed60f",
-    "src/jungle/agents/spacecraft.ts": "738df628e98ef5e59ad1501b2665d188a1a6e5b1f44a93d9b0fec5eb0a1c3d06",
+    "src/jungle/agents/spacecraft.ts": "65abf9bfe257eedcd91d35efc60c21afdc694e1f54d56b9b4033c48df9bee994",
     "src/jungle/space-sites.ts": "9f78584af61aff0d764cdfbcc88caee86e0e49840b13122bb46dfba7ea4c94fb",
     "assets/source/space-visitors-reference.png": "a2d30ac09efe844d01f117724b120a40639716b691a421d4bac2c4768c7f00f4",
     "assets/space-visitors-prompts.json": "61d695bea0136e3cdab8ebc6e691161dead191c85e567b2ed074dc698268d288"

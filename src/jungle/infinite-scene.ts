@@ -1,7 +1,7 @@
 import { composeVolcanoes } from './volcano-scene';
 import { VolcanicWildlifeAgent } from './agents/volcanic-wildlife';
 import { SpacecraftAgent } from './agents/spacecraft';
-import { composeSpacecraft } from './space-scene';
+import { composeSpacecraft, composeFlightField } from './space-scene';
 import { ACCENT_FORMS } from './accents';
 import { restingSprite } from './resting';
 import { patchRoots, isGrove, isGroundPatch } from './patches';
@@ -184,7 +184,11 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
   }
   composeVolcanoes(world,atlas,commands,screen,sprite,time,scale,view.width,view.height,alpha);
   for (const record of world.agents) {
-    if(record instanceof SpacecraftAgent){burning=undefined;composeSpacecraft(record,sprite,alpha);continue;}
+    if(record instanceof SpacecraftAgent){burning=undefined;composeSpacecraft(record,sprite,alpha);
+      const p=record.presentation(alpha),center=screen(p.x,p.y,world.heightAt(p.x,p.y)+p.altitude);
+      if(center.x>-110*scale&&center.x<view.width+110*scale&&center.y>-90*scale&&center.y<view.height+90*scale)
+        commands.push(...composeFlightField(record,time,alpha,center,scale));
+      continue;}
     if(record instanceof VolcanicWildlifeAgent&&record.phase==='waiting')continue;
     const a=record instanceof VolcanicWildlifeAgent?record.animal:record;
     burning=record instanceof VolcanicWildlifeAgent&&record.phase==='burn'?record:undefined;

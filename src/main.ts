@@ -189,6 +189,12 @@ function executeCommand(key:string):void {
   else if (key === 'r') regrow();
   else if (key === 't') weather();
   else if (key === 'v') {pauseDrift();const v=world.volcanoLandmark(view.cameraX,view.cameraY);view.cameraX=v.x;view.cameraY=v.y-.75;cameraVX=cameraVY=0;syncUI();announce('Exploring an active volcano.');}
+  else if(key==='shift+u'){
+    const ship=world.callSpacecraft(view.cameraX,view.cameraY);
+    if(!ship){announce('No safe landing area nearby. Explore toward a dry clearing and try Shift+U again.');return;}
+    pauseDrift();drift=false;paused=false;view.cameraX=ship.x;view.cameraY=ship.y;cameraVX=cameraVY=0;syncUI();
+    announce('Spacecraft called. Watching its landing area; P resumes automatic travel.');
+  }
   else if (key === 'u') {
     const site=world.spacecraftLandmark(view.cameraX,view.cameraY);
     if(!site){announce('No spacecraft clearing found nearby. Increase animal life in Settings or explore farther.');return;}
@@ -230,7 +236,7 @@ window.addEventListener('keydown', e => {
   if (e.repeat) return;
   if(key===' '&&e.target instanceof HTMLButtonElement)return;
   if([' ','home','0','?'].includes(key))e.preventDefault();
-  executeCommand(key);
+  executeCommand(key==='u'&&e.shiftKey?'shift+u':key);
 });
 window.addEventListener('keyup', e => { if (keys.delete(e.key.toLowerCase())&&e.key.toLowerCase()!=='shift') pauseDrift(); });
 function clearNavigation(): void { if(pointers.navigating||keys.size>Number(keys.has('shift')))pauseDrift(); keys.clear(); pointers.clear(); menuTap.clear(); menuPointers.clear();keepMenuAwake();cameraVX = cameraVY = 0; }

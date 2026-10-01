@@ -1,7 +1,7 @@
 /** Pure PCM synthesis: usable in Node, a worker, Web Audio or an offline exporter. */
 export const BIRD_KINDS=['bird','trill','warble','woodpecker','chatter','gull'] as const;
 export type BirdKind=typeof BIRD_KINDS[number];
-export type SoundKind='leaves'|'water'|'rain'|'insects'|'step'|BirdKind;
+export type SoundKind='leaves'|'water'|'rain'|'insects'|'step'|'hover'|'alien'|BirdKind;
 /** Shared controls for every sound; values in src/config.ts are the application's defaults. */
 export interface SoundTuning {
  /** False removes this sound from playback and the browser's buffer bank. */
@@ -23,9 +23,9 @@ export interface SoundTuning {
 }
 export interface SoundBuffer { sampleRate:number; channels:Float32Array[]; loop:boolean }
 export function synthesize(kind:SoundKind, sampleRate=24000, seed=123, tuning:Partial<SoundTuning>={}):SoundBuffer {
- const loop=['leaves','water','rain','insects'].includes(kind);
- const durations:Record<string,number>={step:.22,bird:1.25,trill:1.8,warble:2.1,woodpecker:1.4,chatter:1.35,gull:1.7};
- const seconds=tuning.duration??(loop?11:durations[kind]!),pitch=tuning.pitch??1,rhythm=tuning.rhythm??1,texture=tuning.texture??1;
+ const loop=['leaves','water','rain','insects','hover'].includes(kind);
+ const durations:Record<string,number>={step:.22,bird:1.25,trill:1.8,warble:2.1,woodpecker:1.4,chatter:1.35,gull:1.7,alien:.85};
+ const seconds=tuning.duration??(kind==='hover'?1.5:loop?11:durations[kind]!),pitch=tuning.pitch??1,rhythm=tuning.rhythm??1,texture=tuning.texture??1;
  if(!Number.isFinite(seconds)||seconds<=(loop?.5:0)||!Number.isFinite(pitch)||pitch<=0||!Number.isFinite(rhythm)||rhythm<=0||!Number.isFinite(texture)||texture<0)throw new Error(`Invalid sound tuning: ${kind}`);
  const length=Math.round(seconds*sampleRate),channels:Float32Array[]=[];
  for(let channel=0;channel<2;channel++){
@@ -64,6 +64,17 @@ export function synthesize(kind:SoundKind, sampleRate=24000, seed=123, tuning:Pa
    if(kind==='chatter'){
     phase+=Math.PI*2*(1250+500*Math.sin(rt*42))*pitch/sampleRate;
     value=(Math.sin(phase)*.16+(noise-mid)*.09)*Math.max(0,Math.sin(rt*35))**2*envelope;
+   }
+   // Soft propulsion harmonics with a fast, shallow beating texture, never a siren.
+   if(kind==='hover'){
+    phase+=Math.PI*2*(145+2*Math.sin(rt*6))*pitch/sampleRate;
+    value=(Math.sin(phase)*.10+Math.sin(phase*2.01)*.035+Math.sin(phase*3)*.012+low*.045)*(.88+.12*Math.sin(rt*54));
+   }
+   // Short conversational syllables with formant-like harmonics and tiny noisy consonants.
+   if(kind==='alien'){
+    const syllable=Math.max(0,Math.sin(rt*29+.3*Math.sin(rt*11)))**2;
+    phase+=Math.PI*2*(430+150*Math.sin(rt*18)+55*Math.sin(rt*43))*pitch/sampleRate;
+    value=(Math.sin(phase)*.12+Math.sin(phase*2.7)*.055+mid*.1)*syllable*envelope;
    }
    if(kind==='gull'){
     phase+=Math.PI*2*(650+500*Math.sin(t/seconds*Math.PI)+85*Math.sin(rt*24))*pitch/sampleRate;

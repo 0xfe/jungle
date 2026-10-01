@@ -28,7 +28,7 @@ output.apply(planner.update({x:0, y:0, canopy:1, water:.2, rain:0,
 
 Call `WebAudioSink.enable()` to start or resume; callers that attempt autoplay must also retry from a user gesture when blocked. Its constructor accepts an optional context factory for headless adapter tests. `apply()` uses the audio clock and exponential gain targets: weather/habitat layers ease over .8 seconds, master mute/pause over .12 seconds. Enabling does not create a context or loop per animal. Calls happen at 10 Hz; native audio nodes render continuously between updates.
 
-Four looping stereo beds feed a master gain and soft-knee compressor. At most 12 effects overlap; completed nodes disconnect immediately. The planner considers only the nearest 32 emitters within five world tiles and replaces its history every update. Steps follow changing stride phases, with a global .18-second spacing floor. Each bird owns an ID-seeded timer and varying pitch; there is no shared chirp gate. A fixed three-voice distant canopy chorus supplies additional overlapping whistles, trills and occasional woodpecker-like drumming, even when visible wildlife is sparse. It represents ambient calls rather than hidden animal agents. Each phrase chooses a new pitch and pause; rain and dusk lengthen pauses. The planner emits at most four events per update. Offscreen/retired IDs do not accumulate. The ten enabled synthetic buffers plus one mono elephant recording total about 9.23 MiB, under 10 MiB and are included in the UI resource estimate after sound is enabled.
+Four environmental beds and one flight-only propulsion loop feed a master gain and soft-knee compressor. At most 12 effects overlap; completed nodes disconnect immediately. The planner considers only the nearest 32 emitters within five world tiles and replaces its history every update. Steps follow changing stride phases, with a global .18-second spacing floor. Each bird owns an ID-seeded timer and varying pitch; there is no shared chirp gate. A fixed three-voice distant canopy chorus supplies additional overlapping whistles, trills and occasional woodpecker-like drumming, even when visible wildlife is sparse. It represents ambient calls rather than hidden animal agents. Each phrase chooses a new pitch and pause; rain and dusk lengthen pauses. The planner emits at most four events per update. Offscreen/retired IDs do not accumulate. The twelve enabled synthetic buffers plus one mono elephant recording total about 9.57 MiB, under 10 MiB and are included in the UI resource estimate after sound is enabled.
 
 ## Original sound generation
 
@@ -44,7 +44,7 @@ The background beds and bird calls are **original procedural approximations**. E
 Beds synthesize eleven seconds with a half-second overlap, producing 10.5-second shared loops. Loop buffers use an equal-power overlap across their join. One-shots begin/end at zero, and the signal has headroom before mixing. A limiter-like compressor controls overlapping transients; it is not a promise about arbitrary external audio clips or device volume. Each species does not yet have its own recorded call, and there is no convolution reverb, physical acoustic occlusion or underwater listener model.
 
 ```sh
-npm run audio:preview  # eleven synthetic WAVs + elephant.wav + a 30-second forest-chorus.wav mix → artifacts/audio/
+npm run audio:preview  # thirteen synthetic WAVs + elephant.wav + a 30-second forest-chorus.wav mix → artifacts/audio/
 npm test              # PCM, loop seams, planner and injected Web Audio adapter
 ```
 
@@ -65,3 +65,7 @@ Each nearby elephant owns an audio-only ID-seeded caller with an 18–42-second 
 `CONFIG.audio.sounds.elephant` controls enabled/gain/speed/intervalScale. Its duration/pitch/rhythm/texture fields document the source and do not resynthesize or time-stretch a recording; edit/reconvert the retained recording to change those characteristics. Original synthetic voices continue honoring their synthesis controls.
 
 Current sound, input, bears/zebras, giraffe proportions, elephant sampling, shared landscape accents and schema 16/13 are documented in [wildlife refinements](WILDLIFE-REFINEMENTS.md).
+
+## Space visitors
+
+Flight-only `hover` is a short shared stereo loop with gentle beating harmonics, panned toward nearby spacecraft and ramped over 0.12 seconds. It is mixed by the wildlife slider rather than the quiet environmental bed slider. Multiple nearby ships feed the same bounded propulsion layer. `alien` supplies short formant-like syllables only during crew exploration; individual audio-only callers vary pitch and phrase spacing, with species-specific rates. Both respect per-sound tuning, distance, mute, pause and the existing caller/effect budgets. They never consume behavior RNG. See [spacecraft](SPACECRAFT.md#flight-effects-and-voices) and audition `hover.wav` / `alien.wav` from `npm run audio:preview`.

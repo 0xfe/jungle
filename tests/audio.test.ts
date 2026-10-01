@@ -34,10 +34,10 @@ test('Web Audio adapter starts only on enable, shares loops, ramps gains and cap
   createBuffer:(channels:number,length:number)=>({length,numberOfChannels:channels,copyToChannel:()=>{}}),
   createBufferSource:()=>{const s={...node(),playbackRate:param(),onended:undefined as undefined|(()=>void),start:()=>{started++;},stop:()=>s.onended?.()};sources.push(s);return s;}};
  const sink=new WebAudioSink(()=>{created++;return context as unknown as AudioContext;});
- assert.equal(created,0);await sink.enable();await sink.enable();assert.equal(created,1);assert.equal(started,4);
+ assert.equal(created,0);await sink.enable();await sink.enable();assert.equal(created,1);assert.equal(started,5);
  const mixer=new Soundscape(),frame=mixer.update({...scene,rain:1},.1);frame.events=Array.from({length:40},()=>({kind:'step',gain:.2,pan:0,rate:1}));
- sink.apply(frame);assert.equal(sink.voiceCount,12);assert.equal(started,16);assert.ok(ramps.includes(frame.master)&&ramps.includes(frame.beds.rain));assert.ok(sink.bytes<10*1048576);
- sources[4]!.onended?.();assert.equal(sink.voiceCount,11);sink.apply({...frame,master:0,events:[]});assert.equal(ramps.at(-1),0);
+ sink.apply(frame);assert.equal(sink.voiceCount,12);assert.equal(started,17);assert.ok(ramps.includes(frame.master)&&ramps.includes(frame.beds.rain));assert.ok(sink.bytes<10*1048576);
+ sources[5]!.onended?.();assert.equal(sink.voiceCount,11);sink.apply({...frame,master:0,events:[]});assert.equal(ramps.at(-1),0);
  sink.dispose();assert.equal(closed,1);assert.equal(sink.voiceCount,0);assert.equal(sink.bytes,0);assert.ok(disconnected>12);
 });
 

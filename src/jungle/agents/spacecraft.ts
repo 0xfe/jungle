@@ -127,6 +127,11 @@ export class SpacecraftAgent implements Agent {
     }
     return false;
   }
+  /** Begin flight only after the caller has accepted a clear site. */
+  beginApproach():void {
+    this.heading=Math.floor(this.random.next()*8)*TAU/8;this.crew=[];this.altitude=420;
+    this.hatch=0;this.previous={altitude:420,hatch:0};this.enter('approach');
+  }
   private enter(state:ShipState):void {this.state=state;this.elapsed=0;}
   private unoccupied(e:AgentEnvironment,x=this.x,y=this.y):boolean {
     // Wildlife at the outer exploration margin may coexist with visitors. Reserve
@@ -154,7 +159,7 @@ export class SpacecraftAgent implements Agent {
     if(this.state==='waiting'){
       this.timer-=dt;if(this.timer>0)return;
       if(!e.canLand||!this.chooseSite((x,y)=>e.canLand(x,y)&&this.unoccupied(e,x,y))){this.timer=18+this.random.next()*20;return;}
-      this.heading=Math.floor(this.random.next()*8)*TAU/8;this.crew=[];this.altitude=420;this.previous.altitude=420;this.enter('approach');return;
+      this.beginApproach();return;
     }
     if(this.state==='approach'){
       this.altitude=420*(1-smooth(this.elapsed/6));

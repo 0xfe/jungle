@@ -1,3 +1,6 @@
+import { quadBounds, type QuadCorners } from '../iso/quad';
+import type { DrawCommand } from '../iso/render';
+import type { Vec2 } from '../iso/math';
 import { SpacecraftAgent } from './agents/spacecraft';
 import { SPACE_SPECS, VISITOR_CLIPS } from './ecology';
 
@@ -20,4 +23,35 @@ export function composeSpacecraft(a:SpacecraftAgent,sprite:SpritePainter,alpha:n
     sprite(`${crew.id}:shadow`,'shadow',c.x,c.y,.17*crew.size,0,1,.2*c.visibility);
     sprite(crew.id,`alien-${SPACE_SPECS[a.kind].alien}-${clip}-${direction(c.heading)}`,c.x,c.y,1.7*crew.size,frame,2,c.visibility,[255,237,218][crew.role]);
   }
+}
+
+/** Flight-only energy field: translucent nested bands suggest a trembling space ripple.
+ * Pure presentation time, shared solid quads, and a fixed 96-command ceiling per craft.
+ * Keeping the rear/front halves at the hull depth preserves canopy occlusion. */
+export function composeFlightField(a:SpacecraftAgent,time:number,alpha:number,center:Vec2,scale:number):DrawCommand[] {
+  if(a.state!=='approach'&&a.state!=='depart')return [];
+  const altitude=a.presentation(alpha).altitude;
+  const strength=Math.min(1,altitude/18)*Math.max(0,Math.min(1,(420-altitude)/70));
+  if(strength<=0)return [];
+  const palette={saucer:[110,238,255],lander:[255,211,120],scout:[192,165,255]}[a.kind]!;
+  const commands:DrawCommand[]=[],p=a.presentation(alpha),depth=p.x+p.y;
+  const buzz=.86+.09*Math.sin(time*47)+.05*Math.sin(time*71);
+  // Two soft engine bands and two expanding, faint refractive-looking outlines.
+  for(let band=0;band<4;band++){
+    const phase=((time*.85+band*.37)%1+1)%1;
+    const radius=band<2?36+band*18:68+phase*22;
+    const thickness=band<2?20:1.3;
+    const opacity=strength*buzz*(band<2?.14:(1-phase)*.18);
+    for(let segment=0;segment<24;segment++){
+      const angle=segment/24*Math.PI*2,next=(segment+1)/24*Math.PI*2;
+      const point=(t:number,r:number):Vec2=>({
+        x:center.x+(Math.cos(t)*r+Math.sin(t*3+time*9)*.8)*scale,
+        y:center.y+(Math.sin(t)*r*.38-6+Math.sin(t*4-time*11)*.55)*scale,
+      });
+      const corners:QuadCorners=[point(angle,radius),point(next,radius),point(angle,radius+thickness),point(next,radius+thickness)];
+      commands.push({id:`${a.id}:field:${band}:${segment}`,layer:2,depth:depth+(Math.sin(angle)<0?-.001:.001),
+        ...quadBounds(corners),corners,color:[palette[0]!,palette[1]!,palette[2]!,Math.round(opacity*255)]});
+    }
+  }
+  return commands;
 }

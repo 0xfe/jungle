@@ -356,6 +356,23 @@ export class InfiniteWorld {
     return{x:fromX,y:fromY};
   }
   volcanoLandmark(fromX=0,fromY=0):Volcano {return nearestVolcano(this.seed,fromX,fromY);}
+  /** Explicit user call: bounded active-chunk search, normal landing safety and persistence. */
+  callSpacecraft(fromX:number,fromY:number):SpacecraftAgent|undefined {
+    // Repeated presses focus an existing visit, never pile ships into the same clearing.
+    const visiting=this.visitors.filter(a=>a.state!=='waiting').sort((a,b)=>Math.hypot(a.x-fromX,a.y-fromY)-Math.hypot(b.x-fromX,b.y-fromY))[0];
+    if(visiting)return visiting;
+    const chunks=[...this.active.values()].sort((a,b)=>Math.hypot(a.x*4+2-fromX,a.y*4+2-fromY)-Math.hypot(b.x*4+2-fromX,b.y*4+2-fromY));
+    for(const chunk of chunks){
+      const existing=chunk.agents.find((a):a is SpacecraftAgent=>a instanceof SpacecraftAgent);
+      const kinds=Object.values(SPACE_CLASSES),hash=coordinateHash(chunk.x,chunk.y,this.seed^0x43414c4c);
+      const ship=existing??new kinds[hash%kinds.length]!(`called-ship:${chunk.x}:${chunk.y}`,chunk.x*4+2,chunk.y*4+2,hash);
+      const clear=(x:number,y:number)=>this.canLand(x,y)&&!this.agents.some(a=>a!==ship&&a.speed!==undefined&&(a.altitude??0)<45&&Math.hypot(a.x-x,a.y-y)<ship.radius+.3);
+      if(!ship.chooseSite(clear))continue;
+      ship.beginApproach();
+      if(!existing){chunk.agents.push(ship);this.agents=[...this.active.values()].sort((a,b)=>a.y-b.y||a.x-b.x).flatMap(c=>c.agents);this.visitors.push(ship);}
+      return ship;
+    }
+  }
   /** Find an actual generated encounter without adding records to the chunk cache. */
   spacecraftLandmark(fromX=0,fromY=0):{x:number;y:number}|undefined {
     if(!this.settings.animals)return;

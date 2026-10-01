@@ -325,6 +325,10 @@ export const CONFIG = {
      * Gain/texture may be zero. Large gain/texture can cause distortion.
      * Disabled voices still export individually for auditioning, but are excluded from the chorus mix. */
     sounds: {
+      /** Quiet flight-only propulsion loop; rhythm controls the shallow beating buzz. */
+      hover: { enabled:true, gain:.8, speed:1, duration:1.5, pitch:1, rhythm:1, texture:1, intervalScale:1 },
+      /** Short alien conversation; intervalScale changes each explorer's phrase spacing. */
+      alien: { enabled:true, gain:.8, speed:1, duration:.85, pitch:1, rhythm:1, texture:1, intervalScale:1 },
       /** CC0 recorded trumpet. Gain/speed/intervalScale apply; synthesis fields describe the retained source only. */
       elephant: { enabled:true, gain:.7, speed:1, duration:1.438, pitch:1, rhythm:1, texture:1, intervalScale:1 },
       /** Filtered leafy wind; pitch changes brightness, rhythm changes gust speed. */
@@ -374,7 +378,7 @@ export function validateConfig(c:typeof CONFIG=CONFIG):void {
   require(c.audio.pitchMin>0&&c.audio.pitchMax>=c.audio.pitchMin,'bird pitch range must be positive and ordered');
   for(const [name,s] of Object.entries(c.audio.sounds)){
     require(s.speed>0&&s.pitch>0&&s.rhythm>0&&s.intervalScale>0,`${name} speed/pitch/rhythm/intervalScale must be positive`);
-    require(s.duration>(['leaves','water','rain','insects'].includes(name)?.5:0),`${name} duration is too short`);
+    require(s.duration>(['leaves','water','rain','insects','hover'].includes(name)?.5:0),`${name} duration is too short`);
   }
 }
 validateConfig();

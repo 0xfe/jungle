@@ -127,3 +127,54 @@ test('a natural clearing with wildlife at its outer margin completes a full visi
   assert.ok(seen.has('explore')&&seen.has('board')&&seen.has('depart'));
   assert.equal(ship.landings,1);assert.equal(ship.state,'waiting');assert.equal(ship.crew.length,0);
 });
+
+test('manual calls arrive immediately, reuse active visits, respect clearance and survive sleep',()=>{
+  const w=new InfiniteWorld(2718,'rainforest',undefined,{plants:0,water:0,animals:0,hills:0});
+  const bounds={minX:-8,minY:-8,maxX:8,maxY:8};w.ensure(bounds);
+  const ship=w.callSpacecraft(-2,-2);assert.ok(ship);assert.equal(ship.state,'approach');assert.ok(w.canLand(ship.x,ship.y));
+  assert.equal(w.callSpacecraft(-2,-2),ship);assert.equal(w.agents.filter(a=>a instanceof SpacecraftAgent).length,1);
+  const original=jungleAgents.encode([ship]);
+  const saved=InfiniteWorld.restore(w.checkpoint());saved.ensure(bounds);
+  assert.deepEqual(jungleAgents.encode([saved.agents.find(a=>a.id===ship.id)!]),original);
+  const site={x:ship.x,y:ship.y};w.update(1/60);assert.deepEqual({x:ship.x,y:ship.y},site,'call uses the accepted destination');
+  for(let i=0;i<60*80;i++)w.update(1/60);
+  assert.equal(ship.state,'waiting');const again=w.callSpacecraft(site.x,site.y);assert.ok(again);assert.equal(again.id,ship.id);
+  assert.ok(Math.hypot(again.x-site.x,again.y-site.y)>=.4);
+  const closed=new InfiniteWorld(1);closed.ensure(bounds);closed.canLand=()=>false;
+  assert.equal(closed.callSpacecraft(0,0),undefined);
+});
+
+test('flight field is bounded, deterministic, time-animated, altitude-faded and absent on landed ships',async()=>{
+  const {composeFlightField}=await import('../src/jungle/space-scene');
+  const a=new SPACE_CLASSES.scout('glow',2,2,42);a.beginApproach();a.altitude=80;a.previous.altitude=80;
+  const before=jungleAgents.encode([a]),draw=composeFlightField(a,1,.5,{x:100,y:100},1);
+  assert.equal(draw.length,96);assert.deepEqual(draw,composeFlightField(a,1,.5,{x:100,y:100},1));
+  assert.notDeepEqual(draw,composeFlightField(a,1.1,.5,{x:100,y:100},1));
+  assert.ok(draw.every(c=>!c.region&&c.color[3]>0&&c.color[3]<50&&c.width>0&&c.height>0));
+  assert.deepEqual(jungleAgents.encode([a]),before,'presentation consumes no behavior state or RNG');
+  for(const state of ['open','explore','waiting'] as const){a.state=state;assert.deepEqual(composeFlightField(a,1,.5,{x:100,y:100},1),[]);}
+  a.state='depart';a.altitude=a.previous.altitude=0;assert.deepEqual(composeFlightField(a,1,1,{x:0,y:0},1),[]);
+  a.altitude=a.previous.altitude=420;assert.deepEqual(composeFlightField(a,1,1,{x:0,y:0},1),[]);
+});
+
+test('spacecraft audio follows flight and exploration without touching simulation state',async()=>{
+  const {jungleSound}=await import('../src/jungle/sound');const {Soundscape,SOUND_KINDS,synthesize,decodePcmWav}=await import('../src/audio');
+  const {CONFIG}=await import('../src/config');
+  const w=new InfiniteWorld(2718,'rainforest',undefined,{plants:0,water:0,animals:0,hills:0});w.ensure({minX:-8,minY:-8,maxX:8,maxY:8});
+  const a=w.callSpacecraft(0,0)!;assert.ok(a);a.altitude=a.previous.altitude=100;
+  const planner=new Soundscape({...CONFIG.audio,chorus:false}),before=jungleAgents.encode([a]);
+  const flight=jungleSound(w,a.x,a.y),frame=planner.update(flight,.1);
+  assert.ok(frame.beds.hover>0);assert.equal(frame.events.length,0);assert.deepEqual(jungleAgents.encode([a]),before);
+  assert.equal(planner.update(flight,.1,undefined,false).beds.hover,0);
+  assert.equal(planner.update(flight,.1,{master:1,ambience:1,wildlife:0}).beds.hover,0);
+  assert.equal(new Soundscape({...CONFIG.audio,sounds:{...CONFIG.audio.sounds,hover:{...CONFIG.audio.sounds.hover,enabled:false}}}).update(flight,.1).beds.hover,0);
+  let chatter=0;
+  for(let i=0;i<800;i++){w.update(1/60);if(a.state==='explore')break;}
+  assert.equal(a.state,'explore');const exploring=jungleSound(w,a.x,a.y);assert.equal(exploring.emitters.length,a.crew.length);
+  for(let i=0;i<200;i++){const f=planner.update(exploring,.1);assert.equal(f.beds.hover,0);chatter+=f.events.filter(e=>e.kind==='alien').length;assert.ok(f.events.length<=4);}
+  assert.ok(chatter>8);assert.equal(planner.update(exploring,.1,undefined,false).events.length,0);
+  a.state='board';assert.equal(jungleSound(w,a.x,a.y).emitters.length,0);
+  const bytes=SOUND_KINDS.filter(k=>CONFIG.audio.sounds[k].enabled).reduce((sum,k)=>sum+synthesize(k,CONFIG.audio.sampleRate,CONFIG.audio.seed,CONFIG.audio.sounds[k]).channels.reduce((n,c)=>n+c.byteLength,0),0);
+  const recording=decodePcmWav(await readFile('public/assets/audio/elephant-trumpet.wav'));
+  assert.ok(bytes+recording.channels.reduce((n,c)=>n+c.byteLength,0)<10*1048576,'shared PCM remains below 10 MiB');
+});

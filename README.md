@@ -61,6 +61,7 @@ The browser console prints a startup banner and repository link, followed by an 
 | `J` | Cycle all 25 animal habitats; briefly pause camera drift (whales surface intermittently) |
 | `N` | Visit dry scrub, meadow, lake, forest, then a stream |
 | `V` | Visit the nearest rare active volcano |
+| `Shift+U` | Call a spacecraft now to a nearby safe clearing (resumes simulation) |
 | `U` | Watch a rare spacecraft clearing; stops drift until P resumes it |
 | `O` / Settings | With overlays visible: adjust vegetation, wildlife, water, lake size, clearings, hills and sound |
 | `?` | Open Help, even with the menu hidden: FPS, per-stage CPU timing, world/cache/memory statistics and expanded, tappable keyboard commands |
@@ -108,7 +109,7 @@ The field guide commands also work as buttons on mobile and desktop. Tap individ
 
 ### Landscape and atmosphere
 
-- **Rare space visitors:** silver saucers, amber tripod landers and violet scouts bring distinct alien crews that explore for 15–30 seconds, return aboard and fly away. Landings require clear dry ground and change between visits. See [spacecraft encounters](docs/SPACECRAFT.md).
+- **Rare space visitors:** silver saucers, amber tripod landers and violet scouts bring distinct alien crews that explore for 15–30 seconds, return aboard and fly away. Landings require clear dry ground and change between visits. Flying ships hum with a flickering glow and space ripples; exploring crews chatter when sound is enabled. Shift+U calls a ship immediately. See [spacecraft encounters](docs/SPACECRAFT.md).
 
 - **Terrain:** forest floor, grassy clearings, meadows, dry scrub, sandy shores, muddy banks and gently raised ground.
 - **Water:** lakes, ponds and connected flowing streams, with ripples, glints, foam and drifting woody debris.

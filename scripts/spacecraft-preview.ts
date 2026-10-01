@@ -20,7 +20,7 @@ for(const [row,kind] of SPACE_KINDS.entries()){
   const env:SpaceEnvironment={time:0,sample:()=>({water:false,elevation:0,light:1,wind:1,moisture:.5}),canMove:()=>true,canLand:()=>true,nearby:()=>[]};
   let column=0;
   for(let tick=0;tick<60*100&&column<stages.length;tick++){
-    ship.update(1/60,env);
+    ship.update(1/60,env);world.previousTime=world.time;world.time+=1/60;
     if(ship.state!==stages[column]||ship.elapsed<(column===0?4.8:column===1?4:column===2?6:column===3?1:.8))continue;
     const ground=world.heightAt(ship.x,ship.y)/96;
     const view={width,height,pixelRatio:1,zoom:1.7,grid:false,

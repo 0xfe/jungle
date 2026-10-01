@@ -1,7 +1,7 @@
 import { VolcanicWildlifeAgent } from './agents/volcanic-wildlife';
 import { CONFIG } from '../config';
 import type { BirdKind, SoundScene, SoundEmitter } from '../audio';
-import { DeerAgent, WildlifeAgent, PlantAgent, LandscapePatchAgent } from './agents';
+import { SpacecraftAgent, DeerAgent, WildlifeAgent, PlantAgent, LandscapePatchAgent } from './agents';
 import { InfiniteWorld } from './infinite';
 import { TerrainKind } from './terrain';
 const calls:Readonly<Record<string,BirdKind|'elephant'>>={elephant:'elephant',toucan:'bird',macaw:'chatter',parakeet:'trill',kingfisher:'bird',seagull:'gull'};
@@ -12,6 +12,15 @@ export function jungleSound(world:InfiniteWorld,x:number,y:number):SoundScene{
  for(const record of world.agents){
   if(record instanceof VolcanicWildlifeAgent&&record.phase!=='alive')continue;
   const a=record instanceof VolcanicWildlifeAgent?record.animal:record;
+  if(a instanceof SpacecraftAgent){
+   if(a.state==='approach'||a.state==='depart'){
+    const p=a.presentation(1);
+    emitters.push({id:a.id,x:p.x,y:p.y,speed:0,phase:0,bird:false,loop:'hover',intensity:Math.min(1,p.altitude/20)*Math.max(0,1-p.altitude/420)});
+   }
+   if(a.state==='explore')for(const c of a.crew)if(c.visibility>.5&&c.state!=='aboard')
+    emitters.push({id:c.id,x:c.x,y:c.y,speed:0,phase:0,bird:false,call:'alien',rate:({saucer:1.12,lander:.85,scout:1.3})[a.kind]});
+   continue;
+  }
   if(a instanceof LandscapePatchAgent){trees+=a.supports.filter(p=>Math.hypot(p.x-x,p.y-y)<=CONFIG.audio.radius).length;continue;}
   if(Math.hypot(a.x-x,a.y-y)>CONFIG.audio.radius)continue;
   if(a instanceof PlantAgent){trees+=Number(a.kind==='tree');continue;}
