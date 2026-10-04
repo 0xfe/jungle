@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { InfiniteWorld, faunaPlan } from '../src/jungle/infinite';
-import { zenSite, nearestZen, zenPlants, pondRadius } from '../src/jungle/zen-sites';
+import { zenSite, nearestZen, zenPlants, zenLayout, zenPaths, pondRadius } from '../src/jungle/zen-sites';
 import { DEFAULT_SETTINGS, normalizeSettings } from '../src/jungle/settings';
 import { ARTIFACT_KINDS, ARTIFACT_DEFAULTS } from '../src/jungle/artifacts';
 import { TerrainChunk, TerrainKind } from '../src/jungle/terrain';
@@ -46,6 +46,48 @@ test('resident routines stay in habitat, visit all monk activities and resume ex
  for(let i=0;i<600;i++){a.update(1/60,env);b.update(1/60,env);}assert.deepEqual(jungleAgents.encode([a]),jungleAgents.encode([b]));
  for(const c of a.residents)assert.deepEqual(jungleAgents.encode([c]),jungleAgents.encode(jungleAgents.decode(jungleAgents.encode([c]))));
  const bytes=jungleAgents.encode([a]);assert.throws(()=>jungleAgents.decode(bytes.subarray(0,bytes.length-2)),/Truncated/);
+});
+test('monks work independently at distinct beds while a separate procession circles real trees',()=>{
+ const {w,s}=worldAt(),owner=w.agents.find((a):a is ZenGardenAgent=>a instanceof ZenGardenAgent)!;
+ const monks=owner.residents.filter((a):a is ZenMonkAgent=>a instanceof ZenMonkAgent);
+ const independent=monks.filter(a=>!a.role),group=monks.filter(a=>a.role);
+ assert.equal(independent.length,6);assert.equal(group.length,3);
+ assert.equal(new Set(independent.map(a=>`${a.flowerX},${a.flowerY}`)).size,independent.length);
+ const plants=zenPlants(s,w.settings),grove=zenLayout(s).grove;
+ assert.ok(plants.filter(p=>p.kind==='tree'&&Math.hypot(p.x-grove.x,p.y-grove.y)<.7).length>=3);
+ const env={time:0,canMove:(x:number,y:number)=>w.canMove(x,y),sample:(x:number,y:number)=>({water:w.tileAt(x,y)!.materialAt(x,y)>=TerrainKind.Shallow,elevation:w.heightAt(x,y),light:1,wind:1,moisture:.5}),nearby:()=>[]};
+ let mixed=false,concurrentWatering=false,processionWithWorkers=false,returned=false;
+ for(let tick=0;tick<600*60;tick++){
+  owner.update(1/60,env);
+  if(tick%30)continue;
+  const workers=independent.filter(a=>a.visibility>.9);
+  mixed ||= new Set(workers.map(a=>a.state)).size>=3;
+  concurrentWatering ||= workers.filter(a=>a.state===3).length>=2;
+  processionWithWorkers ||= group.every(a=>a.state===4)&&workers.some(a=>a.state===2||a.state===3);
+  returned ||= tick>3000&&independent.some(a=>a.state===0&&a.visits>0&&a.visibility<.1);
+  assert.ok(independent.every(a=>a.state!==4));assert.ok(group.every(a=>a.state!==2&&a.state!==3));
+  for(const a of independent.filter(a=>a.state===3))assert.ok(Math.hypot(a.x-a.flowerX,a.y-a.flowerY)<.05);
+  for(const a of group.filter(a=>a.state===4))assert.ok(Math.hypot(a.x-grove.x,a.y-grove.y)>.7);
+ }
+ assert.ok(mixed,'simultaneous independent tasks');assert.ok(concurrentWatering,'different beds watered concurrently');
+ assert.ok(processionWithWorkers,'procession is separate from working monks');assert.ok(returned,'residents return indoors');
+});
+test('sanctuary planting is grassy, dense and connected by irregular entrance and pond paths',()=>{
+ const {w,s}=worldAt(),plants=zenPlants(s,w.settings),paths=zenPaths(s),layout=zenLayout(s);
+ assert.ok(plants.filter(p=>p.kind==='grass').length>180);
+ assert.ok(plants.filter(p=>p.kind==='tree').length>16);
+ assert.ok(plants.filter(p=>p.kind==='shrub').length>25);
+ assert.ok(plants.filter(p=>p.kind==='flower').length>20);
+ assert.ok(plants.filter(p=>p.kind==='stone').length>10);
+ assert.ok(Math.hypot(paths[0]!.x-layout.door.x,paths[0]!.y-layout.door.y)<.08);
+ for(const branch of [0,1]){
+  const route=paths.filter(p=>p.branch===branch);
+  assert.ok(new Set(route.map(p=>Math.round(p.radius*100))).size>5);
+  for(let i=1;i<route.length;i++)assert.ok(Math.hypot(route[i]!.x-route[i-1]!.x,route[i]!.y-route[i-1]!.y)<route[i]!.radius+route[i-1]!.radius);
+ }
+ const end=paths.at(-1)!;assert.ok(pondRadius(s,end.x,end.y)<1.2);
+ const bare=zenPlants(s,normalizeSettings({chance_grass:0,chance_bush:0,chance_zenFlowers:0,chance_mud:0}));
+ assert.ok(bare.every(p=>!['grass','shrub','flower','path','stone'].includes(p.kind)));
 });
 test('cached sanctuary clocks and inhabitants sleep and resume without duplicate owners',()=>{
  const {w,s}=worldAt(),a=w.agents.find((a):a is ZenGardenAgent=>a instanceof ZenGardenAgent)!;

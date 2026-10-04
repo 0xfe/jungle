@@ -1,7 +1,7 @@
 import { AgentRandom, BinaryReader, BinaryWriter, type Agent, type AgentEnvironment } from '../../agents';
 import { clamp, lerp } from '../../iso/math';
 import { CONFIG } from '../../config';
-import { zenPlants, type ZenSite } from '../zen-sites';
+import { zenPlants, zenLayout, type ZenSite } from '../zen-sites';
 import type { WorldSettings } from '../settings';
 
 export const ZEN_KINDS=['monk','koi','duck','pelican'] as const;
@@ -38,25 +38,69 @@ export abstract class ZenResident implements Agent {
   if(a.variant>2||a.state>7||a.visibility<0||a.visibility>1)throw new Error('Invalid sanctuary resident');return a;
  }
 }
-/** Enter/leave, seated meditation, watering and a common slow circular procession. */
+/** Independent residents own their tasks; only the dedicated procession shares a schedule. */
 export class ZenMonkAgent extends ZenResident {
- readonly type=71;readonly kind='monk';flowers=true;flowerX=0;flowerY=0;formation=0;
- update(dt:number,e:AgentEnvironment):void{
-  this.capture();this.clock+=dt;const t=this.clock%220,delay=this.index*2.2;
-  const door={x:this.homeX-.45,y:this.homeY+.2},court={x:this.homeX+.7,y:this.homeY+1.5};
-  let target=door,pace=.18;
-  if(t<10+delay){this.state=0;this.speed=0;this.visibility=Math.max(0,this.visibility-dt*2);return;}
-  if(t<65){target={x:court.x+Math.cos(this.formation*TAU)*.85,y:court.y+Math.sin(this.formation*TAU)*.65};this.state=1;
-   if(Math.hypot(target.x-this.x,target.y-this.y)<.04){this.state=2;this.speed=0;this.heading=Math.PI/4;}
-  }else if(t<105&&this.flowers){target={x:this.flowerX,y:this.flowerY};this.state=1;
-   if(Math.hypot(target.x-this.x,target.y-this.y)<.04){this.state=3;this.speed=0;this.heading=-Math.PI/2;}
-  }else if(t<180){const angle=(t-105)*.075+this.formation*TAU;target={x:court.x+Math.cos(angle)*.9,y:court.y+Math.sin(angle)*.9};this.state=4;pace=.11;
-  }else {this.state=5;if(Math.hypot(this.x-door.x,this.y-door.y)<.04){this.visibility=Math.max(0,this.visibility-dt*1.8);this.speed=0;return;}}
-  if(this.state!==2&&this.state!==3)this.move(target.x,target.y,pace,dt,(x,y)=>!e.sample(x,y).water);
-  this.visibility=Math.min(1,this.visibility+dt*2);
+ readonly type=71; readonly kind='monk';
+ flowers=true; flowerX=0; flowerY=0; formation=0;
+ role=0; task=2; visits=0; route=0;
+ targetX=0; targetY=0; seatX=0; seatY=0; groveX=0; groveY=0;
+ private chooseTask(): void {
+  this.task=[2,3,6][(this.index+this.visits++)%3]!;
+  if(this.task===3&&!this.flowers)this.task=6;
+  this.targetX=this.task===3?this.flowerX:this.seatX;
+  this.targetY=this.task===3?this.flowerY:this.seatY;
+  if(this.task===6){this.targetX+=.25+this.rng.next()*.45;this.targetY+=.2+this.rng.next()*.35;}
+  this.state=1;this.route=1;this.timer=0;
  }
- override write(w:BinaryWriter){super.write(w);w.u8(Number(this.flowers));w.f64(this.flowerX);w.f64(this.flowerY);w.f64(this.formation);}
- static read(r:BinaryReader){const a=ZenResident.restore(new ZenMonkAgent(r.string(),0,0,1),r);a.flowers=!!r.u8();a.flowerX=r.f64();a.flowerY=r.f64();a.formation=r.f64();if(a.formation<0||a.formation>=1)throw new Error('Invalid monk formation');return a;}
+ update(dt:number,e:AgentEnvironment):void {
+  this.capture();this.clock+=dt;
+  const door={x:this.homeX-.45,y:this.homeY+.2},apron={x:this.homeX+.65,y:this.homeY+.2};
+  const valid=(x:number,y:number)=>!e.sample(x,y).water;
+  if(this.role===1){
+   // A separate small group circles the actual planted grove while other residents work.
+   const t=this.clock%300,delay=this.formation*5;
+   if(t<12+delay||t>=265){this.route=1;this.state=0;this.speed=0;this.visibility=Math.max(0,this.visibility-dt*2);return;}
+   if(t<205){
+    const angle=(Math.max(55,t)-55)*.065+this.formation*TAU;
+    this.targetX=this.groveX+Math.cos(angle)*1.35;this.targetY=this.groveY+Math.sin(angle)*1.15;
+    this.state=t<55?1:4;
+   }else{if(this.state!==5)this.route=1;this.targetX=door.x;this.targetY=door.y;this.state=5;}
+   if(this.route){if(this.move(apron.x,apron.y,.24,dt,valid))this.route=0;this.visibility=Math.min(1,this.visibility+dt*2);return;}
+   const arrived=this.move(this.targetX,this.targetY,this.state===4?.13:.24,dt,valid);
+   if(arrived&&this.state===5){this.visibility=Math.max(0,this.visibility-dt*2);return;}
+   this.visibility=Math.min(1,this.visibility+dt*2);return;
+  }
+  if(this.state===0){
+   this.speed=0;this.visibility=Math.max(0,this.visibility-dt*2);this.timer-=dt;
+   if(this.timer<=0)this.chooseTask();return;
+  }
+  this.visibility=Math.min(1,this.visibility+dt*2);
+  if(this.state===2||this.state===3||this.state===6){
+   this.speed=0;this.timer-=dt;
+   if(this.timer<=0){
+    this.state=5;this.route=1;this.targetX=door.x;this.targetY=door.y;
+   }return;
+  }
+  // Use the front apron on entry and exit, keeping routes outside the building.
+  const target=this.route?apron:{x:this.targetX,y:this.targetY};
+  if(!this.move(target.x,target.y,.21+this.index*.008,dt,valid))return;
+  if(this.route){this.route=0;return;}
+  if(this.state===5){this.state=0;this.timer=7+this.rng.next()*24;return;}
+  this.state=this.task;
+  this.timer=this.task===2?22+this.rng.next()*36:this.task===3?13+this.rng.next()*19:4+this.rng.next()*9;
+  this.heading=this.task===3?-Math.PI/2:this.rng.next()*TAU;
+ }
+ override write(w:BinaryWriter):void {
+  super.write(w);w.u8(Number(this.flowers));w.u8(this.role);w.u8(this.task);w.u32(this.visits);w.u8(this.route);
+  for(const n of [this.flowerX,this.flowerY,this.formation,this.targetX,this.targetY,this.seatX,this.seatY,this.groveX,this.groveY])w.f64(n);
+ }
+ static read(r:BinaryReader):ZenMonkAgent {
+  const a=ZenResident.restore(new ZenMonkAgent(r.string(),0,0,1),r);
+  a.flowers=!!r.u8();a.role=r.u8();a.task=r.u8();a.visits=r.u32();a.route=r.u8();
+  [a.flowerX,a.flowerY,a.formation,a.targetX,a.targetY,a.seatX,a.seatY,a.groveX,a.groveY]=Array.from({length:9},()=>r.f64()) as [number,number,number,number,number,number,number,number,number];
+  if(a.formation<0||a.formation>=1||a.role>1||a.route>1||![2,3,6].includes(a.task))throw new Error('Invalid monk routine');
+  return a;
+ }
 }
 /** Koi follow loose, individually phased ellipses and dart away from bill splashes. */
 export class KoiAgent extends ZenResident {
@@ -98,11 +142,20 @@ export class ZenGardenAgent implements Agent {
  static create(s:ZenSite,settings:Readonly<WorldSettings>){
   const a=new ZenGardenAgent(s.id,s.x,s.y,s.seed,s.form),rng=new AgentRandom(s.seed);
   for(const kind of ZEN_KINDS){if(kind!=='monk'&&!settings.water)continue;const base=({monk:CONFIG.world.zen.monks,koi:CONFIG.world.zen.koi,duck:CONFIG.world.zen.ducks,pelican:CONFIG.world.zen.pelicans})[kind];
-   const count=Math.min(kind==='koi'?16:kind==='monk'?7:5,Math.floor(base*settings[`chance_${kind}`]));
+   const count=Math.min(kind==='koi'?16:kind==='monk'?12:5,Math.floor(base*settings[`chance_${kind}`]));
    for(let i=0;i<count;i++){
     const C=ZEN_CLASSES[kind],home=kind==='monk'?{x:s.x,y:s.y}:{x:s.pondX,y:s.pondY};
     const c=new C(`${s.id}:${kind}:${i}`,home.x,home.y,Math.floor(rng.next()*0xffffffff));c.index=i;
-    if(c instanceof ZenMonkAgent){c.x-=.45;c.y+=.2;c.visibility=0;c.formation=i/count;const beds=zenPlants(s,settings).filter(p=>p.kind==='flower'&&p.y===s.y+2.8);c.flowers=beds.length>0;const bed=beds[i%beds.length];c.flowerX=(bed?.x??s.x)+Math.floor(i/Math.max(1,beds.length))*.15;c.flowerY=(bed?.y??s.y)+.5;}
+    if(c instanceof ZenMonkAgent){
+     const layout=zenLayout(s),group=count>=6?Math.min(4,Math.floor(count/3)):0,independent=count-group;
+     c.x=layout.door.x;c.y=layout.door.y;c.visibility=0;c.state=0;
+     c.role=i>=independent?1:0;c.formation=c.role?(i-independent)/group:0;
+     c.timer=2+i*3.1+c.rng.next()*8;
+     const bed=layout.beds[i%layout.beds.length]!,seat=layout.seats[i%layout.seats.length]!;
+     c.flowers=zenPlants(s,settings).some(p=>p.kind==='flower'&&p.x===bed.x&&p.y===bed.y);
+     c.flowerX=bed.x;c.flowerY=bed.y+.5;c.seatX=seat.x;c.seatY=seat.y;
+     c.groveX=layout.grove.x;c.groveY=layout.grove.y;
+    }
     else{const angle=i*2.4;c.x+=Math.cos(angle)*.8;c.y+=Math.sin(angle)*.5;c.timer=5+rng.next()*14;}
     c.capture();a.residents.push(c);
    }
@@ -114,7 +167,7 @@ export class ZenGardenAgent implements Agent {
   for(const c of this.residents)c.update(dt,env);
  }
  write(w:BinaryWriter){w.string(this.id);w.u32(this.seed);w.u8(this.form);for(const n of [this.x,this.y,this.clock,this.previousClock])w.f64(n);w.u8(this.residents.length);for(const c of this.residents){w.u8(c.type);c.write(w);}}
- static read(r:BinaryReader){const id=r.string(),seed=r.u32(),form=r.u8(),a=new ZenGardenAgent(id,r.f64(),r.f64(),seed,form);a.clock=r.f64();a.previousClock=r.f64();const n=r.u8();if(n>33||form>2)throw new Error('Invalid sanctuary population');
+ static read(r:BinaryReader){const id=r.string(),seed=r.u32(),form=r.u8(),a=new ZenGardenAgent(id,r.f64(),r.f64(),seed,form);a.clock=r.f64();a.previousClock=r.f64();const n=r.u8();if(n>38||form>2)throw new Error('Invalid sanctuary population');
   const ids=new Set<string>();for(let i=0;i<n;i++){const type=r.u8(),C=Object.values(ZEN_CLASSES).find(C=>new C('',0,0,1).type===type);if(!C)throw new Error('Unknown sanctuary resident');const c=C.read(r);if(ids.has(c.id))throw new Error('Duplicate sanctuary resident');ids.add(c.id);a.residents.push(c);}return a;
  }
 }

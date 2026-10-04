@@ -10,5 +10,13 @@
     "assets/source/zen-cherry.png",
     "assets/source/zen-maple.png",
     "assets/source/zen-pine.png"
-  ]
+  ],
+  "architecture": {
+    "tool": "built-in image_gen",
+    "date": "2026-10-04",
+    "source": "assets/source/zen-pagoda.png",
+    "reference_url": "https://www.jrailpass.com/blog/wp-content/uploads/2019/02/chureito-pagoda.jpg",
+    "reference_role": "Architectural guidance only; reference photograph is not bundled or used as a runtime texture.",
+    "prompt": "Use case: stylized-concept. Asset type: transparent isolated architectural sprite for a detailed isometric pixel-art jungle game. Input image: architectural reference only, Chureito pagoda photograph supplied by user. Create an original beautiful FIVE-TIER Japanese pagoda closely following its architecture: slender stacked white plaster rooms framed with rich vermilion-red timber, broad charcoal slate grey elegantly curved tiled roofs with upturned corners, intricate red bracketwork under each eave, red balcony railings around every tier, fine gold accents, tall dark bronze ringed finial above the fifth roof. Keep the horizontal roofs broad and the rooms visibly short between them, delicate graceful proportions instead of a tower of bulky boxes. Ground floor has one clearly visible open dark doorway in the right-facing facade at bottom, short grey stone steps reaching bottom right, compact square foundation. Camera: orthographic 2:1 isometric view, both front and side visible, matching a pixel-art strategy game. Crisp clustered pixel art with highly readable architectural details and restrained palette, upper-left lighting, no blur. Whole building including finial and base fully within canvas, transparent margins all sides. No landscape, no trees, no flowers, no people, no mountain, no ground island, no text, no cast shadow blob. Transparent background. Portrait framing."
+  }
 }

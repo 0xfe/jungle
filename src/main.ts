@@ -213,7 +213,7 @@ function executeCommand(key:string):void {
   if(settingsTimer){clearTimeout(settingsTimer);applyWorldSettings();}
   if (key === '?') help();
   else if(key==='h')showArtifacts();
-  else if(key==='shift+z'){const s=world.zenLandmark(view.cameraX,view.cameraY);if(!s){announce('Raise Pagoda likelihood in H controls to find a sanctuary.');return;}pauseDrift();drift=false;view.cameraX=s.x;view.cameraY=s.y;cameraVX=cameraVY=0;showArtifacts(false);syncUI();announce('Visiting a zen sanctuary. P resumes automatic travel.');}
+  else if(key==='shift+z'){const s=world.zenLandmark(view.cameraX,view.cameraY);if(!s){announce('Raise Pagoda likelihood in H controls to find a sanctuary.');return;}pauseDrift();drift=false;view.cameraX=s.x-.4;view.cameraY=s.y-.4;view.zoom=Math.min(view.zoom,.85);cameraVX=cameraVY=0;showArtifacts(false);syncUI();announce('Visiting a zen sanctuary. P resumes automatic travel.');}
   else if (key === 'escape') {help(false);showSettings(false);showArtifacts(false);}
   else if(key==='o')showSettings();
   else if (key === 'r') regrow();

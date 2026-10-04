@@ -177,4 +177,4 @@ Implemented: three rare chunk-owned spacecraft with distinct articulated alien c
 
 ## Implemented: zen sanctuaries and artifact likelihoods
 
-Rare terrain-integrated pagodas now combine separate generated trees, shared flowers, baked temple/lotus/resident rigs, deterministic monk routines and pond-specific fish/bird behavior. H/five-touch-tap controls edit grouped generation multipliers and rebuild the same seed. Sleeping owners resume; expired sites regenerate. Durable migration/history and automatic browser persistence remain unimplemented. See [design, budgets and validation](docs/ZEN.md).
+Rare terrain-integrated pagodas now combine separate generated trees, shared flowers, reference-inspired pagoda artwork, baked lotus/resident rigs, independent monk routines, a separate grove procession, dense grassy planting and irregular branching paths and pond-specific fish/bird behavior. H/five-touch-tap controls edit grouped generation multipliers and rebuild the same seed. Sleeping owners resume; expired sites regenerate. Durable migration/history and automatic browser persistence remain unimplemented. See [design, budgets and validation](docs/ZEN.md).

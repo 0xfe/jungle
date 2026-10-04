@@ -1,47 +1,20 @@
 import sharp from 'sharp';
-import { ellipsoid, bone, unit, cross, sub, type Mesh, type V3, type RGB } from '../../src/iso/bake/mesh';
+import { ellipsoid, bone, type Mesh, type V3, type RGB } from '../../src/iso/bake/mesh';
 import { bakeMesh } from '../../src/iso/bake/rasterize';
 import { trimClip, type BakeSprite } from '../../src/iso/bake/atlas';
+import { hash } from '../../src/iso/math';
 import { windFrames } from './wind';
 import type { ZenKind } from '../../src/jungle/agents/zen';
-const tau=Math.PI*2,wood:RGB=[147,63,47],cream:RGB=[240,216,163],dark:RGB=[39,59,62];
-/** Architectural surfaces are authored independently from the organic garden art. */
-function face(m:Mesh,a:V3,b:V3,c:V3,d:V3,color:RGB){const normal=unit(cross(sub(b,a),sub(c,a)));const v=(position:V3)=>({position,normal});m.push({vertices:[v(a),v(b),v(c)],color},{vertices:[v(c),v(b),v(d)],color});}
-function box(m:Mesh,x:number,y:number,z:number,w:number,d:number,h:number,c:RGB){
- for(const side of [-1,1]){face(m,[x-w,y+side*d,z],[x+w,y+side*d,z],[x-w,y+side*d,z+h],[x+w,y+side*d,z+h],c);face(m,[x+side*w,y-d,z],[x+side*w,y+d,z],[x+side*w,y-d,z+h],[x+side*w,y+d,z+h],c);}
- face(m,[x-w,y-d,z+h],[x+w,y-d,z+h],[x-w,y+d,z+h],[x+w,y+d,z+h],c);
-}
-export function pagodaMesh(form:number):Mesh{
- const m:Mesh=[],roof:RGB=([[47,105,100],[68,77,97],[127,61,57]] as RGB[])[form]!;
- box(m,0,0,0,1.2,1.2,.18,[175,168,140]);
- for(let i=0;i<3;i++)box(m,1.25+i*.18,0,0,.15,.5,.15-i*.04,[199,191,156]);
- const levels=form===1?3:2;
- for(let floor=0;floor<levels;floor++){
-  const size=1-floor*.23,z=.18+floor*1.16;
-  box(m,0,0,z,size,size,.78,cream);
-  // A dark open door faces +X; lattice windows line the other walls.
-  box(m,size+.012,0,z,.016,.27,.65,dark);
-  for(const side of [-1,1])for(let i=-2;i<=2;i++){
-   box(m,i*size*.3,side*(size+.018),z+.2,.018,.019,.38,wood);
-   box(m,side*(size+.018),i*size*.3,z+.21,.019,.018,.36,wood);
-  }
-  for(const x of [-size,size])for(const y of [-size,size])bone(m,[x,y,z],[x,y,z+.94],.065,wood);
-  // Curved tile roof: concave eaves with individually traced terracotta ridges.
-  const outer=size+.43;
-  const roofZ=(x:number,y:number)=>{const r=Math.max(Math.abs(x),Math.abs(y))/outer;return z+1.32-.55*r+.25*r**5;};
-  for(let ix=0;ix<12;ix++)for(let iy=0;iy<12;iy++){
-   const x=-outer+ix*outer/6,y=-outer+iy*outer/6,dx=outer/6;
-   face(m,[x,y,roofZ(x,y)],[x+dx,y,roofZ(x+dx,y)],[x,y+dx,roofZ(x,y+dx)],[x+dx,y+dx,roofZ(x+dx,y+dx)],roof);
-  }
-  for(const side of [-1,1])for(let i=-6;i<=6;i++){
-   const x=i*outer/6;bone(m,[x,side*outer,roofZ(x,outer)+.025],[x,side*outer*.65,roofZ(x,outer*.65)+.025],.014,[104,145,133]);
-   bone(m,[side*outer,x,roofZ(outer,x)+.025],[side*outer*.65,x,roofZ(outer*.65,x)+.025],.014,[104,145,133]);
-  }
- }
- const top=.18+(levels-1)*1.16+1.32;
- bone(m,[0,0,top],[0,0,top+.56],.04,[197,163,87]);
- for(let i=0;i<3;i++)ellipsoid(m,[0,0,top+.12+i*.14],[.12-i*.025,.12-i*.025,.065],[219,183,97]);
- return m;
+const tau=Math.PI*2,cream:RGB=[240,216,163],dark:RGB=[39,59,62];
+/** Retained reference-inspired architecture; the three forms share exact atlas pixels. */
+async function pagodaSprite(): Promise<BakeSprite> {
+ const png=await sharp('assets/source/zen-pagoda.png').trim().resize(160,256,{
+  fit:'contain',kernel:'nearest',background:{r:0,g:0,b:0,alpha:0},
+ }).extend({top:8,bottom:8,left:8,right:8,background:{r:0,g:0,b:0,alpha:0}})
+  .png({palette:true,colours:64,dither:0}).toBuffer();
+ const {data,info}=await sharp(png).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+ for(let i=3;i<data.length;i+=4){if(data[i]!<128)data.fill(0,i-3,i+1);else data[i]=255;}
+ return {id:'zen-pagoda-0',anchor:[88,248],frames:[{width:info.width,height:info.height,data}]};
 }
 /** Separate +X rigs: robes and sandals, koi fins, duck paddles and pelican throat pouch. */
 export function zenMesh(kind:ZenKind,action:string,phase:number,variant=0):Mesh{
@@ -51,15 +24,26 @@ export function zenMesh(kind:ZenKind,action:string,phase:number,variant=0):Mesh{
   const z=sit?.32:.55,bob=walk?Math.sin(phase*tau*2)*.01:Math.sin(phase*tau)*.008;
   ellipsoid(m,[0,0,z+bob],[.17,.19,sit?.21:.35],robe);
   ellipsoid(m,[.025,0,z+.4+bob],[.135,.12,.16],skin);
-  bone(m,[.08,-.16,z+.24],[.13,.15,z-.08],.035,cream);
+  // Asymmetric robe folds and a wrapped sash stay attached to the breathing torso.
+  for(let fold=0;fold<4;fold++)bone(m,[.12,-.12+fold*.075,z+.22],[.14,-.15+fold*.085,z-.24],.018,[157,90,43]);
+  bone(m,[.1,-.18,z+.24],[.15,.17,z-.06],.045,[237,177,95]);
+  bone(m,[.15,-.15,z-.03],[.17,.15,z-.03],.026,[113,72,40]);
+  ellipsoid(m,[.145,0,z+.41+bob],[.05,.04,.048],skin);
   for(const side of [-1,1]){
-   const t=(phase+(side===1?.5:0))%1,u=Math.max(0,(t-.6)/.4),step=walk?(t<.6?.5-t/.6:-.5+u*u*(3-2*u))*.326:0;
+   ellipsoid(m,[.052,side*.115,z+.405+bob],[.027,.032,.046],skin);
+   ellipsoid(m,[.129,side*.062,z+.445+bob],[.014,.019,.011],[47,40,34]);
+  }
+  bone(m,[.14,-.035,z+.36+bob],[.14,.035,z+.36+bob],.01,[116,68,47]);
+  for(let bead=0;bead<9;bead++){const a=bead*Math.PI/8;ellipsoid(m,[.16+Math.sin(a)*.02,Math.cos(a)*.13,z+.15-Math.sin(a)*.14],[.016,.016,.018],[70,47,29]);}
+  for(const side of [-1,1]){
+   const t=(phase+(side===1?.5:0))%1,u=Math.max(0,(t-.6)/.4),step=walk?(t<.6?.5-t/.6:-.5+u*u*(3-2*u))*.270:0;
    if(sit)ellipsoid(m,[.07,side*.18,.14],[.24,.15,.09],robe);
    else{bone(m,[0,side*.1,.3],[step,side*.1,.04+(walk?Math.sin(u*Math.PI)*.06:0)],.05,robe);ellipsoid(m,[step+.025,side*.1,.035],[.095,.064,.03],dark);}
    const hand:V3=[water?.3:sit?.19:-step*.45,side*.17,water?.36+wave*.025:sit?.3:.37];
    bone(m,[0,side*.15,z+.15],hand,.057,robe);ellipsoid(m,hand,[.055,.04,.04],skin);
+   ellipsoid(m,[hand[0]-.04,hand[1],hand[2]+.025],[.07,.064,.055],[235,163,75]);
   }
-  if(water){ellipsoid(m,[.36,0,.31],[.13,.15,.12],[90,148,137]);bone(m,[.4,0,.31],[.65,0,.23+wave*.02],.035,[144,177,154]);}
+  if(water){bone(m,[.32,-.14,.34],[.36,0,.53],.023,[144,177,154]);bone(m,[.36,0,.53],[.4,.14,.34],.023,[144,177,154]);ellipsoid(m,[.36,0,.31],[.13,.15,.12],[90,148,137]);bone(m,[.4,0,.31],[.65,0,.23+wave*.02],.035,[144,177,154]);}
  }else if(kind==='koi'){
   const orange:RGB=variant===1?[231,187,77]:[229,112,66];
   ellipsoid(m,[0,0,.08],[.32,.105,.08],[238,229,205],undefined,n=>n[0]<-.2||n[1]>.4?orange:[238,229,205]);
@@ -83,7 +67,20 @@ export function zenMesh(kind:ZenKind,action:string,phase:number,variant=0):Mesh{
 }
 export async function bakeZen():Promise<BakeSprite[]>{
  const out:BakeSprite[]=[];
- for(let form=0;form<3;form++)out.push({id:`zen-pagoda-${form}`,anchor:[100,173],frames:[bakeMesh(pagodaMesh(form),0,{width:200,height:208,anchor:[100,173],scale:39})]});
+ // Shared earthy grain with a porous edge; world-space stamps supply the winding shape.
+ const soil=new Uint8Array(48*48*4);
+ for(let y=0;y<48;y++)for(let x=0;x<48;x++){
+  const u=(x-23.5)/23.5,v=(y-23.5)/23.5,n=hash(x,y,9361),edge=Math.max(0,1-u*u-v*v+(hash(Math.floor(x/3),Math.floor(y/3),91)-.5)*.14);
+  if(edge>0)soil.set([114+n*34,87+n*31,58+n*22,Math.min(1,edge*3)*(n>.9?.8:1)*255],(y*48+x)*4);
+ }
+ for(let i=3;i<soil.length;i+=4)if(!soil[i])soil.fill(0,i-3,i+1);
+ out.push({id:'zen-path',anchor:[24,24],trim:false,frames:[{width:48,height:48,data:soil}]});
+ const temple=await pagodaSprite();
+ for(let form=0;form<3;form++)out.push({...temple,id:`zen-pagoda-${form}`});
+ for(let form=0;form<3;form++){
+  const m:Mesh=[];ellipsoid(m,[0,0,.08],[.24+form*.04,.19,.12+form*.03],[123+form*11,129+form*8,113+form*7],undefined,n=>n[2]>.3?[166,173,147]:[97,109,89],7,4);
+  out.push({id:`zen-stone-${form}`,anchor:[12,16],frames:[bakeMesh(m,form*.7,{width:24,height:24,anchor:[12,16],scale:25})]});
+ }
  for(const [i,name] of ['cherry','maple','pine'].entries()){
   const normalized=await sharp(`assets/source/zen-${name}.png`).trim().resize(88,108,{fit:'contain',kernel:'nearest',background:{r:0,g:0,b:0,alpha:0}}).ensureAlpha().raw().toBuffer();
   const frames=windFrames({width:88,height:108,data:normalized},88,108,'tree',0);
@@ -92,7 +89,7 @@ export async function bakeZen():Promise<BakeSprite[]>{
  for(const kind of ['monk','koi','duck','pelican'] as const){
   const actions=kind==='monk'?['idle','walk','sit','water']:kind==='koi'?['swim']:['swim','dip','preen'];
   for(const action of actions){const count=action==='walk'?12:action==='idle'?4:8;
-   for(let d=0;d<8;d++)out.push({id:`zen-${kind}-${action}-${d}`,anchor:[24,37],frames:Array.from({length:count},(_,i)=>bakeMesh(zenMesh(kind,action,i/count),d*tau/8,{width:48,height:48,anchor:[24,37],scale:kind==='monk'?24:kind==='pelican'?25:23}))});
+   for(let d=0;d<8;d++)out.push({id:`zen-${kind}-${action}-${d}`,anchor:[24,37],frames:Array.from({length:count},(_,i)=>bakeMesh(zenMesh(kind,action,i/count),d*tau/8,{width:48,height:48,anchor:[24,37],scale:kind==='monk'?29:kind==='pelican'?25:23}))});
   }
  }
  // Three lotus colonies with optional folded/open blossoms, gentle pad lift.

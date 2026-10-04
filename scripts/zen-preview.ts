@@ -16,7 +16,7 @@ for(const seconds of [35,80,140,211]){
  while(tick<seconds*60){w.update(1/60);tick++;}
  renderer.render(composeInfinite(w,atlas,view,.5));
  await sharp(renderer.pixels.data,{raw:{width:view.width,height:view.height,channels:4}}).png().toFile(`artifacts/zen-${seconds}.png`);
- records.push({seconds,residents:owner.residents.map(a=>({kind:a.kind,state:a.state,x:a.x,y:a.y,visibility:a.visibility}))});
+ records.push({seconds,residents:owner.residents.map(a=>({kind:a.kind,state:a.state,role:'role' in a?a.role:undefined,x:a.x,y:a.y,visibility:a.visibility}))});
 }
 await writeFile('artifacts/zen-sequence.json',JSON.stringify({site,records},null,2)+'\n');
 // Contact sheets show every artifact separately, before scene occlusion.
@@ -25,7 +25,7 @@ const selected=sprites.filter(s=>/zen-pagoda|zen-tree|zen-lotus|-(0|2|4|6)$/.tes
 for(const [i,s] of selected.entries()){
  const f=s.frames[Math.floor(s.frames.length/3)]!,scale=s.id.includes('pagoda')?1:s.id.includes('tree')?1.4:3;
  const png=await sharp(f.data,{raw:{width:f.width,height:f.height,channels:4}}).resize(Math.round(f.width*scale),Math.round(f.height*scale),{kernel:'nearest'}).png().toBuffer();
- contacts.push({input:png,left:i%8*180+5,top:Math.floor(i/8)*190+5});
+ contacts.push({input:png,left:i%8*200+5,top:Math.floor(i/8)*290+5});
 }
-await sharp({create:{width:1440,height:Math.ceil(selected.length/8)*190+70,channels:4,background:'#314c44'}}).composite(contacts).png().toFile('artifacts/zen-artifacts.png');
+await sharp({create:{width:1600,height:Math.ceil(selected.length/8)*290+70,channels:4,background:'#314c44'}}).composite(contacts).png().toFile('artifacts/zen-artifacts.png');
 console.log('Sanctuary scene sequence and individual contact sheet → artifacts/zen-*.png',site);

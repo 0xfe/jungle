@@ -90,7 +90,7 @@ export const CONFIG = {
       animals: .85,
     },
     /** Rare garden sites per 96-tile cell; probability sliders multiply frequency. */
-    zen: { spacing:96, frequency:.32, monks:5, koi:7, ducks:3, pelicans:2 },
+    zen: { spacing:96, frequency:.32, monks:9, koi:7, ducks:3, pelicans:2 },
     spacecraft: {
       /** Rare encounter candidates per owner chunk; land/clearance checks reduce this further. */
       frequency: .022,

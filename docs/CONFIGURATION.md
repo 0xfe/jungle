@@ -77,4 +77,4 @@ Spacecraft audio uses `audio.sounds.hover` (flight-only soft propulsion loop) an
 
 ## Zen sanctuaries
 
-See [zen sanctuaries and the hidden artifact editor](ZEN.md) for original tree provenance, baked directional inhabitants, localized music, H/five-tap controls, bounded ownership and validation. Current world/agent schemas are **23/19**.
+See [zen sanctuaries and the hidden artifact editor](ZEN.md) for original tree provenance, baked directional inhabitants, localized music, H/five-tap controls, bounded ownership and validation. Current world/agent schemas are **24/20**.
