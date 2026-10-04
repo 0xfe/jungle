@@ -14,7 +14,7 @@ export class WebAudioSink implements AudioSink {
  get maxVoices(){return this.options.maxVoices??12;}
  constructor(private createContext:()=>AudioContext=()=>new AudioContext(),private readonly options:WebAudioOptions={}){}
  async enable():Promise<void>{
-   if(this.options.sounds?.elephant?.enabled&&!this.options.recordings?.elephant)throw new Error('Missing elephant PCM recording; rebuild the audio assets');
+   for(const kind of ['elephant','tiger'] as const)if(this.options.sounds?.[kind]?.enabled&&!this.options.recordings?.[kind])throw new Error(`Missing ${kind} PCM recording; rebuild the audio assets`);
   if(!this.context){
    const c=this.context=this.createContext(),master=this.master=c.createGain(),compressor=this.compressor=c.createDynamicsCompressor();
    master.gain.value=0;compressor.threshold.value=-16;compressor.knee.value=12;compressor.ratio.value=6;compressor.attack.value=.008;compressor.release.value=.3;

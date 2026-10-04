@@ -1,0 +1,6 @@
+Tiger Roar — lauramellis (2015-02-04)
+Recorded at Louisville Zoo, Louisville, Kentucky.
+https://freesound.org/people/lauramellis/sounds/263115/
+CC0 1.0: https://creativecommons.org/publicdomain/zero/1.0/
+From public HQ MP3 preview; excerpt 0.75–2.75 s, mono 16 kHz PCM16, endpoint fades, 1.5× gain.
+Full provenance and source hashes: assets/source/audio/tiger-provenance.json

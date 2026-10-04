@@ -145,3 +145,25 @@ test('registered sanctuary pieces reconstruct every original baked pose exactly'
   }
  }
 });
+
+test('monks follow the stair rise in both directions and fade only inside the doorway',()=>{
+ const {w,s}=worldAt(),owner=ZenGardenAgent.create(s,w.settings),a=owner.residents.find(c=>c instanceof ZenMonkAgent) as ZenMonkAgent,layout=zenLayout(s);
+ const env={time:0,sample:()=>({water:false,elevation:0,light:1,wind:1,moisture:.5}),canMove:()=>true,nearby:()=>[]};
+ a.timer=0;let climbed=false,descended=false,fadedIn=false,fadedOut=false;let saved=false;
+ for(let i=0;i<300*60;i++){
+  a.update(1/60,env);
+  if(a.state===5&&a.lift>a.previousLift+.001)climbed=true;
+  if(a.state===1&&a.lift<a.previousLift-.001)descended=true;
+  if(a.visibility>.01&&a.visibility<.99){
+   assert.ok(Math.hypot(a.x-layout.door.x,a.y-layout.door.y)<.17);
+   fadedIn ||= a.state===1;fadedOut ||= a.state===5;
+  }
+  if(!saved&&a.lift>1&&a.lift<18){
+   saved=true;const b=jungleAgents.decode(jungleAgents.encode([a]))[0] as ZenMonkAgent;
+   a.update(1/60,env);b.update(1/60,env);assert.deepEqual(jungleAgents.encode([a]),jungleAgents.encode([b]));
+  }
+ }
+ assert.ok(climbed&&descended&&fadedIn&&fadedOut&&saved);
+ assert.equal(zenPlants(s,w.settings).find(p=>p.kind==='dock')!.scale,1);
+ assert.ok(Math.abs(layout.dockEntry.y-layout.dock.y-.4)<1e-10);
+});

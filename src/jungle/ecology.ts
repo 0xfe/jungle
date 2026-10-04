@@ -1,9 +1,12 @@
 import type { EnvironmentSample } from '../agents';
-export const ECO_KINDS = ['monkey','wolf','giraffe','elephant','seagull','fish','whale','macaw','parakeet','kingfisher','boa','smallSnake','squirrel','boar','beaver','crocodile','toad','blackBear','zebra','hawk','vulture'] as const;
+export const ECO_KINDS = ['tiger','hippo','bison','monkey','wolf','giraffe','elephant','seagull','fish','whale','macaw','parakeet','kingfisher','boa','smallSnake','squirrel','boar','beaver','crocodile','toad','blackBear','zebra','hawk','vulture'] as const;
 export type EcoKind = typeof ECO_KINDS[number] | 'crab'; // Dormant type 44 is reserved, never generated.
 export type TravelMode = 'ground'|'canopy'|'air'|'shore'|'water'|'amphibious';
 export interface EcoSpec { type:number; mode:TravelMode; speed:number; stride:number; displayScale:number; directions:number; rest:number; range:number; cameraScale:number; }
 export const ECO_SPECS: Record<EcoKind,EcoSpec> = {
+ tiger:{type:75,mode:'ground',speed:.20,stride:.20,displayScale:1.55,directions:8,rest:18,range:1.8,cameraScale:24},
+ hippo:{type:76,mode:'amphibious',speed:.115,stride:.16,displayScale:1.8,directions:8,rest:8,range:1.8,cameraScale:23},
+ bison:{type:77,mode:'ground',speed:.16,stride:.20,displayScale:1.7,directions:8,rest:8,range:1.8,cameraScale:23},
  hawk:{type:61,mode:'air',speed:.65,stride:.2,displayScale:1.6,directions:16,rest:0,range:4,cameraScale:22},
  vulture:{type:62,mode:'air',speed:.55,stride:.2,displayScale:1.7,directions:16,rest:60,range:3,cameraScale:22},
  zebra:{type:59,mode:'ground',speed:.20,stride:.19,displayScale:1.3,directions:16,rest:10,range:1.5,cameraScale:23},
@@ -27,15 +30,16 @@ export const ECO_SPECS: Record<EcoKind,EcoSpec> = {
  parakeet:{type:49,mode:'air',speed:.65,stride:.1,displayScale:.85,directions:8,rest:2,range:2,cameraScale:24},
  kingfisher:{type:50,mode:'air',speed:.8,stride:.1,displayScale:.9,directions:16,rest:5,range:2,cameraScale:24},
 };
-export const ecoClips = (kind:EcoKind):Record<string,number> => kind==='hawk'?{rest:1,travel:12,dive:1}:kind==='vulture'?{rest:1,travel:12,land:12,forage:12}:kind==='zebra'?{rest:4,travel:16,run:16,graze:12}:kind==='blackBear'?{rest:4,travel:16,forage:12,rise:16,stand:8,pick:16,lower:16}:kind==='squirrel'?{rest:1,travel:12,climb:8,descend:8}:kind==='boar'?{rest:4,travel:12,run:12}:kind==='toad'?{rest:1,hop:8}:kind==='beaver'||kind==='crocodile'?{rest:1,travel:12,swim:12}:kind==='boa'?{rest:1,travel:12,wrap:10,coil:1}:kind==='smallSnake'?{rest:1,travel:12}:kind==='elephant'?{rest:8,travel:24,drink:36,spray:24}:kind==='wolf'?{rest:8,travel:16,run:20}:kind==='monkey'?{rest:8,travel:16,climb:16,swing:16}:kind==='whale'?{travel:12,surface:12}:ECO_SPECS[kind].mode==='air'?{rest:8,travel:24}:{rest:8,travel:16};
+export const ecoClips = (kind:EcoKind):Record<string,number> => kind==='tiger'?{rest:4,travel:16,stalk:16,chase:16,roar:12}:kind==='hippo'?{rest:4,travel:16,graze:12,wallow:8,wade:16}:kind==='bison'?{rest:4,travel:16,run:16,graze:12}:kind==='hawk'?{rest:1,travel:12,dive:1}:kind==='vulture'?{rest:1,travel:12,land:12,forage:12}:kind==='zebra'?{rest:4,travel:16,run:16,graze:12}:kind==='blackBear'?{rest:4,travel:16,forage:12,rise:16,stand:8,pick:16,lower:16}:kind==='squirrel'?{rest:1,travel:12,climb:8,descend:8}:kind==='boar'?{rest:4,travel:12,run:12}:kind==='toad'?{rest:1,hop:8}:kind==='beaver'||kind==='crocodile'?{rest:1,travel:12,swim:12}:kind==='boa'?{rest:1,travel:12,wrap:10,coil:1}:kind==='smallSnake'?{rest:1,travel:12}:kind==='elephant'?{rest:8,travel:24,drink:36,spray:24}:kind==='wolf'?{rest:8,travel:16,run:20}:kind==='monkey'?{rest:8,travel:16,climb:16,swing:16}:kind==='whale'?{travel:12,surface:12}:ECO_SPECS[kind].mode==='air'?{rest:8,travel:24}:{rest:8,travel:16};
 /** Shared habitat policy for both deterministic spawning and live movement. */
 export function habitatAllows(kind:EcoKind, s:EnvironmentSample):boolean {
+ if(kind==='hippo')return s.water?(s.depth??0)<.5:Boolean(s.bank??s.beach);
  if(kind==='beaver'||kind==='crocodile'||kind==='toad')return s.water||Boolean(s.bank??s.beach);
  if(kind==='whale')return s.water && (s.depth??0)>.5;
  if(kind==='fish')return s.water;
  if(kind==='crab')return !s.water && Boolean(s.beach);
  if(kind==='seagull')return s.water||Boolean(s.beach);
- if(kind==='giraffe'||kind==='zebra')return !s.water && s.moisture<.65;
+ if(kind==='giraffe'||kind==='zebra'||kind==='bison')return !s.water && s.moisture<.65;
  return !s.water;
 }
 export function ecoDirection(kind:EcoKind, heading:number):number {const n=ECO_SPECS[kind].directions;return (Math.round(heading/(Math.PI*2)*n)%n+n)%n;}

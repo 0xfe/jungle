@@ -54,7 +54,7 @@ export function zenLayout(s: ZenSite) {
  const point = (x: number, y: number) => ({ x: s.x + x, y: s.y + y });
  return {
   ...zenEntrance(s.x,s.y), grove: point(-1.8, 4.15),
-  dock: {x:s.pondX,y:s.pondY+1.3}, dockEntry: {x:s.pondX,y:s.pondY+2.1},
+  dock: {x:s.pondX,y:s.pondY+1.3}, dockEntry: {x:s.pondX,y:s.pondY+1.7},
   beds: [[.15,2.25],[1.8,2.9],[3.5,1.7],[5.1,2.8],[4.8,-.1],[.4,4.8],[2.5,5.2],[4.8,4.9]].map(([x,y]) => point(x!,y!)),
   seats: [[.5,1.5],[1.9,4.3],[4.7,1.8],[.4,3.9],[3.4,.7],[3.5,5.8],[5.7,4.1],[1.1,5.8]].map(([x,y]) => point(x!,y!)),
  };
@@ -127,7 +127,7 @@ export function zenPlants(s: ZenSite, settings: Readonly<WorldSettings>): ZenPla
   if(hash(i,7,s.seed)>.7*settings.chance_lotus)continue;
   add('lotus',s.pondX+Math.cos(a)*r*2.1,s.pondY+Math.sin(a)*r*1.5,i%3,.75+hash(i,8,s.seed)*.4,hash(i,9,s.seed)*20);
  }
- if(settings.water>0)add('dock',layout.dock.x,layout.dock.y,0,2);
+ if(settings.water>0)add('dock',layout.dock.x,layout.dock.y,0,1);
  for(const [i,p] of paths.entries()) {
   if(p.branch&&!settings.water)continue;
   const next=paths[i+1];

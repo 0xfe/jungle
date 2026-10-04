@@ -15,14 +15,14 @@ export abstract class EcologicalAgent extends WildlifeAgent {
  protected allowed(x:number,y:number,env:AgentEnvironment):boolean {
   if(!this.within(x,y))return false;
   const mode=this.spec.mode,s=env.sample(x,y);
-  if(s.refuge&&['wolf','blackBear','crocodile','boa'].includes(this.kind)&&this.pace>.86)return false;
+  if(s.refuge&&['tiger','wolf','blackBear','crocodile','boa'].includes(this.kind)&&this.pace>.86)return false;
   if(mode==='air')return this.kind==='seagull'?habitatAllows(this.kind,s):true;
   if(mode==='canopy')return this.altitude>1||(!s.water&&env.canMove(x,y));
   if(!habitatAllows(this.kind,s))return false;
   if(mode==='amphibious'&&!s.water&&!env.canMove(x,y))return false;
   if(mode==='ground'||mode==='shore'){
    if(!env.canMove(x,y))return false;
-   const radius=this.kind==='elephant'?.23*this.size:this.kind==='giraffe'?.14:this.kind==='blackBear'?.15*this.size:0;
+   const radius=this.kind==='elephant'?.23*this.size:this.kind==='giraffe'?.14:this.kind==='blackBear'?.15*this.size:this.kind==='bison'?.22*this.size:this.kind==='tiger'?.15*this.size:0;
    if(radius)for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]])if(!env.canMove(x+dx!*radius,y+dy!*radius))return false;
   }
   if(this.kind==='whale')for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]])if(!habitatAllows('whale',env.sample(x+dx!*.65,y+dy!*.65)))return false;
@@ -107,11 +107,11 @@ export abstract class EcologicalAgent extends WildlifeAgent {
   const dx=this.target.x-this.x,dy=this.target.y-this.y,d=Math.hypot(dx,dy),desired=Math.atan2(dy,dx),turn=this.spec.mode==='water'?1.8:3;
   const delta=angleDelta(this.heading,desired);this.heading+=clamp(delta,-turn*dt,turn*dt);
   if((this.type>=53||this.kind==='elephant')&&Math.abs(delta)>.2){this.motor.stop();return;}
-  const running=(this.kind==='wolf'||this.kind==='boar'||this.kind==='zebra')&&this.state==='run';
-  const speed=(running?.95:this.spec.speed)*this.pace*this.tripPace*(this.juvenile?.88:1)*(this.spec.mode==='air'?(this.flight.powered?1.08:.9):1),accel=running?2.6:this.kind==='elephant'?.22:this.spec.mode==='air'?1.5:.6;
+  const running=this.kind==='tiger'?this.state==='chase':(this.kind==='wolf'||this.kind==='boar'||this.kind==='zebra'||this.kind==='bison')&&this.state==='run';
+  const speed=(running?(this.kind==='bison'?.7:this.kind==='tiger'?1:.95):this.state==='stalk'?.075:this.spec.speed)*this.pace*this.tripPace*(this.juvenile?.88:1)*(this.spec.mode==='air'?(this.flight.powered?1.08:.9):1),accel=running?2.6:this.kind==='elephant'?.22:this.spec.mode==='air'?1.5:.6;
   this.motor.update(Math.min(speed,d/.24,Math.sqrt(2*accel*d)*.65)*Math.max(0,Math.cos(delta)),dt,accel,accel*7);
   const step=Math.min(d,this.speed*dt),x=this.x+Math.cos(this.heading)*step,y=this.y+Math.sin(this.heading)*step;
-  if(this.allowed(x,y,env)){this.x=x;this.y=y;if(this.spec.mode!=='air')this.gait+=step/((running?(this.kind==='boar'?.27:this.kind==='zebra'?.40:.42):this.spec.stride)*this.size);}
+  if(this.allowed(x,y,env)){this.x=x;this.y=y;if(this.spec.mode!=='air')this.gait+=step/((running?(this.kind==='boar'?.27:this.kind==='zebra'?.40:this.kind==='bison'?.40:this.kind==='tiger'?.38:.42):this.spec.stride)*this.size);}
   else{this.motor.stop();this.state='rest';this.timer=.3;}
   if(this.spec.mode==='air'){
    this.gait=this.flight.advance(this.gait,dt,this.targetAltitude-this.altitude,this.pace*this.tripPace,this.random,BIRD_FLIGHT[this.kind]!);

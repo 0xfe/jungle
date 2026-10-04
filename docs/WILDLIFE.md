@@ -102,3 +102,5 @@ Canopy-biased placement, five additional solitary woodland/bank species and conn
 Recurring colorful regions, canopy population/perch changes, new generated source provenance and black bear type 58 behavior/rig/codecs are documented in [regional variety](REGIONAL-VARIETY.md). Current world/agent schemas are **16/13**.
 
 Bears now stand and pick at actual trunks; zebra herds (type 59) graze and regroup in dry woodland. See [wildlife refinements](WILDLIFE-REFINEMENTS.md) for rigs, motion, checkpoint state and atlas tradeoffs.
+
+Tigers (75), hippos (76), bison (77), registered monk stair transitions and the retained CC0 tiger recording are documented in [megafauna](MEGAFAUNA.md). Current world/agent schemas are **26/21**.

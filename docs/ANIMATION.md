@@ -135,3 +135,5 @@ Space visitors use baked rotating saucer/lander headings, banked scout poses and
 ## Zen sanctuaries
 
 See [zen sanctuaries and the hidden artifact editor](ZEN.md) for original tree provenance, baked directional inhabitants, localized music, H/five-tap controls, bounded ownership and validation. Current world/agent schemas are **25/20**.
+
+Tigers (75), hippos (76), bison (77), registered monk stair transitions and the retained CC0 tiger recording are documented in [megafauna](MEGAFAUNA.md). Current world/agent schemas are **26/21**.

@@ -178,6 +178,8 @@ export const CONFIG = {
       canopyBirdBoost: 1.3,
       /** Black bear candidate probability; most solitary, some mothers with 1–2 cubs. */
       blackBear: .05,
+      /** Rare solitary cats; bank hippos and small dry-grass bison herds. */
+      tiger: .007, hippo: .045, bison: .025,
       /** Small zebra herds favor dry, open woodland. */
       zebra: .045,
       /** Rare solitary large birds; probabilities per candidate owner chunk. */
@@ -334,7 +336,8 @@ export const CONFIG = {
       /** Short alien conversation; intervalScale changes each explorer's phrase spacing. */
       alien: { enabled:true, gain:.8, speed:1, duration:.85, pitch:1, rhythm:1, texture:1, intervalScale:1 },
       /** CC0 recorded trumpet. Gain/speed/intervalScale apply; synthesis fields describe the retained source only. */
-      elephant: { enabled:true, gain:.7, speed:1, duration:1.438, pitch:1, rhythm:1, texture:1, intervalScale:1 },
+      tiger: { enabled:true, gain:1, speed:1, duration:2, pitch:1, rhythm:1, texture:1, intervalScale:1 },
+      elephant: { enabled:true, gain:1.15, speed:1, duration:1.438, pitch:1, rhythm:1, texture:1, intervalScale:1 },
       /** Filtered leafy wind; pitch changes brightness, rhythm changes gust speed. */
       leaves: { enabled:true, gain:1, speed:1, duration:11, pitch:1, rhythm:1, texture:1, intervalScale:1 },
       /** Low water wash; texture controls noise strength. */

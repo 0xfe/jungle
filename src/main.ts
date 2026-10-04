@@ -4,6 +4,7 @@ import { mobileDevice, startupSeed } from './platform';
 import { AnimationBudget } from './iso/animation-budget';
 import atlasManifestUrl from '../public/assets/jungle.json?url';
 import atlasImageUrl from '../public/assets/jungle.png?url';
+import tigerAudioUrl from '../public/assets/audio/tiger-roar.wav?url';
 import elephantAudioUrl from '../public/assets/audio/elephant-trumpet.wav?url';
 import { decodePcmWav, type SoundBuffer } from './audio';
 import { CONFIG } from './config';
@@ -35,7 +36,7 @@ const initialSeed = startupSeed(params.get('seed'), () => CONFIG.startup.randomi
   : CONFIG.startup.seed);
 let settings=normalizeSettings();
 let world = new InfiniteWorld(initialSeed,CONFIG.startup.habitat,undefined,settings);
-const recordings:Partial<Record<'elephant',SoundBuffer>>={};
+const recordings:Partial<Record<'elephant'|'tiger',SoundBuffer>>={};
 let audioReady=false;
 const audioSettings:AudioSettings={...CONFIG.audio.levels},soundscape=new Soundscape(CONFIG.audio),audio=new WebAudioSink(undefined,{...CONFIG.audio,recordings});
 const mobile=mobileDevice(navigator.userAgent,navigator.maxTouchPoints,matchMedia('(pointer: coarse)').matches);
@@ -385,10 +386,10 @@ function updateStats(quads: number): void {
 }
 async function start(): Promise<void> {
   const pixels = await loadAtlas();
-  if(CONFIG.audio.sounds.elephant.enabled){
-    const response=await fetch(new URL(elephantAudioUrl,import.meta.url));
-    if(!response.ok)throw new Error('Cannot load elephant recording; run npm run build');
-    recordings.elephant=decodePcmWav(new Uint8Array(await response.arrayBuffer()));
+  for(const [kind,url] of [['elephant',elephantAudioUrl],['tiger',tigerAudioUrl]] as const)if(CONFIG.audio.sounds[kind].enabled){
+    const response=await fetch(new URL(url,import.meta.url));
+    if(!response.ok)throw new Error(`Cannot load ${kind} recording; run npm run build`);
+    recordings[kind]=decodePcmWav(new Uint8Array(await response.arrayBuffer()));
   }
   audioReady=true;
   try { if ((params.get('renderer') ?? CONFIG.rendering.renderer) === 'canvas') throw new Error('Canvas requested'); renderer = new WebGLRenderer(canvas, pixels); }

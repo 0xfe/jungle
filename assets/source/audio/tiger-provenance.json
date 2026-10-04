@@ -1,0 +1,16 @@
+{
+  "title": "Tiger Roar",
+  "author": "lauramellis",
+  "date": "2015-02-04",
+  "source": "https://freesound.org/people/lauramellis/sounds/263115/",
+  "download": "https://cdn.freesound.org/previews/263/263115_672090-hq.mp3",
+  "license": "CC0-1.0",
+  "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "verified": "2026-10-04",
+  "sourceFile": "assets/source/audio/tiger-roar.mp3",
+  "derivedFile": "public/assets/audio/tiger-roar.wav",
+  "sourceSha256": "38a0c9603e5dd819f8140dd637d0521d52609c2304654a28dedd481fd36f974a",
+  "derivedSha256": "f4b4f7bf6cddf96e1884eda6f94deced61b56ff9a340afe7d8ddd79494644c71",
+  "conversion": "ffmpeg 7.1 -i assets/source/audio/tiger-roar.mp3 -ar 16000 -ac 1 -af 'atrim=start=0.75:end=2.75,asetpts=PTS-STARTPTS,afade=t=in:d=0.04,afade=t=out:st=1.8:d=0.2,volume=1.5' -c:a pcm_s16le -map_metadata -1 public/assets/audio/tiger-roar.wav",
+  "notes": "Real tiger recorded at Louisville Zoo, Kentucky. Retained public HQ MP3 preview; cropped the single roar, excluding long background tail. Mono 16 kHz PCM16; normal builds are offline."
+}

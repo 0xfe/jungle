@@ -15,6 +15,10 @@ export async function buildSite(root = projectRoot, destination = resolve(root, 
   for (const [path, expected] of [['assets/source/audio/elephant-trumpet.ogg', audio.sourceSha256], ['public/assets/audio/elephant-trumpet.wav', audio.derivedSha256]]) {
     if (sha256(await readFile(resolve(root, path))) !== expected) throw new Error(`Audio asset hash mismatch: ${path}. Restore the retained asset or update its reviewed provenance.`);
   }
+  const tiger = JSON.parse(await readFile(resolve(root, 'assets/source/audio/tiger-provenance.json'), 'utf8'));
+  for (const [path, expected] of [[tiger.sourceFile, tiger.sourceSha256], [tiger.derivedFile, tiger.derivedSha256]]) {
+    if (sha256(await readFile(resolve(root, path))) !== expected) throw new Error(`Audio asset hash mismatch: ${path}. Restore the retained tiger asset or update its reviewed provenance.`);
+  }
   await rm(destination, { recursive: true, force: true });
   await mkdir(resolve(destination, 'assets'), { recursive: true });
   destination = await realpath(destination);

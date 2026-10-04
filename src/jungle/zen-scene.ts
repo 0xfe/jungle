@@ -9,12 +9,12 @@ import type { AtlasManifest } from './scene';
 /** Composed through the same transparent painter-ordered batch as the jungle. */
 export function composeZen(world:InfiniteWorld,atlas:AtlasManifest,commands:DrawCommand[],screen:(x:number,y:number,z?:number)=>{x:number;y:number},scale:number,width:number,height:number,alpha:number):void{
  const globalTime=lerp(world.previousTime,world.time,alpha);
- const draw=(id:string,name:string,x:number,y:number,size:number,phase:number,layer=2,opacity=1,lift=0,lean=0,tint:number|[number,number,number]=255)=>{
+ const draw=(id:string,name:string,x:number,y:number,size:number,phase:number,layer=2,opacity=1,lift=0,lean=0,tint:number|[number,number,number]=255,depth=x+y)=>{
   const parts=atlas.zenParts?.[name]??[name];
   for(const [part,key] of parts.entries()){
   const s=atlas.sprites[key];if(!s)throw new Error(`Missing sanctuary sprite: ${name}. Run npm run assets.`);
   const point=screen(x,y,world.heightAt(x,y)+lift),z=scale*size,corners=rootedQuad(point,s.width,s.height,s.anchor,z,z,lean),box=quadBounds(corners);
-  if(visible(box,width,height))commands.push({...box,corners,id:`${id}:${part}`,layer,depth:x+y,region:s.frames[((Math.floor(phase)%s.frames.length)+s.frames.length)%s.frames.length],color:[...(typeof tint==='number'?[255,tint,tint] as const:tint),Math.round(opacity*255)]});
+  if(visible(box,width,height))commands.push({...box,corners,id:`${id}:${part}`,layer,depth,region:s.frames[((Math.floor(phase)%s.frames.length)+s.frames.length)%s.frames.length],color:[...(typeof tint==='number'?[255,tint,tint] as const:tint),Math.round(opacity*255)]});
   }
  };
  const glint=(id:string,x:number,y:number,z:number,w:number,opacity:number,color:[number,number,number])=>{const p=screen(x,y,world.heightAt(x,y)+z);commands.push({id,x:p.x-w*scale/2,y:p.y,width:w*scale,height:scale,color:[...color,Math.round(opacity*255)],layer:1.3,depth:x+y});};
@@ -62,7 +62,7 @@ export function composeZen(world:InfiniteWorld,atlas:AtlasManifest,commands:Draw
    const d=((Math.round(p.heading/(Math.PI*2)*8)%8)+8)%8;
    const action=c.kind==='monk'?(c.state===2?'sit':c.state===3?'water':c.speed>.002?'walk':'idle'):c.kind==='koi'?'swim':c.state===2?'dip':c.state===1?'preen':'swim';
    const phase=action==='walk'?p.gait*12:action==='swim'?p.clock*3:action==='dip'?p.clock*5:p.clock*2;
-   draw(c.id,`zen-${c.kind}-${action}-${d}`,p.x,p.y,c.kind==='monk'?1.25:1.15,phase,c.kind==='koi'?.95:2,c.kind==='koi'?.84:p.visibility,c.kind==='monk'?0:Math.sin(p.clock*1.7+c.index)*.3,0,[255,236,218][c.variant]);
+   draw(c.id,`zen-${c.kind}-${action}-${d}`,p.x,p.y,c.kind==='monk'?1.25:1.15,phase,c.kind==='koi'?.95:2,c.kind==='koi'?.84:p.visibility,c instanceof ZenMonkAgent?lerp(c.previousLift,c.lift,alpha):Math.sin(p.clock*1.7+c.index)*.3,0,[255,236,218][c.variant],c instanceof ZenMonkAgent&&c.route?Math.max(p.x+p.y,s.x+s.y+ZEN_TEMPLE.rootX+ZEN_TEMPLE.rootY+.02):p.x+p.y);
    if(c instanceof ZenMonkAgent&&c.state===3)for(let i=0;i<5;i++){
     const t=(p.clock*2+i/5)%1,px=p.x+Math.cos(p.heading)*(.2+t*.18),py=p.y+Math.sin(p.heading)*(.2+t*.18),pos=screen(px,py,world.heightAt(px,py)+9*(1-t));
     commands.push({id:`${c.id}:water:${i}`,x:pos.x,y:pos.y,width:scale,height:2*scale,color:[170,221,230,180],layer:2,depth:px+py});

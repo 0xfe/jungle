@@ -1,3 +1,5 @@
+import {TigerAgent,HippoAgent,BisonAgent} from './megafauna';
+export {TigerAgent,HippoAgent,BisonAgent} from './megafauna';
 import {HawkAgent,VultureAgent} from './raptors';
 export {HawkAgent,VultureAgent} from './raptors';
 import {ZebraAgent} from './zebra';
@@ -158,4 +160,4 @@ export class WhaleAgent extends EcologicalAgent {readonly kind='whale';readonly 
 export class MacawAgent extends EcologicalAgent {readonly kind='macaw';readonly type=48;protected decide(e:AgentEnvironment){this.follow(e,true);}static read(r:BinaryReader){return EcologicalAgent.readAs(r,(...a)=>new MacawAgent(...a));}}
 export class ParakeetAgent extends EcologicalAgent {readonly kind='parakeet';readonly type=49;protected decide(e:AgentEnvironment){this.follow(e,true);}static read(r:BinaryReader){return EcologicalAgent.readAs(r,(...a)=>new ParakeetAgent(...a));}}
 export class KingfisherAgent extends EcologicalAgent {readonly kind='kingfisher';readonly type=50;protected decide(e:AgentEnvironment){this.follow(e,true);}static read(r:BinaryReader){return EcologicalAgent.readAs(r,(...a)=>new KingfisherAgent(...a));}}
-export const ECO_CLASSES={hawk:HawkAgent,vulture:VultureAgent,zebra:ZebraAgent,blackBear:BlackBearAgent,squirrel:SquirrelAgent,boar:BoarAgent,beaver:BeaverAgent,crocodile:CrocodileAgent,toad:ToadAgent,boa:BoaAgent,smallSnake:SmallSnakeAgent,monkey:MonkeyAgent,wolf:WolfAgent,giraffe:GiraffeAgent,elephant:ElephantAgent,crab:CrabAgent,seagull:SeagullAgent,fish:FishAgent,whale:WhaleAgent,macaw:MacawAgent,parakeet:ParakeetAgent,kingfisher:KingfisherAgent};
+export const ECO_CLASSES={tiger:TigerAgent,hippo:HippoAgent,bison:BisonAgent,hawk:HawkAgent,vulture:VultureAgent,zebra:ZebraAgent,blackBear:BlackBearAgent,squirrel:SquirrelAgent,boar:BoarAgent,beaver:BeaverAgent,crocodile:CrocodileAgent,toad:ToadAgent,boa:BoaAgent,smallSnake:SmallSnakeAgent,monkey:MonkeyAgent,wolf:WolfAgent,giraffe:GiraffeAgent,elephant:ElephantAgent,crab:CrabAgent,seagull:SeagullAgent,fish:FishAgent,whale:WhaleAgent,macaw:MacawAgent,parakeet:ParakeetAgent,kingfisher:KingfisherAgent};

@@ -56,7 +56,7 @@ All application audio defaults and individual voice tuning live in [`src/config.
 
 ## Recorded elephant trumpet
 
-Nearby elephant agents occasionally emit the [CC0 “Elephant voice - trumpeting” recording by தகவலுழவன்](https://commons.wikimedia.org/wiki/File:Elephant_voice_-_trumpeting.ogg), dated 1 February 2011. Source OGG, exact source revision, license links, conversion command and source/derived SHA-256 hashes live in [`assets/source/audio/provenance.json`](../assets/source/audio/provenance.json). The unmodified OGG is retained alongside it. The shipped mono 24 kHz PCM16 WAV has short endpoint fades and half source amplitude; attribution travels with `dist/assets/audio/`. The build verifies both hashes. No other downloaded audio is included.
+Nearby elephant agents occasionally emit the [CC0 “Elephant voice - trumpeting” recording by தகவலுழவன்](https://commons.wikimedia.org/wiki/File:Elephant_voice_-_trumpeting.ogg), dated 1 February 2011. Source OGG, exact source revision, license links, conversion command and source/derived SHA-256 hashes live in [`assets/source/audio/provenance.json`](../assets/source/audio/provenance.json). The unmodified OGG is retained alongside it. The shipped mono 24 kHz PCM16 WAV has short endpoint fades and half source amplitude; attribution travels with `dist/assets/audio/`. The build verifies both hashes. The later CC0 tiger recording is documented in [megafauna](MEGAFAUNA.md).
 
 `decodePcmWav()` is a small DOM-free decoder for retained PCM16 files. The application injects the decoded recording into `WebAudioSink`; the reusable audio library does not fetch jungle assets. Missing/invalid recordings fail visibly at startup. `npm run audio:preview` uses the same WAV, tuning and planner as the browser.
 
@@ -73,3 +73,5 @@ Flight-only `hover` is a short shared stereo loop with gentle beating harmonics 
 ## Zen sanctuaries
 
 See [zen sanctuaries and the hidden artifact editor](ZEN.md) for original tree provenance, baked directional inhabitants, localized music, H/five-tap controls, bounded ownership and validation. Current world/agent schemas are **25/20**.
+
+Tigers (75), hippos (76), bison (77), registered monk stair transitions and the retained CC0 tiger recording are documented in [megafauna](MEGAFAUNA.md). Current world/agent schemas are **26/21**.

@@ -4,7 +4,7 @@ import type { BirdKind, SoundScene, SoundEmitter } from '../audio';
 import { SpacecraftAgent, DeerAgent, WildlifeAgent, PlantAgent, LandscapePatchAgent } from './agents';
 import { InfiniteWorld } from './infinite';
 import { TerrainKind } from './terrain';
-const calls:Readonly<Record<string,BirdKind|'elephant'>>={elephant:'elephant',toucan:'bird',macaw:'chatter',parakeet:'trill',kingfisher:'bird',seagull:'gull'};
+const calls:Readonly<Record<string,BirdKind|'elephant'|'tiger'>>={tiger:'tiger',elephant:'elephant',toucan:'bird',macaw:'chatter',parakeet:'trill',kingfisher:'bird',seagull:'gull'};
 /** Scene adapter: isometric x-y determines stereo pan in the reusable planner. */
 export function jungleSound(world:InfiniteWorld,x:number,y:number):SoundScene{
  let water=0,trees=0,total=0;const emitters:SoundEmitter[]=[];
@@ -26,6 +26,8 @@ export function jungleSound(world:InfiniteWorld,x:number,y:number):SoundScene{
   if(Math.hypot(a.x-x,a.y-y)>CONFIG.audio.radius)continue;
   if(a instanceof PlantAgent){trees+=Number(a.kind==='tree');continue;}
   if(!(a instanceof DeerAgent||a instanceof WildlifeAgent))continue;
+  if(a.kind==='tiger'&&a.state!=='roar')continue;
+  if(a.kind==='hippo'&&world.tileAt(a.x,a.y)?.materialAt(a.x,a.y)!>=TerrainKind.Shallow)continue;
   const bird=['toucan','macaw','parakeet','kingfisher','seagull'].includes(a.kind);
   if(!bird&&['whale','fish','monkey','crab','boa','smallSnake','squirrel','toad','beaver','crocodile'].includes(a.kind))continue;
   emitters.push({id:a.id,x:a.x,y:a.y,speed:a.speed,phase:a.gait,bird,call:calls[a.kind]});

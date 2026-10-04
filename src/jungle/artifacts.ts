@@ -4,7 +4,7 @@ export const ARTIFACT_GROUPS = {
   Landmarks: ['pagoda','volcano','saucer','lander','scout'],
   Gardens: ['zenTree','zenFlowers','lotus','monk','koi','duck','pelican'],
   Vegetation: ['grove','bloom','fruit','bush','grass','wet','waterPlants','flowers','mud','accents'],
-  Mammals: ['deer','zebra','giraffe','elephant','orangutan','monkey','squirrel','beaver','boar','blackBear','wolf','jaguar'],
+  Mammals: ['tiger','hippo','bison','deer','zebra','giraffe','elephant','orangutan','monkey','squirrel','beaver','boar','blackBear','wolf','jaguar'],
   Birds: ['toucan','macaw','parakeet','kingfisher','seagull','hawk','vulture'],
   'Water & reptiles': ['fish','whale','crocodile','toad','boa','smallSnake'],
 } as const;

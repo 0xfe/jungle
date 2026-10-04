@@ -140,7 +140,7 @@ The cache fingerprint includes the new model, shared pose and response component
 
 `snake-model.ts` authors continuous tube rigs, baked at eight headings. Slow travel uses twelve phases; static rest/coil poses and clip-wide trimming avoid redundant frames. Boa wraps split into painter-ordered front/back sections around the actual tree support. Full wrap/coil meshes are used for contact sheets but omitted from the runtime atlas. All new model, shared-pose and codec dependencies are fingerprinted. [Snake design](SNAKES.md) covers behavior and limitations.
 
-The elephant recording is the only third-party audio asset. Its source OGG, CC0 license and exact transformation are retained in [provenance](../assets/source/audio/provenance.json). Normal builds verify the committed source/WAV hashes and copy the locally stored PCM and attribution; no live generation, ffmpeg installation or network request is required.
+The elephant recording was the first third-party audio asset; the later tiger recording is documented in [megafauna](MEGAFAUNA.md). Its source OGG, CC0 license and exact transformation are retained in [provenance](../assets/source/audio/provenance.json). Normal builds verify the committed source/WAV hashes and copy the locally stored PCM and attribution; no live generation, ffmpeg installation or network request is required.
 
 Five woodland/river rigs and the denser packing contract are documented in [RIVERS.md](RIVERS.md). Their authored mesh sources, OBJ exports and build dependencies are retained.
 
@@ -166,3 +166,5 @@ Detailed ship rigs now bake flight rotation, banking and beacon states into regi
 ## Zen sanctuaries
 
 See [zen sanctuaries and the hidden artifact editor](ZEN.md) for original tree provenance, baked directional inhabitants, localized music, H/five-tap controls, bounded ownership and validation. Current world/agent schemas are **25/20**.
+
+Tigers (75), hippos (76), bison (77), registered monk stair transitions and the retained CC0 tiger recording are documented in [megafauna](MEGAFAUNA.md). Current world/agent schemas are **26/21**.

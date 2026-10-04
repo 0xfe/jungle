@@ -22,6 +22,9 @@ async function fixture(t) {
   await writeFile(join(root, 'assets/source/audio/elephant-trumpet.ogg'), audio);
   await writeFile(join(root, 'public/assets/audio/elephant-trumpet.wav'), audio);
   await writeFile(join(root, 'assets/source/audio/provenance.json'), JSON.stringify({sourceSha256:sha256(audio),derivedSha256:sha256(audio)}));
+  await writeFile(join(root, 'assets/source/audio/tiger-roar.mp3'), audio);
+  await writeFile(join(root, 'public/assets/audio/tiger-roar.wav'), audio);
+  await writeFile(join(root, 'assets/source/audio/tiger-provenance.json'), JSON.stringify({sourceFile:'assets/source/audio/tiger-roar.mp3',derivedFile:'public/assets/audio/tiger-roar.wav',sourceSha256:sha256(audio),derivedSha256:sha256(audio)}));
   await writeFile(join(root, 'public/assets/audio/ATTRIBUTION.txt'), 'Fixture provenance');
   await writeFile(join(root, 'public/assets/jungle.png'), 'pixels v1');
   await writeFile(join(root, 'public/assets/jungle.json'), '{"version":1}');

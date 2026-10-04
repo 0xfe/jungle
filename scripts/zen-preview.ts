@@ -29,3 +29,20 @@ for(const [i,s] of selected.entries()){
 }
 await sharp({create:{width:1600,height:Math.ceil(selected.length/8)*290+70,channels:4,background:'#314c44'}}).composite(contacts).png().toFile('artifacts/zen-artifacts.png');
 console.log('Sanctuary scene sequence and individual contact sheet → artifacts/zen-*.png',site);
+// A real controller traversal at close range: no hand-posed monk positions.
+const passage=ZenGardenAgent.create(site,w.settings),monk=passage.residents.find(a=>a.kind==='monk')!;
+passage.residents=[monk];monk.timer=0;
+w.agents=w.agents.filter(a=>a.id!==passage.id);w.agents.push(passage);
+const entrance=(await import('../src/jungle/zen-sites')).zenLayout(site);
+const close={...view,width:640,height:400,zoom:1.7,cameraX:entrance.steps.x,cameraY:entrance.steps.y};
+const env={time:0,canMove:()=>true,nearby:()=>[],sample:(x:number,y:number)=>({water:w.tileAt(x,y)!.materialAt(x,y)>=4,elevation:w.heightAt(x,y),wind:1,light:1,moisture:.5})};
+const saved=new Set<string>();
+for(let i=0;i<300*60&&saved.size<4;i++){
+ passage.update(1/60,env);
+ const lift='lift' in monk?Number(monk.lift):0;
+ const shot=monk.state===1&&monk.visibility>.25&&monk.visibility<.65?'exit-door':monk.state===1&&lift>7&&lift<11?'down-stairs':monk.state===5&&lift>7&&lift<11?'up-stairs':monk.state===5&&monk.visibility>.25&&monk.visibility<.65?'enter-door':undefined;
+ if(!shot||saved.has(shot))continue;saved.add(shot);
+ renderer.render(composeInfinite(w,atlas,close,.5));
+ await sharp(renderer.pixels.data,{raw:{width:close.width,height:close.height,channels:4}}).png().toFile(`artifacts/zen-${shot}.png`);
+}
+if(saved.size!==4)throw new Error('Monk preview did not complete both stair and doorway transitions');

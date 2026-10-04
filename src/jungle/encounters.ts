@@ -5,6 +5,7 @@ import { noise } from '../iso/math';
  * elephants do not flee every carnivore. A hawk only alarms small ground animals. */
 export function threatens(predator:Pick<Neighbor,'kind'|'altitude'>,prey:string):boolean {
  if(predator.kind==='hawk')return (predator.altitude??100)<35&&['squirrel','toad'].includes(prey);
+ if(predator.kind==='tiger')return ['deer','zebra','boar','monkey'].includes(prey);
  if(predator.kind==='jaguar')return ['deer','zebra','monkey','squirrel'].includes(prey);
  if(predator.kind==='wolf')return ['deer','zebra','squirrel'].includes(prey);
  if(predator.kind==='blackBear')return ['deer','squirrel'].includes(prey);
@@ -20,7 +21,7 @@ export function nearestThreat(kind:string,x:number,y:number,neighbors:readonly N
 export function predatorRange(x:number,y:number,seed:number):number {return noise(x/14,y/14,seed+18371);}
 export function populationRange(kind:string,x:number,y:number,seed:number):boolean {
  const range=predatorRange(x,y,seed);
- if(['jaguar','wolf','blackBear'].includes(kind))return range>.56;
+ if(['tiger','jaguar','wolf','blackBear'].includes(kind))return range>.56;
  if(['deer','zebra'].includes(kind))return range<.60;
  return true;
 }

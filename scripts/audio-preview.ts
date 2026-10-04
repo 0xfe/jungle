@@ -15,8 +15,10 @@ console.log('Deterministic WAV previews → artifacts/audio/');
 const rate=CONFIG.audio.sampleRate,block=Math.round(rate*.1),length=rate*30,channels=[new Float32Array(length),new Float32Array(length)];
 const bank=new Map<AudioKind,SoundBuffer>(SOUND_KINDS.map(kind=>[kind,synthesize(kind,rate,CONFIG.audio.seed,CONFIG.audio.sounds[kind])])),planner=new Soundscape(CONFIG.audio);
 const elephant=decodePcmWav(await readFile('public/assets/audio/elephant-trumpet.wav'));
+const tiger=decodePcmWav(await readFile('public/assets/audio/tiger-roar.wav'));bank.set('tiger',tiger);await writeFile('artifacts/audio/tiger.wav',wav(tiger));
 bank.set('elephant',elephant);await writeFile('artifacts/audio/elephant.wav',wav(elephant));
 const scene={x:0,y:0,canopy:.7,water:.2,rain:0,night:0,emitters:[
+ {id:'tiger-preview',x:-1,y:0,speed:0,phase:0,bird:false,call:'tiger' as const},
  {id:'elephant-preview',x:2,y:1,speed:0,phase:0,bird:false,call:'elephant' as const},
  {id:'parakeet-preview',x:1,y:0,speed:0,phase:0,bird:true,call:'trill' as const},
  {id:'toucan-preview',x:-1,y:1,speed:0,phase:0,bird:true,call:'bird' as const},

@@ -16,7 +16,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { hash, unproject } from '../src/iso/math';
 import { HABITATS, TILE, WORLD_SIZE, waterAt } from '../src/jungle/world';
 import { DEER_CLIPS, DEER_DIRECTIONS, TAU } from '../src/jungle/animation';
-import { packAtlas, type BakeSprite } from '../src/iso/bake/atlas';
+import { packAtlas, trimClip, type BakeSprite } from '../src/iso/bake/atlas';
 import { bakeMesh } from '../src/iso/bake/rasterize';
 import { meshToObj } from '../src/iso/bake/mesh';
 import { deerMesh } from './art/deer-model';
@@ -33,7 +33,7 @@ const dependencies = ['src/jungle/volcano-animation.ts','src/jungle/agents/volca
   'src/iso/bake/mesh.ts', 'src/iso/bake/rasterize.ts', 'src/iso/bake/atlas.ts', 'src/iso/math.ts',
   'src/iso/spatial.ts', 'src/jungle/animation.ts', 'src/jungle/world.ts', 'src/jungle/agents/deer.ts', 'src/jungle/agents/fixed.ts', 'src/jungle/agents/index.ts', 'src/agents/core.ts', 'src/agents/motion.ts', 'src/agents/system.ts', 'src/agents/index.ts', 'assets/source/trees.png', 'assets/source/plants.png',
   'package-lock.json'];
-dependencies.push('scripts/art/sprite-pieces.ts','scripts/art/zen.ts','scripts/art/zen-dock.ts','src/jungle/zen-layout.ts','assets/source/zen-pagoda.png','assets/source/zen-pagoda-wide.png','assets/source/zen-cherry.png','assets/source/zen-maple.png','assets/source/zen-pine.png','assets/zen-prompts.json','assets/zen-pagoda-wide-prompts.json','src/jungle/agents/zen.ts');
+dependencies.push('scripts/art/megafauna-model.ts','src/jungle/agents/megafauna.ts','scripts/art/sprite-pieces.ts','scripts/art/zen.ts','scripts/art/zen-dock.ts','src/jungle/zen-layout.ts','assets/source/zen-pagoda.png','assets/source/zen-pagoda-wide.png','assets/source/zen-cherry.png','assets/source/zen-maple.png','assets/source/zen-pine.png','assets/zen-prompts.json','assets/zen-pagoda-wide-prompts.json','src/jungle/agents/zen.ts');
 const sources: Record<string, string> = {};
 dependencies.push('src/jungle/space-animation.ts','scripts/art/space-visitors.ts','src/jungle/agents/spacecraft.ts','src/jungle/space-sites.ts','assets/source/space-visitors-reference.png','assets/space-visitors-prompts.json');
 const visitorModels=SPACE_KINDS.flatMap(kind=>[`ship-${kind}`,`alien-${kind}`]);
@@ -262,12 +262,19 @@ for(const s of inputs)if(/^(tree|plant)-/.test(s.id)){
   return {width,height,data};
  }));s.anchor=[s.anchor[0]/2,s.anchor[1]/2];
 }
+// Share exact small pixel blocks across the new large-animal poses, preserving every pixel.
+const animalClips:Record<string,{parts:string[];frames:number}>={};
+for(let i=inputs.length-1;i>=0;i--)if(/^(tiger|hippo|bison)-|^(elephant|giraffe)-rest-/.test(inputs[i]!.id)){
+ const source=inputs[i]!,parts=spritePieces(trimClip(source),source.id.startsWith('giraffe-')?4:3);
+ animalClips[source.id]={parts:parts.map(p=>p.id),frames:source.frames.length};
+ inputs.splice(i,1,...parts);
+}
 const { image, manifest } = packAtlas(inputs, 4096, 4096);
 const spacecraftParts:Record<string,string[]>={};
 for(const s of inputs)if(s.id.startsWith('ship-')){const id=s.id.split(':tile:')[0]!;(spacecraftParts[id]??=[]).push(s.id);}
 const zenParts:Record<string,string[]>={};
 for(const s of inputs)if(s.id.startsWith('zen-')){const id=s.id.split(':tile:')[0]!;(zenParts[id]??=[]).push(s.id);}
-Object.assign(manifest,{volcanoLava,spacecraftParts,zenParts});
+Object.assign(manifest,{volcanoLava,spacecraftParts,zenParts,animalClips});
 for(const [id,s] of Object.entries(manifest.sprites)){
  if(id.startsWith('ship-')||id.startsWith('alien-')){const factor=id.startsWith('ship-')?24/18:19/15;s.width*=factor;s.height*=factor;s.anchor=[s.anchor[0]*factor,s.anchor[1]*factor];}
  const scale=/^volcano-[0-3]$/.test(id)?VOLCANO_ART_SCALE/VOLCANO_TEXEL_SCALE:/^(tree|plant)-/.test(id)?2:id.startsWith('deer-')?28/21:id.startsWith('jaguar-')?28/25:id.startsWith('elephant-')?21/17.5:id.startsWith('patch-')?patchLogicalScale(id):/^ground-\d/.test(id)?2:1;

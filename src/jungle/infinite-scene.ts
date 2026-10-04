@@ -113,15 +113,19 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
   world.spawnHidden=(x,y)=>spawnOutsideView(world,view,x,y);
   let burning:VolcanicWildlifeAgent|undefined;
   const sprite = (id: string, name: string, x: number, y: number, size: number, frame: number, layer: number, opacity = 1, tint = 255, altitude = 0, depth = x + y) => {
-    const s = atlas.sprites[name]; if (!s) throw new Error(`Unknown sprite: ${name}`);
-    const p = screen(x, y, world.heightAt(x,y)+altitude), z = scale * size;
-    const command: DrawCommand = { id, x: p.x - s.anchor[0] * z, y: p.y - s.anchor[1] * z, width: s.width * z, height: s.height * z,
-      region: s.frames[frame % s.frames.length], color: [255, tint, tint, Math.round(opacity * 255)], layer, depth };
-    if(burning&&layer===2){
-      const t=lerp(burning.previousElapsed,burning.elapsed,alpha),fade=clamp(1-t/CONFIG.world.volcanoes.burnSeconds,0,1);
-      command.color=[110,75,65,Math.round(opacity*fade*255)];
+    const parts=atlas.animalClips?.[name]?.parts;
+    const p=screen(x,y,world.heightAt(x,y)+altitude),z=scale*size;
+    // Pieces share one root/depth; compute the terrain projection once per animal.
+    for(let part=0;part<(parts?.length??1);part++){
+      const s=atlas.sprites[parts?.[part]??name];if(!s)throw new Error(`Unknown sprite: ${name}`);
+      const command:DrawCommand={id:part?`${id}:${part}`:id,x:p.x-s.anchor[0]*z,y:p.y-s.anchor[1]*z,width:s.width*z,height:s.height*z,
+        region:s.frames[frame%s.frames.length],color:[255,tint,tint,Math.round(opacity*255)],layer,depth};
+      if(burning&&layer===2){
+        const t=lerp(burning.previousElapsed,burning.elapsed,alpha),fade=clamp(1-t/CONFIG.world.volcanoes.burnSeconds,0,1);
+        command.color=[110,75,65,Math.round(opacity*fade*255)];
+      }
+      if(visible(command,view.width,view.height))commands.push(command);
     }
-    if (visible(command, view.width, view.height)) commands.push(command);
   };
   const rect = (id: string, x: number, y: number, w: number, h: number, hex: string, opacity: number, layer: number) => {
     const command = { id, x, y, width: w, height: h, color: color(hex, opacity), layer, depth: 0 };
@@ -332,7 +336,7 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
       if(a.kind==='vulture'&&'homeX' in a&&'homeY' in a)sprite(`${a.id}-remains`,'scavenging-remains',Number(a.homeX)+.16,Number(a.homeY),1,0,1.3);
       const d=sampleWildlife(a,alpha),spec=ECO_SPECS[a.kind];
       const submerged=spec.mode==='amphibious'&&world.tileAt(d.x,d.y)?.materialAt(d.x,d.y)!>=TerrainKind.Shallow;
-      const clip=a.kind==='whale'?(d.state==='surface'?'surface':'travel'):submerged&&['beaver','crocodile'].includes(a.kind)&&d.state==='travel'?'swim':d.state;
+      const clip=a.kind==='hippo'&&submerged?(d.state==='travel'?'wade':'wallow'):a.kind==='whale'?(d.state==='surface'?'surface':'travel'):submerged&&['beaver','crocodile'].includes(a.kind)&&d.state==='travel'?'swim':d.state;
       if(a instanceof SnakeAgent && ['wrap','coil','unwrap'].includes(d.state)){
         const action=d.state==='coil'?'coil':'wrap',heading=ecoDirection(a.kind,a.supportHeading);
         const name=`boa-${action}-${heading}`,count=atlas.sprites[`${name}-front`]!.frames.length;
@@ -357,7 +361,7 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
           commands.push({...quadBounds(corners),corners,id:`${a.id}-support`,color:[92,116,48,255],layer:2,depth:d.x+d.y});
         }
       }
-      const name=`${a.kind}-${clip}-${ecoDirection(a.kind,d.heading)}`,count=atlas.sprites[name]?.frames.length;
+      const name=`${a.kind}-${clip}-${ecoDirection(a.kind,d.heading)}`,count=atlas.animalClips?.[name]?.frames??atlas.sprites[name]?.frames.length;
       if(!count)throw new Error(`Unknown ecology sprite ${name}`);
       const oneShot=d.state==='drink'||d.state==='spray'||d.state==='hop'||d.state==='rise'||d.state==='lower';
       const pose=oneShot?Math.min(count-1,Math.floor(d.gait*(count-1))):Math.min(count-1,Math.floor((d.state==='swing'?d.gait:d.gait%1)*count));
@@ -389,7 +393,7 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
       }
     } else if (a instanceof WildlifeAgent) {
       const d=sampleWildlife(a,alpha),clip=d.state==='run'?'chase':d.state, phase=d.gait%1;
-      const name=`${a.kind}-${clip}-${directionIndex(d.heading)}`,count=atlas.sprites[name]?.frames.length;
+      const name=`${a.kind}-${clip}-${directionIndex(d.heading)}`,count=atlas.animalClips?.[name]?.frames??atlas.sprites[name]?.frames.length;
       if(!count)throw new Error(`Unknown wildlife sprite ${name}`);
       sprite(`${a.id}-shadow`,'shadow',d.x,d.y,(a.kind==='toucan'?.2:.4)*a.size,0,1,.22);
       sprite(a.id,name,d.x,d.y,a.size,Math.floor(phase*count),2,1,[255,248,240][a.coat],d.altitude);

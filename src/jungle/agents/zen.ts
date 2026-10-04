@@ -43,6 +43,7 @@ export abstract class ZenResident implements Agent {
 export class ZenMonkAgent extends ZenResident {
  readonly type=71; readonly kind='monk';
  flowers=true; flowerX=0; flowerY=0; formation=0;
+ lift=0; previousLift=0;
  role=0; task=2; visits=0; route=0;
  targetX=0; targetY=0; seatX=0; seatY=0; groveX=0; groveY=0;
  private chooseTask(): void {
@@ -53,53 +54,67 @@ export class ZenMonkAgent extends ZenResident {
   if(this.task===6){this.targetX+=.25+this.rng.next()*.45;this.targetY+=.2+this.rng.next()*.35;}
   this.state=1;this.route=1;this.timer=0;
  }
+ /** The same registered porch and stair waypoints are used in both directions. */
+ private passage(dt:number,e:AgentEnvironment):boolean {
+  if(!this.route)return false;
+  const {door,landing,steps,apron}=zenEntrance(this.homeX,this.homeY),entering=this.state===5;
+  const points=entering?[apron,steps,landing,door]:[landing,steps,apron];
+  const target=points[this.route-1]!;
+  const arrived=this.move(target.x,target.y,.19,dt,(x,y)=>!e.sample(x,y).water);
+  const project=(a:{x:number;y:number},b:{x:number;y:number})=>clamp(((this.x-a.x)*(b.x-a.x)+(this.y-a.y)*(b.y-a.y))/((b.x-a.x)**2+(b.y-a.y)**2),0,1);
+  const onStairs=entering?this.route===3:this.route===2;
+  const onPorch=entering?this.route===4:this.route===1;
+  this.lift=onPorch?18.9:onStairs?18.9*project(steps,landing):0;
+  // Disappear only at the black doorway, never out in the garden.
+  this.visibility=onPorch?clamp(Math.hypot(this.x-door.x,this.y-door.y)/.16,0,1):1;
+  if(arrived){
+   if(this.route<points.length)this.route++;
+   else {this.route=0;if(entering){this.state=0;this.visibility=0;this.lift=18.9;this.timer=7+this.rng.next()*24;}}
+  }
+  return true;
+ }
  update(dt:number,e:AgentEnvironment):void {
-  this.capture();this.clock+=dt;
-  const {door,apron}=zenEntrance(this.homeX,this.homeY);
+  this.capture();this.previousLift=this.lift;this.clock+=dt;
+  const {door}=zenEntrance(this.homeX,this.homeY);
   const valid=(x:number,y:number)=>!e.sample(x,y).water;
   if(this.role===1){
-   // A separate small group circles the actual planted grove while other residents work.
    const t=this.clock%300,delay=this.formation*5;
-   if(t<12+delay||t>=265){this.route=1;this.state=0;this.speed=0;this.visibility=Math.max(0,this.visibility-dt*2);return;}
-   if(t<205){
-    const angle=(Math.max(55,t)-55)*.065+this.formation*TAU;
-    this.targetX=this.groveX+Math.cos(angle)*1.35;this.targetY=this.groveY+Math.sin(angle)*1.15;
-    this.state=t<55?1:4;
-   }else{if(this.state!==5)this.route=1;this.targetX=door.x;this.targetY=door.y;this.state=5;}
-   if(this.route){if(this.move(apron.x,apron.y,.24,dt,valid))this.route=0;this.visibility=Math.min(1,this.visibility+dt*2);return;}
-   const arrived=this.move(this.targetX,this.targetY,this.state===4?.13:.24,dt,valid);
-   if(arrived&&this.state===5){this.visibility=Math.max(0,this.visibility-dt*2);return;}
-   this.visibility=Math.min(1,this.visibility+dt*2);return;
+   if(this.state===0){
+    this.speed=0;this.visibility=0;this.lift=18.9;
+    if(t>=12+delay&&t<205){this.x=door.x;this.y=door.y;this.state=1;this.route=1;}
+    return;
+   }
+   if(t>=205&&this.state!==5){this.state=5;this.route=1;}
+   if(this.passage(dt,e))return;
+   const angle=(Math.max(55,t)-55)*.065+this.formation*TAU;
+   this.targetX=this.groveX+Math.cos(angle)*1.35;this.targetY=this.groveY+Math.sin(angle)*1.15;
+   this.state=t<55?1:4;this.visibility=1;this.lift=0;
+   this.move(this.targetX,this.targetY,this.state===4?.13:.24,dt,valid);return;
   }
   if(this.state===0){
-   this.speed=0;this.visibility=Math.max(0,this.visibility-dt*2);this.timer-=dt;
-   if(this.timer<=0)this.chooseTask();return;
+   this.speed=0;this.visibility=0;this.lift=18.9;this.timer-=dt;
+   if(this.timer<=0){this.x=door.x;this.y=door.y;this.chooseTask();}return;
   }
-  this.visibility=Math.min(1,this.visibility+dt*2);
+  if(this.passage(dt,e))return;
+  this.visibility=1;this.lift=0;
   if(this.state===2||this.state===3||this.state===6){
    this.speed=0;this.timer-=dt;
-   if(this.timer<=0){
-    this.state=5;this.route=1;this.targetX=door.x;this.targetY=door.y;
-   }return;
+   if(this.timer<=0){this.state=5;this.route=1;}return;
   }
-  // Use the front apron on entry and exit, keeping routes outside the building.
-  const target=this.route?apron:{x:this.targetX,y:this.targetY};
-  if(!this.move(target.x,target.y,.21+this.index*.008,dt,valid))return;
-  if(this.route){this.route=0;return;}
-  if(this.state===5){this.state=0;this.timer=7+this.rng.next()*24;return;}
+  if(!this.move(this.targetX,this.targetY,.21+this.index*.008,dt,valid))return;
   this.state=this.task;
   this.timer=this.task===2?22+this.rng.next()*36:this.task===3?13+this.rng.next()*19:4+this.rng.next()*9;
   this.heading=this.task===3?-Math.PI/2:this.rng.next()*TAU;
  }
  override write(w:BinaryWriter):void {
   super.write(w);w.u8(Number(this.flowers));w.u8(this.role);w.u8(this.task);w.u32(this.visits);w.u8(this.route);
-  for(const n of [this.flowerX,this.flowerY,this.formation,this.targetX,this.targetY,this.seatX,this.seatY,this.groveX,this.groveY])w.f64(n);
+  for(const n of [this.flowerX,this.flowerY,this.formation,this.targetX,this.targetY,this.seatX,this.seatY,this.groveX,this.groveY,this.lift,this.previousLift])w.f64(n);
  }
  static read(r:BinaryReader):ZenMonkAgent {
   const a=ZenResident.restore(new ZenMonkAgent(r.string(),0,0,1),r);
   a.flowers=!!r.u8();a.role=r.u8();a.task=r.u8();a.visits=r.u32();a.route=r.u8();
-  [a.flowerX,a.flowerY,a.formation,a.targetX,a.targetY,a.seatX,a.seatY,a.groveX,a.groveY]=Array.from({length:9},()=>r.f64()) as [number,number,number,number,number,number,number,number,number];
-  if(a.formation<0||a.formation>=1||a.role>1||a.route>1||![2,3,6].includes(a.task))throw new Error('Invalid monk routine');
+  [a.flowerX,a.flowerY,a.formation,a.targetX,a.targetY,a.seatX,a.seatY,a.groveX,a.groveY,a.lift,a.previousLift]=Array.from({length:11},()=>r.f64()) as [number,number,number,number,number,number,number,number,number,number,number];
+  if(a.formation<0||a.formation>=1||a.role>1||a.route>4||![2,3,6].includes(a.task))throw new Error('Invalid monk routine');
   return a;
  }
 }

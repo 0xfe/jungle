@@ -1,7 +1,7 @@
 import { BIRD_KINDS, type BirdKind, type SoundTuning, type SoundKind } from './synthesis';
-export type AudioKind=SoundKind|'elephant';
+export type AudioKind=SoundKind|'elephant'|'tiger';
 export type BedKind='leaves'|'water'|'rain'|'insects'|'hover'|'zen';
-export type CallKind=BirdKind|'elephant'|'alien';
+export type CallKind=BirdKind|'elephant'|'tiger'|'alien';
 export interface AudioEvent { kind:'step'|CallKind; gain:number; pan:number; rate:number }
 export interface SoundFrame { beds:Record<BedKind,number>; events:AudioEvent[]; master:number; hoverPan?:number }
 export interface AudioSink { apply(frame:SoundFrame):void; dispose():void }
@@ -30,10 +30,10 @@ export class Soundscape {
   const nearby=scene.emitters.filter(a=>Math.hypot(a.x-scene.x,a.y-scene.y)<radius).sort((a,b)=>Math.hypot(a.x-scene.x,a.y-scene.y)-Math.hypot(b.x-scene.x,b.y-scene.y)||a.id.localeCompare(b.id)).slice(0,o.maxEmitters??32);
   const next=new Map<string,Caller>(),wildlife=clamp(settings.wildlife);
   const emit=(c:Caller,kind:CallKind,gain:number,pan:number,voiceRate=1)=>{
-   const rate=kind==='elephant'?.92+random(c)*.16:(o.pitchMin??.8)+random(c)*((o.pitchMax??1.24)-(o.pitchMin??.8));
+   const rate=(kind==='elephant'||kind==='tiger')?.92+random(c)*.16:(o.pitchMin??.8)+random(c)*((o.pitchMax??1.24)-(o.pitchMin??.8));
    if(o.sounds?.[kind]?.enabled!==false)events.push({kind,gain:gain*wildlife,pan,rate:rate*voiceRate});
    // Different pauses and pitches on every phrase; rain/dusk leave more space.
-   c.remaining=(kind==='elephant'?18+random(c)*24:(o.callGapMin??1.5)+random(c)*((o.callGapMax??6)-(o.callGapMin??1.5)))*(1+scene.rain*.45+scene.night*.55)*(o.sounds?.[kind]?.intervalScale??1);
+   c.remaining=(kind==='tiger'?30:kind==='elephant'?18+random(c)*24:(o.callGapMin??1.5)+random(c)*((o.callGapMax??6)-(o.callGapMin??1.5)))*(1+scene.rain*.45+scene.night*.55)*(o.sounds?.[kind]?.intervalScale??1);
   };
   let hover=0,hoverPan=0,zen=0;
   for(const a of nearby){
@@ -41,6 +41,7 @@ export class Soundscape {
    const gain=(1-distance/radius)**2,pan=clamp(((a.x-scene.x)-(a.y-scene.y))/6,-1,1);
    if(a.loop==='zen'){zen+=gain*clamp(a.intensity??1);continue;}
    if(a.loop==='hover'){const weight=gain*clamp(a.intensity??1);hover+=weight;hoverPan+=pan*weight;continue;}
+   if(!old&&a.call==='tiger')c.remaining=.1;
    c.remaining-=step;
    if(active&&events.length<(o.maxEvents??4)&&wildlife>0){
     if((a.bird||a.call!==undefined)&&c.remaining<=0)emit(c,a.call??BIRD_KINDS[Math.floor(random(c)*4)]!,gain*.55,pan,a.rate);
