@@ -13,6 +13,7 @@ import { Soundscape } from '../src/audio';
 import { spacecraftCandidate } from '../src/jungle/space-sites';
 import { volcanoSite } from '../src/jungle/volcanoes';
 import { spritePieces } from '../scripts/art/sprite-pieces';
+import { ZEN_BELLS, ZEN_TEMPLE } from '../src/jungle/zen-layout';
 import { bakeZen } from '../scripts/art/zen';
 
 const worldAt=()=>{const w=new InfiniteWorld(2718),s=w.zenLandmark()!;assert.ok(s);w.ensure({minX:s.x-8,minY:s.y-8,maxX:s.x+8,maxY:s.y+8});return {w,s};};
@@ -72,22 +73,29 @@ test('monks work independently at distinct beds while a separate procession circ
  assert.ok(mixed,'simultaneous independent tasks');assert.ok(concurrentWatering,'different beds watered concurrently');
  assert.ok(processionWithWorkers,'procession is separate from working monks');assert.ok(returned,'residents return indoors');
 });
-test('sanctuary planting is grassy, dense and connected by irregular entrance and pond paths',()=>{
+test('sanctuary planting is grassy, dense and connected by aligned, consistent-width entrance and pond paths',()=>{
  const {w,s}=worldAt(),plants=zenPlants(s,w.settings),paths=zenPaths(s),layout=zenLayout(s);
  assert.ok(plants.filter(p=>p.kind==='grass').length>180);
  assert.ok(plants.filter(p=>p.kind==='tree').length>16);
  assert.ok(plants.filter(p=>p.kind==='shrub').length>25);
  assert.ok(plants.filter(p=>p.kind==='flower').length>20);
  assert.ok(plants.filter(p=>p.kind==='stone').length>10);
- assert.ok(Math.hypot(paths[0]!.x-layout.door.x,paths[0]!.y-layout.door.y)<.08);
+ assert.ok(Math.hypot(paths[0]!.x-layout.steps.x,paths[0]!.y-layout.steps.y)<.08);
  for(const branch of [0,1]){
   const route=paths.filter(p=>p.branch===branch);
-  assert.ok(new Set(route.map(p=>Math.round(p.radius*100))).size>5);
+  assert.ok(Math.max(...route.map(p=>p.radius))/Math.min(...route.map(p=>p.radius))<1.05);
   for(let i=1;i<route.length;i++)assert.ok(Math.hypot(route[i]!.x-route[i-1]!.x,route[i]!.y-route[i-1]!.y)<route[i]!.radius+route[i-1]!.radius);
  }
- const end=paths.at(-1)!;assert.ok(pondRadius(s,end.x,end.y)<1.2);
+ const end=paths.at(-1)!;assert.deepEqual({x:end.x,y:end.y},layout.dockEntry);
+ assert.ok(pondRadius(s,layout.dock.x,layout.dock.y)<1);
+ assert.ok(plants.some(p=>p.kind==='dock'));
+ const hedges=plants.filter(p=>p.kind==='hedge');assert.ok(hedges.length>15);
+ assert.ok(new Set(hedges.map(p=>p.variant)).size>=4);
+ assert.ok(hedges.every(p=>Math.hypot(p.x-layout.steps.x,p.y-layout.steps.y)>=.65));
+ const strips=plants.filter(p=>p.kind==='path');
+ for(const p of strips)assert.ok(p.corners&&Math.abs(Math.hypot(p.corners[0].x-p.corners[1].x,p.corners[0].y-p.corners[1].y)-p.scale*2)<1e-9);
  const bare=zenPlants(s,normalizeSettings({chance_grass:0,chance_bush:0,chance_zenFlowers:0,chance_mud:0}));
- assert.ok(bare.every(p=>!['grass','shrub','flower','path','stone'].includes(p.kind)));
+ assert.ok(bare.every(p=>!['grass','edgegrass','shrub','hedge','flower','path','stone'].includes(p.kind)));
 });
 test('cached sanctuary clocks and inhabitants sleep and resume without duplicate owners',()=>{
  const {w,s}=worldAt(),a=w.agents.find((a):a is ZenGardenAgent=>a instanceof ZenGardenAgent)!;
@@ -113,6 +121,18 @@ test('sanctuary music attenuates with distance and respects environment mute and
  const {w,s}=worldAt(),near=jungleSound(w,s.x,s.y),far=jungleSound(w,s.x+15,s.y+15),m=new Soundscape();
  assert.ok(m.update(near,.1).beds.zen>0);assert.equal(m.update(far,.1).beds.zen,0);assert.equal(m.update(near,.1,undefined,false).beds.zen,0);
  assert.equal(m.update(near,.1,{master:1,wildlife:1,ambience:0}).beds.zen,0);
+});
+test('pagoda hanging ornaments have registered, nonempty looping poses',async()=>{
+ const sprites=await bakeZen(),bells=sprites.filter(s=>s.id.startsWith('zen-bell-'));
+ assert.equal(bells.length,ZEN_BELLS.length);
+ for(const bell of bells){
+  assert.equal(bell.frames.length,32);
+  assert.ok(bell.frames.every(f=>f.data.some((n,i)=>i%4===3&&n>0)));
+  assert.ok(bell.frames.some(f=>!Buffer.from(f.data).equals(Buffer.from(bell.frames[0]!.data))),bell.id);
+ }
+ const temple=sprites.find(s=>s.id==='zen-pagoda-0')!;
+ assert.ok(temple.frames[0]!.width>150,'broad foundation retained at bake resolution');
+ assert.equal(ZEN_TEMPLE.size,2.1);
 });
 test('registered sanctuary pieces reconstruct every original baked pose exactly',async()=>{
  for(const s of await bakeZen()){

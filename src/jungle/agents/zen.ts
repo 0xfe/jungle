@@ -1,5 +1,6 @@
 import { AgentRandom, BinaryReader, BinaryWriter, type Agent, type AgentEnvironment } from '../../agents';
 import { clamp, lerp } from '../../iso/math';
+import { zenEntrance } from '../zen-layout';
 import { CONFIG } from '../../config';
 import { zenPlants, zenLayout, type ZenSite } from '../zen-sites';
 import type { WorldSettings } from '../settings';
@@ -54,7 +55,7 @@ export class ZenMonkAgent extends ZenResident {
  }
  update(dt:number,e:AgentEnvironment):void {
   this.capture();this.clock+=dt;
-  const door={x:this.homeX-.45,y:this.homeY+.2},apron={x:this.homeX+.65,y:this.homeY+.2};
+  const {door,apron}=zenEntrance(this.homeX,this.homeY);
   const valid=(x:number,y:number)=>!e.sample(x,y).water;
   if(this.role===1){
    // A separate small group circles the actual planted grove while other residents work.

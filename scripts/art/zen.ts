@@ -1,4 +1,6 @@
 import sharp from 'sharp';
+import { ZEN_TEMPLE, ZEN_BELLS } from '../../src/jungle/zen-layout';
+import { bakeZenDock } from './zen-dock';
 import { ellipsoid, bone, type Mesh, type V3, type RGB } from '../../src/iso/bake/mesh';
 import { bakeMesh } from '../../src/iso/bake/rasterize';
 import { trimClip, type BakeSprite } from '../../src/iso/bake/atlas';
@@ -7,14 +9,35 @@ import { windFrames } from './wind';
 import type { ZenKind } from '../../src/jungle/agents/zen';
 const tau=Math.PI*2,cream:RGB=[240,216,163],dark:RGB=[39,59,62];
 /** Retained reference-inspired architecture; the three forms share exact atlas pixels. */
-async function pagodaSprite(): Promise<BakeSprite> {
- const png=await sharp('assets/source/zen-pagoda.png').trim().resize(160,256,{
+async function pagodaSprite(): Promise<BakeSprite[]> {
+ const png=await sharp('assets/source/zen-pagoda-wide.png').trim().resize(ZEN_TEMPLE.width-16,ZEN_TEMPLE.height-16,{
   fit:'contain',kernel:'nearest',background:{r:0,g:0,b:0,alpha:0},
  }).extend({top:8,bottom:8,left:8,right:8,background:{r:0,g:0,b:0,alpha:0}})
   .png({palette:true,colours:64,dither:0}).toBuffer();
  const {data,info}=await sharp(png).ensureAlpha().raw().toBuffer({resolveWithObject:true});
  for(let i=3;i<data.length;i+=4){if(data[i]!<128)data.fill(0,i-3,i+1);else data[i]=255;}
- return {id:'zen-pagoda-0',anchor:[88,248],frames:[{width:info.width,height:info.height,data}]};
+ // Lift only the free-hanging ornaments out of the painting. Their roof hooks stay fixed.
+ const bells:BakeSprite[]=[];
+ for(const [index,rect] of ZEN_BELLS.entries()){
+  const margin=4,width=rect.width+margin*2,height=rect.height+margin*2;
+  const source=new Uint8Array(rect.width*rect.height*4);
+  for(let y=0;y<rect.height;y++)for(let x=0;x<rect.width;x++){
+   const at=((rect.y+y)*info.width+rect.x+x)*4;
+   source.set(data.subarray(at,at+4),(y*rect.width+x)*4);data.fill(0,at,at+4);
+  }
+  const frames=Array.from({length:32},(_,frame)=>{
+   const pixels=new Uint8Array(width*height*4),angle=Math.sin(frame/32*tau)*.21;
+   // Inverse nearest-neighbor sampling avoids holes as the original pixels swing.
+   for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+    const dx=x-margin-(rect.width-1)/2,dy=y-margin;
+    const sx=Math.round(Math.cos(angle)*dx+Math.sin(angle)*dy+(rect.width-1)/2),sy=Math.round(-Math.sin(angle)*dx+Math.cos(angle)*dy);
+    if(sx>=0&&sx<rect.width&&sy>=0&&sy<rect.height)pixels.set(source.subarray((sy*rect.width+sx)*4,(sy*rect.width+sx+1)*4),(y*width+x)*4);
+   }
+   return {width,height,data:pixels};
+  });
+  bells.push({id:`zen-bell-${index}`,anchor:[ZEN_TEMPLE.anchor[0]-rect.x+margin,ZEN_TEMPLE.anchor[1]-rect.y+margin],frames});
+ }
+ return [{id:'zen-pagoda-0',anchor:ZEN_TEMPLE.anchor,frames:[{width:info.width,height:info.height,data}]},...bells];
 }
 /** Separate +X rigs: robes and sandals, koi fins, duck paddles and pelican throat pouch. */
 export function zenMesh(kind:ZenKind,action:string,phase:number,variant=0):Mesh{
@@ -68,15 +91,17 @@ export function zenMesh(kind:ZenKind,action:string,phase:number,variant=0):Mesh{
 export async function bakeZen():Promise<BakeSprite[]>{
  const out:BakeSprite[]=[];
  // Shared earthy grain with a porous edge; world-space stamps supply the winding shape.
- const soil=new Uint8Array(48*48*4);
- for(let y=0;y<48;y++)for(let x=0;x<48;x++){
-  const u=(x-23.5)/23.5,v=(y-23.5)/23.5,n=hash(x,y,9361),edge=Math.max(0,1-u*u-v*v+(hash(Math.floor(x/3),Math.floor(y/3),91)-.5)*.14);
-  if(edge>0)soil.set([114+n*34,87+n*31,58+n*22,Math.min(1,edge*3)*(n>.9?.8:1)*255],(y*48+x)*4);
+ const soil=new Uint8Array(48*16*4);
+ for(let y=0;y<16;y++)for(let x=0;x<48;x++){
+  const edge=Math.max(0,1-Math.abs((x-23.5)/23.5)),n=hash(x,y,9361);
+  const fade=Math.min(1,edge/.38),alpha=Math.round(fade*fade*(3-2*fade)*(n>.92?.72:1)*225);
+  if(alpha)soil.set([117+n*32,91+n*29,60+n*22,alpha],(y*48+x)*4);
  }
- for(let i=3;i<soil.length;i+=4)if(!soil[i])soil.fill(0,i-3,i+1);
- out.push({id:'zen-path',anchor:[24,24],trim:false,frames:[{width:48,height:48,data:soil}]});
- const temple=await pagodaSprite();
- for(let form=0;form<3;form++)out.push({...temple,id:`zen-pagoda-${form}`});
+ out.push({id:'zen-path',anchor:[24,8],trim:false,frames:[{width:48,height:16,data:soil}]});
+ out.push(bakeZenDock());
+ const [temple,...bells]=await pagodaSprite();
+ out.push(...bells);
+ for(let form=0;form<3;form++)out.push({...temple!,id:`zen-pagoda-${form}`});
  for(let form=0;form<3;form++){
   const m:Mesh=[];ellipsoid(m,[0,0,.08],[.24+form*.04,.19,.12+form*.03],[123+form*11,129+form*8,113+form*7],undefined,n=>n[2]>.3?[166,173,147]:[97,109,89],7,4);
   out.push({id:`zen-stone-${form}`,anchor:[12,16],frames:[bakeMesh(m,form*.7,{width:24,height:24,anchor:[12,16],scale:25})]});

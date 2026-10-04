@@ -1,3 +1,5 @@
+import { zenEntrance, zenPixelPosition, ZEN_HEDGE_RING, ZEN_TEMPLE } from './zen-layout';
+import type { Vec2 } from '../iso/math';
 import { CONFIG } from '../config';
 import { hash, clamp } from '../iso/math';
 import { riverPaths } from './rivers';
@@ -51,40 +53,39 @@ export function nearestZen(seed:number,x:number,y:number,settings:Readonly<World
 export function zenLayout(s: ZenSite) {
  const point = (x: number, y: number) => ({ x: s.x + x, y: s.y + y });
  return {
-  door: point(-.45, .2), apron: point(.65, .2), grove: point(-1.8, 4.15),
+  ...zenEntrance(s.x,s.y), grove: point(-1.8, 4.15),
+  dock: {x:s.pondX,y:s.pondY+1.3}, dockEntry: {x:s.pondX,y:s.pondY+2.1},
   beds: [[.15,2.25],[1.8,2.9],[3.5,1.7],[5.1,2.8],[4.8,-.1],[.4,4.8],[2.5,5.2],[4.8,4.9]].map(([x,y]) => point(x!,y!)),
   seats: [[.5,1.5],[1.9,4.3],[4.7,1.8],[.4,3.9],[3.4,.7],[3.5,5.8],[5.7,4.1],[1.1,5.8]].map(([x,y]) => point(x!,y!)),
  };
 }
-export interface ZenPathPoint { x: number; y: number; radius: number; branch: number }
-/** Overlapping, jittered soil stamps form two continuous, softly feathered paths. */
+export interface ZenPathPoint extends Vec2 { radius:number; branch:number; normal:Vec2 }
+/** Shared smooth centrelines meet exactly at the fork and at the two built entrances. */
 export function zenPaths(s: ZenSite): ZenPathPoint[] {
- const out: ZenPathPoint[] = [];
- const routes = [
-  [[-.45,.2],[1.3,.25],[3,.8],[4.7,.4],[6.2,.9]],
-  [[2.1,.5],[2.35,.05],[2.6,-.2],[2.8,-.38]],
- ];
- for (const [branch, route] of routes.entries()) {
-  for (let segment=1; segment<route.length; segment++) {
-   const a=route[segment-1]!, b=route[segment]!, length=Math.hypot(b[0]!-a[0]!,b[1]!-a[1]!);
-   const steps=Math.ceil(length/.18);
-   for (let i=0; i<steps; i++) {
-    const t=i/steps, n=out.length;
-    out.push({x:s.x+a[0]!+(b[0]!-a[0]!)*t+(hash(n,41,s.seed)-.5)*.06,
-     y:s.y+a[1]!+(b[1]!-a[1]!)*t+(hash(n,42,s.seed)-.5)*.08,
-     radius:(branch?.19:.25)+hash(n,43,s.seed)*.08, branch});
-   }
+ const layout=zenLayout(s),out:ZenPathPoint[]=[];
+ const bezier=(a:Vec2,b:Vec2,c:Vec2,d:Vec2,t:number):Vec2=>{
+  const u=1-t;return{x:u*u*u*a.x+3*u*u*t*b.x+3*u*t*t*c.x+t*t*t*d.x,y:u*u*u*a.y+3*u*u*t*b.y+3*u*t*t*c.y+t*t*t*d.y};
+ };
+ const main=[layout.steps,{x:s.x+.9,y:layout.steps.y},{x:s.x+3.9,y:s.y+.95},{x:s.x+6.2,y:s.y+.9}] as const;
+ const fork=bezier(...main,.5),dock=layout.dockEntry;
+ const branch=[fork,{x:fork.x+.3,y:fork.y-.15},{x:dock.x,y:dock.y+.4},dock] as const;
+ for(const [index,curve] of [main,branch].entries()){
+  const count=index?20:64;
+  for(let i=0;i<=count;i++){
+   const t=i/count,p=bezier(...curve,t),before=bezier(...curve,Math.max(0,t-.001)),after=bezier(...curve,Math.min(1,t+.001));
+   const dx=after.x-before.x,dy=after.y-before.y,length=Math.hypot(dx,dy);
+   out.push({...p,radius:(index?.27:.29)*(1+.018*Math.sin(t*Math.PI*2+s.form)),branch:index,normal:{x:-dy/length,y:dx/length}});
   }
  }
  return out;
 }
-export type ZenPlantKind = 'tree'|'flower'|'lotus'|'grass'|'edgegrass'|'shrub'|'stone'|'path';
-export interface ZenPlant { x:number; y:number; kind:ZenPlantKind; variant:number; scale:number; phase:number }
+export type ZenPlantKind = 'tree'|'flower'|'lotus'|'grass'|'edgegrass'|'shrub'|'hedge'|'stone'|'path'|'dock';
+export interface ZenPlant { x:number; y:number; kind:ZenPlantKind; variant:number; scale:number; phase:number; corners?:readonly [Vec2,Vec2,Vec2,Vec2]; opacity?:number }
 /** Bounded site-owned planting pockets; no per-frame layout work or per-plant agents. */
 export function zenPlants(s: ZenSite, settings: Readonly<WorldSettings>): ZenPlant[] {
  const out: ZenPlant[] = [], layout=zenLayout(s), paths=zenPaths(s);
  const pathDistance = (x:number,y:number) => Math.min(...paths.map(p=>Math.hypot(x-p.x,y-p.y)-p.radius));
- const building = (x:number,y:number,margin=0) => Math.abs(x-s.x+1.2)<1.25+margin && Math.abs(y-s.y-.2)<1.25+margin;
+ const building = (x:number,y:number,margin=0) => Math.abs(x-s.x-ZEN_TEMPLE.rootX)<1.05+margin && Math.abs(y-s.y-ZEN_TEMPLE.rootY)<1.05+margin;
  const land = (x:number,y:number) => pondRadius(s,x,y)>1.12;
  const add = (kind:ZenPlantKind,x:number,y:number,variant:number,scale:number,phase=0) => out.push({kind,x,y,variant,scale,phase});
  // A dense, varied outer grove, with a narrow facade view corridor and clear paths.
@@ -96,6 +97,15 @@ export function zenPlants(s: ZenSite, settings: Readonly<WorldSettings>): ZenPla
   if(Math.hypot(x-layout.grove.x,y-layout.grove.y)<1.9 || layout.beds.some(b=>Math.hypot(x-b.x,y-b.y)<.85))continue;
   if(out.some(p=>p.kind==='tree'&&Math.hypot(x-p.x,y-p.y)<.9))continue;
   add('tree',x,y,i%7<4?0:i%7<6?1:2,.75+hash(i,4,s.seed)*.4,hash(i,5,s.seed)*20);
+ }
+ // Close-set mixed hedges hug the stone terrace; the stairs keep a generous opening.
+ for(let side=0;side<4;side++)for(let i=0;i<8;i++){
+  const a=ZEN_HEDGE_RING[side]!,b=ZEN_HEDGE_RING[(side+1)%4]!,t=i/8;
+  const {x,y}=zenPixelPosition(s.x,s.y,[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]);
+  if(pathDistance(x,y)<.24||Math.hypot(x-layout.steps.x,y-layout.steps.y)<.65)continue;
+  const n=side*8+i,flower=n%5>=2,rate=flower?settings.chance_zenFlowers:settings.chance_bush;
+  if(hash(n,71,s.seed)>rate)continue;
+  add('hedge',x,y,n%5,.8+hash(n,72,s.seed)*.15,hash(n,73,s.seed)*20);
  }
  // Three smaller trees make a real centre for the separate walking meditation group.
  if(settings.chance_zenTree>0)for(const [i,[dx,dy]] of [[-.28,-.2],[.32,-.14],[.02,.32]].entries())
@@ -117,15 +127,23 @@ export function zenPlants(s: ZenSite, settings: Readonly<WorldSettings>): ZenPla
   if(hash(i,7,s.seed)>.7*settings.chance_lotus)continue;
   add('lotus',s.pondX+Math.cos(a)*r*2.1,s.pondY+Math.sin(a)*r*1.5,i%3,.75+hash(i,8,s.seed)*.4,hash(i,9,s.seed)*20);
  }
+ if(settings.water>0)add('dock',layout.dock.x,layout.dock.y,0,2);
  for(const [i,p] of paths.entries()) {
-  if(settings.chance_mud>0)add('path',p.x,p.y,p.branch,p.radius);
-  if(i%3===0&&settings.chance_mud>0) {
-   const next=paths[Math.min(i+1,paths.length-1)]!,a=Math.atan2(next.y-p.y,next.x-p.x)+Math.PI/2;
-   const side=i%2?1:-1,d=p.radius*(1.05+hash(i,31,s.seed)*.45);
-   const x=p.x+Math.cos(a)*d*side,y=p.y+Math.sin(a)*d*side;
-   if(land(x,y)&&!building(x,y))add('stone',x,y,i%3,.9+hash(i,32,s.seed)*.8);
+  if(p.branch&&!settings.water)continue;
+  const next=paths[i+1];
+  if(settings.chance_mud>0&&next&&next.branch===p.branch){
+   const edge=(q:ZenPathPoint,side:number)=>({x:q.x+q.normal.x*q.radius*side,y:q.y+q.normal.y*q.radius*side});
+   out.push({kind:'path',x:p.x,y:p.y,variant:p.branch,scale:p.radius,phase:0,
+    corners:[edge(p,-1),edge(p,1),edge(next,-1),edge(next,1)],
+    opacity:p.branch?1:Math.min(1,(64-i)/7)});
+  }
+  if(i%4===0&&settings.chance_mud>0) {
+   const side=i%8?1:-1,d=p.radius*(1+hash(i,31,s.seed)*.35);
+   const x=p.x+p.normal.x*d*side,y=p.y+p.normal.y*d*side;
+   if(land(x,y)&&!building(x,y))add('stone',x,y,i%3,.7+hash(i,32,s.seed)*.7);
    if(settings.chance_grass>hash(i,33,s.seed)&&land(x,y)&&!building(x,y))add('edgegrass',x,y,i%4,.10+hash(i,34,s.seed)*.06,i*.3);
   }
  }
+
  return out;
 }

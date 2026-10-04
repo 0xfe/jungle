@@ -227,6 +227,7 @@ function executeCommand(key:string):void {
     const ship=world.callSpacecraft(view.cameraX,view.cameraY,SPACE_KINDS[nextCalledShip]);
     if(!ship){announce('No safe landing area nearby. Explore toward a dry clearing and try Shift+U again.');return;}
     pauseDrift();drift=false;paused=false;view.cameraX=ship.x;view.cameraY=ship.y;cameraVX=cameraVY=0;syncUI();
+    showArtifacts(false);
     nextCalledShip=(nextCalledShip+1)%SPACE_KINDS.length;
     announce(`${ship.kind[0]!.toUpperCase()+ship.kind.slice(1)} called. Shift+U calls the next design; P resumes automatic travel.`);
   }

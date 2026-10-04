@@ -324,7 +324,7 @@ export class InfiniteWorld {
   get stats() {
     return { worldSize: this.explored.estimate, renderedUnique: this.drawn.estimate, renderedNow: this.renderedNow, renderedTotal: this.renderedTotal,
       generated: this.generated, resident: this.cache.size * 16, active: this.tiles.length, expired: this.cache.expired * 16,
-      cachedBytes: this.cache.bytes, estimatedBytes: this.cache.bytes + this.agents.length * 896 + this.agents.reduce((n,a)=>n+(a instanceof LandscapePatchAgent?a.pieces.length*224+a.supports.length*104:a instanceof VolcanicWildlifeAgent?a.template.byteLength+1024:a instanceof SpacecraftAgent?a.crew.length*768:a instanceof ZenGardenAgent?a.residents.length*512:0),0) + this.tiles.length * 6144 + [...this.gardenPlants.values()].reduce((n,p)=>n+p.length*160,0) + 8192 + 512 * 1024 + this.rivers.length * 4096 + this.bankCover.length * 128, agents: this.agents.length, animals: this.agents.filter(a=>a.speed!==undefined&&!(a instanceof SpacecraftAgent)).length, herds: new Set(this.agents.filter(a=>(a instanceof DeerAgent||(a instanceof VolcanicWildlifeAgent&&a.animal instanceof DeerAgent&&a.phase==='alive'))&&a.groupId).map(a=>a.groupId)).size };
+      cachedBytes: this.cache.bytes, estimatedBytes: this.cache.bytes + this.agents.length * 896 + this.agents.reduce((n,a)=>n+(a instanceof LandscapePatchAgent?a.pieces.length*224+a.supports.length*104:a instanceof VolcanicWildlifeAgent?a.template.byteLength+1024:a instanceof SpacecraftAgent?a.crew.length*768:a instanceof ZenGardenAgent?a.residents.length*512:0),0) + this.tiles.length * 6144 + [...this.gardenPlants.values()].reduce((n,p)=>n+p.length*160+p.filter(v=>v.corners).length*160,0) + 8192 + 512 * 1024 + this.rivers.length * 4096 + this.bankCover.length * 128, agents: this.agents.length, animals: this.agents.filter(a=>a.speed!==undefined&&!(a instanceof SpacecraftAgent)).length, herds: new Set(this.agents.filter(a=>(a instanceof DeerAgent||(a instanceof VolcanicWildlifeAgent&&a.animal instanceof DeerAgent&&a.phase==='alive'))&&a.groupId).map(a=>a.groupId)).size };
   }
   /** Capture active state before taking a compact checkpoint. Cache eviction remains intentional. */
   checkpoint(): Uint8Array {
@@ -332,7 +332,7 @@ export class InfiniteWorld {
       const record = { terrain: a.terrain.data, agents: jungleAgents.encode(a.agents) };
       this.cache.put(a.x, a.y, record, record.terrain.length + record.agents.length + 256, this.pinned);
     }
-    const w = new BinaryWriter(); w.u32(0x4a4e474c); w.u8(24); w.u32(this.seed);
+    const w = new BinaryWriter(); w.u32(0x4a4e474c); w.u8(25); w.u32(this.seed);
     for(const key of SETTING_KEYS)w.f64(this.settings[key]);
     w.u8(['rainforest', 'flowering', 'wetland'].indexOf(this.habitat)); w.u8(['sun', 'rain', 'dusk'].indexOf(this.weather));
     for (const n of [this.time, this.previousTime, this.generated, this.renderedTotal, this.cache.expired]) w.f64(n);
@@ -343,7 +343,7 @@ export class InfiniteWorld {
   static restore(bytes: Uint8Array, budget = DEFAULT_WORLD_BUDGET): InfiniteWorld {
     if (bytes.length > budget.maxBytes + 65536) throw new Error('Checkpoint exceeds memory budget');
     const r = new BinaryReader(bytes);
-    if (r.u32() !== 0x4a4e474c || r.u8() !== 24) throw new Error('Unsupported world checkpoint');
+    if (r.u32() !== 0x4a4e474c || r.u8() !== 25) throw new Error('Unsupported world checkpoint');
     const seed = r.u32(), settings=Object.fromEntries(SETTING_KEYS.map(k=>[k,r.f64()])) as unknown as WorldSettings;
     for(const k of SETTING_KEYS)if(settings[k]!==normalizeSettings(settings)[k])throw new Error('Invalid world settings');
     const habitat = (['rainforest', 'flowering', 'wetland'] as const)[r.u8()], weather = (['sun', 'rain', 'dusk'] as const)[r.u8()];

@@ -1,3 +1,4 @@
+import { ZEN_TEMPLE, ZEN_BELLS } from './zen-layout';
 import { lerp, hash } from '../iso/math';
 import { rootedQuad } from '../iso/sprite-geometry';
 import { quadBounds } from '../iso/quad';
@@ -19,7 +20,8 @@ export function composeZen(world:InfiniteWorld,atlas:AtlasManifest,commands:Draw
  const glint=(id:string,x:number,y:number,z:number,w:number,opacity:number,color:[number,number,number])=>{const p=screen(x,y,world.heightAt(x,y)+z);commands.push({id,x:p.x-w*scale/2,y:p.y,width:w*scale,height:scale,color:[...color,Math.round(opacity*255)],layer:1.3,depth:x+y});};
  for(const s of world.pagodas){
   const owner=world.agents.find((a):a is ZenGardenAgent=>a instanceof ZenGardenAgent&&a.id===s.id),time=owner?lerp(owner.previousClock,owner.clock,alpha):globalTime;
-  draw(`${s.id}:temple`,`zen-pagoda-${s.form}`,s.x-1.2,s.y+.2,2.1,0,2,1,0,0,[255,249,241][s.form]);
+  draw(`${s.id}:temple`,`zen-pagoda-${s.form}`,s.x+ZEN_TEMPLE.rootX,s.y+ZEN_TEMPLE.rootY,ZEN_TEMPLE.size,0,2,1,0,0,[255,249,241][s.form]);
+  for(let bell=0;bell<ZEN_BELLS.length;bell++)draw(`${s.id}:bell:${bell}`,`zen-bell-${bell}`,s.x+ZEN_TEMPLE.rootX,s.y+ZEN_TEMPLE.rootY,ZEN_TEMPLE.size,time*5+bell*3.1,2,1,0,0,[255,249,241][s.form]);
   for(const [i,p] of (world.gardenPlants.get(s.id)??[]).entries()){
    const t=time+p.phase;
    if(p.kind==='tree')draw(`${s.id}:tree:${i}`,`zen-tree-${p.variant}`,p.x,p.y,1.8*p.scale,t*4,2,1,0,Math.sin(t*.6)*.009);
@@ -34,11 +36,13 @@ export function composeZen(world:InfiniteWorld,atlas:AtlasManifest,commands:Draw
    if(p.kind==='edgegrass')draw(`${s.id}:edgegrass:${i}`,`patch-grass-${p.variant}-0-leaves`,p.x,p.y,p.scale,0,1.1,.95,0,Math.sin(t*.6)*.006,[122,165,80]);
    if(p.kind==='shrub')draw(`${s.id}:shrub:${i}`,`accent-${['feather-fern','round-shrub','low-fern'][p.variant]}`,p.x,p.y,p.scale*1.2,t*3,2,1,0,Math.sin(t*.7)*.013);
    if(p.kind==='stone')draw(`${s.id}:stone:${i}`,`zen-stone-${p.variant}`,p.x,p.y,p.scale,0,1);
-   if(p.kind==='path'){
-    const point=(dx:number,dy:number)=>screen(p.x+dx*p.scale,p.y+dy*p.scale,world.heightAt(p.x+dx*p.scale,p.y+dy*p.scale));
-    const corners:NonNullable<DrawCommand['corners']>=[point(-1,-1),point(1,-1),point(-1,1),point(1,1)];
+   if(p.kind==='hedge')draw(`${s.id}:hedge:${i}`,`accent-${['round-shrub','broadleaf','cream-bush','pink-tips','hibiscus'][p.variant]}`,p.x,p.y,p.scale,t*3,2,1,0,Math.sin(t*.7)*.02);
+   if(p.kind==='dock')draw(`${s.id}:dock`,`zen-dock`,p.x,p.y,p.scale,0,2);
+   if(p.kind==='path'&&p.corners){
+    const point=(v:{x:number;y:number})=>screen(v.x,v.y,world.heightAt(v.x,v.y));
+    const corners:NonNullable<DrawCommand['corners']>=[point(p.corners[0]),point(p.corners[1]),point(p.corners[2]),point(p.corners[3])];
     const box=quadBounds(corners);
-    if(visible(box,width,height))commands.push({...box,corners:corners as DrawCommand['corners'],id:`${s.id}:path:${i}`,region:atlas.sprites['zen-path']!.frames[0],color:[255,255,255,255],layer:.8,depth:p.x+p.y});
+    if(visible(box,width,height))commands.push({...box,corners,id:`${s.id}:path:${i}`,region:atlas.sprites['zen-path']!.frames[0],color:[255,255,255,Math.round((p.opacity??1)*255)],layer:.8,depth:p.x+p.y});
    }
    if(p.kind==='lotus')draw(`${s.id}:lotus:${i}`,`zen-lotus-${p.variant}`,p.x,p.y,p.scale,t*2,1.05,1,Math.sin(t*1.2)*.35);
   }
