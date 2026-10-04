@@ -9,7 +9,7 @@ function wav(pcm:SoundBuffer):Buffer{
 }
 await mkdir('artifacts/audio',{recursive:true});
 for(const kind of SOUND_KINDS)await writeFile(`artifacts/audio/${kind}.wav`,wav(synthesize(kind,CONFIG.audio.sampleRate,CONFIG.audio.seed,CONFIG.audio.sounds[kind])));
-console.log('Deterministic stereo WAV previews → artifacts/audio/');
+console.log('Deterministic WAV previews → artifacts/audio/');
 
 // A 30-second layered audition, including independent callers and default levels.
 const rate=CONFIG.audio.sampleRate,block=Math.round(rate*.1),length=rate*30,channels=[new Float32Array(length),new Float32Array(length)];
@@ -24,7 +24,7 @@ const scene={x:0,y:0,canopy:.7,water:.2,rain:0,night:0,emitters:[
 for(let tick=0;tick<300;tick++){
  const frame=planner.update(scene,.1,CONFIG.audio.levels);
  for(const [kind,gain] of Object.entries(frame.beds)){const voice=CONFIG.audio.sounds[kind as typeof SOUND_KINDS[number]];if(!voice.enabled)continue;const pcm=bank.get(kind as typeof SOUND_KINDS[number])!;
-  for(let i=tick*block;i<(tick+1)*block;i++)for(let c=0;c<2;c++)channels[c]![i]!+=pcm.channels[c]![Math.floor(i*voice.speed)%pcm.channels[c]!.length]!*gain*voice.gain*frame.master;
+  for(let i=tick*block;i<(tick+1)*block;i++)for(let c=0;c<2;c++)channels[c]![i]!+=pcm.channels[c%pcm.channels.length]![Math.floor(i*voice.speed*pcm.sampleRate/rate)%pcm.channels[c%pcm.channels.length]!.length]!*gain*voice.gain*frame.master;
  }
  for(const event of frame.events){const voice=CONFIG.audio.sounds[event.kind];if(!voice.enabled)continue;const pcm=bank.get(event.kind)!,start=tick*block,speed=event.rate*voice.speed;
   for(let j=0;j<pcm.channels[0]!.length/speed*rate/pcm.sampleRate&&start+j<length;j++)for(let c=0;c<2;c++){

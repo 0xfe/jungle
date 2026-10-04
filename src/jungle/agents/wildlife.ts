@@ -26,7 +26,7 @@ export abstract class WildlifeAgent implements Agent {
   sample(): WildlifeSample { return {x:this.x,y:this.y,heading:this.heading,gait:this.gait,altitude:this.altitude,state:this.state}; }
   protected within(x:number,y:number): boolean { return x>this.territory[0]+.15 && y>this.territory[1]+.15 && x<this.territory[2]-.15 && y<this.territory[3]-.15; }
   protected clear(x:number,y:number,env:AgentEnvironment, flying=false): boolean {
-    if(!this.within(x,y)) return false;
+    if(!this.within(x,y)||this.kind==='jaguar'&&this.pace>.86&&env.sample(x,y).refuge) return false;
     if(flying) return true;
     const count=Math.ceil(Math.hypot(x-this.x,y-this.y)/.08);
     for(let i=1;i<=count;i++) if(!env.canMove(this.x+(x-this.x)*i/count,this.y+(y-this.y)*i/count)) return false;
@@ -85,7 +85,7 @@ export abstract class WildlifeAgent implements Agent {
     const accel=sprint?3.8:bird?1.3:.55;
     this.motor.update(Math.min(cruise,d/.22,Math.sqrt(2*accel*d)*.7)*Math.max(0,Math.cos(delta)),dt,accel,sprint?24:6);
     const step=Math.min(d,this.speed*dt),x=this.x+Math.cos(this.heading)*step,y=this.y+Math.sin(this.heading)*step;
-    if(this.within(x,y) && (bird||env.canMove(x,y))) {this.x=x;this.y=y;if(!bird)this.gait+=step/((sprint?.43:this.kind==='orangutan'?.16:.18)*this.size);}
+    if(this.within(x,y) && (bird||env.canMove(x,y))&&!(this.kind==='jaguar'&&this.pace>.86&&env.sample(x,y).refuge)) {this.x=x;this.y=y;if(!bird)this.gait+=step/((sprint?.43:this.kind==='orangutan'?.16:.18)*this.size);}
     else {this.motor.stop(); this.state='rest';this.timer=1;}
     if(bird){
       this.gait=this.flight.advance(this.gait,dt,this.targetAltitude-this.altitude,this.pace*this.tripPace,this.random,BIRD_FLIGHT.toucan!);

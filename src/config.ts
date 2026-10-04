@@ -89,6 +89,8 @@ export const CONFIG = {
       /** Fraction of configured group density at the starting clearing. */
       animals: .85,
     },
+    /** Rare garden sites per 96-tile cell; probability sliders multiply frequency. */
+    zen: { spacing:96, frequency:.32, monks:5, koi:7, ducks:3, pelicans:2 },
     spacecraft: {
       /** Rare encounter candidates per owner chunk; land/clearance checks reduce this further. */
       frequency: .022,
@@ -325,6 +327,8 @@ export const CONFIG = {
      * Gain/texture may be zero. Large gain/texture can cause distortion.
      * Disabled voices still export individually for auditioning, but are excluded from the chorus mix. */
     sounds: {
+      /** Soft pentatonic flute and resonant bowl, localized to a sanctuary. */
+      zen: { enabled:true, gain:1.4, speed:1, duration:6, pitch:1, rhythm:1, texture:1, intervalScale:1 },
       /** Quiet flight-only propulsion loop with a faint whistle; rhythm controls buzz and whistle sweep. */
       hover: { enabled:true, gain:.8, speed:1, duration:1.5, pitch:1, rhythm:1, texture:1, intervalScale:1 },
       /** Short alien conversation; intervalScale changes each explorer's phrase spacing. */
@@ -378,7 +382,7 @@ export function validateConfig(c:typeof CONFIG=CONFIG):void {
   require(c.audio.pitchMin>0&&c.audio.pitchMax>=c.audio.pitchMin,'bird pitch range must be positive and ordered');
   for(const [name,s] of Object.entries(c.audio.sounds)){
     require(s.speed>0&&s.pitch>0&&s.rhythm>0&&s.intervalScale>0,`${name} speed/pitch/rhythm/intervalScale must be positive`);
-    require(s.duration>(['leaves','water','rain','insects','hover'].includes(name)?.5:0),`${name} duration is too short`);
+    require(s.duration>(['leaves','water','rain','insects','hover','zen'].includes(name)?.5:0),`${name} duration is too short`);
   }
 }
 validateConfig();

@@ -91,7 +91,7 @@ test('rare candidates are deterministic and species-local; real encounters sleep
 });
 
 test('visitor rigs keep transparent margins, fit the shared atlas and compose registered crew sprites',async()=>{
-  const baked=bakeSpaceVisitors();
+  const baked=bakeSpaceVisitors(2);
   const assemble=(id:string,frame=0)=>{
     const data=new Uint8Array(88*80*4),parts=baked.filter(s=>s.id.startsWith(`${id}:tile:`));assert.ok(parts.length,id);
     for(const s of parts){const f=s.frames[frame%s.frames.length]!,x=44-s.anchor[0],y=59-s.anchor[1];

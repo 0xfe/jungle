@@ -1,3 +1,4 @@
+import { composeZen } from './zen-scene';
 import { composeVolcanoes } from './volcano-scene';
 import { VolcanicWildlifeAgent } from './agents/volcanic-wildlife';
 import { SpacecraftAgent } from './agents/spacecraft';
@@ -182,6 +183,7 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
     line('main',x,y,bx,by,wood?1.2:.7);
     if(wood)line('twig',lerp(x,bx,.6),lerp(y,by,.6),bx+Math.cos(p.heading+.8)*.07,by+Math.sin(p.heading+.8)*.07,.65);
   }
+  composeZen(world,atlas,commands,screen,scale,view.width,view.height,alpha);
   composeVolcanoes(world,atlas,commands,screen,sprite,time,scale,view.width,view.height,alpha);
   for (const record of world.agents) {
     if(record instanceof SpacecraftAgent){burning=undefined;composeSpacecraft(record,sprite,alpha,time,atlas.spacecraftParts);
@@ -251,7 +253,7 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
         };
         // A wide, porous grass fringe joins compatible neighboring artwork. It is
         // part of the compound sprite, sharing its clock and immutable layout.
-        if(isGrove(piece.style)||piece.style==='bush'||piece.style==='flowers')drawPiece('grass',0,1.04,piece.opacity*.65,true);
+        if(world.settings.chance_grass>0&&(isGrove(piece.style)||piece.style==='bush'||piece.style==='flowers'))drawPiece('grass',0,1.04,piece.opacity*.65,true);
         for(let part=0;part<(isGrove(piece.style)?4:1);part++){
           if(isGrove(piece.style)&&part<3&&!(piece.trees&(1<<part)))continue;
           drawPiece(piece.style,part,piece.scale,piece.opacity);
@@ -260,7 +262,7 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
         // Ground anchors preserve animal/tree occlusion; the existing interpolated
         // clock freezes on pause and resumes exactly after sleeping/checkpoints.
         const rank=hash(index,7,Math.floor(piece.phase*1e6));
-        if(piece.style!=='water'&&rank<CONFIG.world.patches.accentCoverage){
+        if(piece.style!=='water'&&rank<CONFIG.world.patches.accentCoverage*world.settings.chance_accents){
           const x=piece.x+(hash(index,8,world.seed)-.5)*1.3,y=piece.y+(hash(index,9,world.seed)-.5)*1.3;
           if((world.tileAt(x,y)?.materialAt(x,y)??TerrainKind.Deep)<TerrainKind.Shallow){
             const form=Math.floor(hash(index,10,Math.floor(piece.phase*1e6))*ACCENT_FORMS.length);

@@ -1,0 +1,14 @@
+{
+  "tool": "built-in image_gen",
+  "date": "2026-10-04",
+  "prompts": [
+    "Use case: stylized-concept. Asset: one isolated pink flowering cherry tree for an isometric pixel-art jungle game. Beautiful layered clouds of blush and coral-pink blossoms, small dark green leaves, graceful upright branching brown trunk, visible rooted base. Crisp clustered pixel art, 2:1 isometric camera, upper-left light, dark teal shaded outlines, detailed readable silhouette. Entire tree centered with broad transparent margins, root at bottom center. Transparent background. No ground island, no scenery, no text, no shadow blob, no other trees. Square canvas.",
+    "Use case: stylized-concept. Asset: one isolated orange Japanese maple tree for an isometric pixel-art jungle game. Beautiful airy layered copper and apricot-orange leaves, graceful upright branching brown trunk, visible rooted base. Crisp clustered pixel art, 2:1 isometric camera, upper-left light, dark teal shaded outlines, detailed readable silhouette. Entire tree centered with broad transparent margins, root at bottom center. Transparent background. No ground island, no scenery, no text, no shadow blob, no other trees. Square canvas.",
+    "Use case: stylized-concept. Asset: one isolated green garden pine tree for an isometric pixel-art jungle game. Beautiful sculptural layered emerald and jade green needle cushions, graceful mostly upright branching brown trunk, visible rooted base. Crisp clustered pixel art, 2:1 isometric camera, upper-left light, dark teal shaded outlines, detailed readable silhouette. Entire tree centered with broad transparent margins, root at bottom center. Transparent background. No ground island, no scenery, no text, no shadow blob, no other trees. Square canvas."
+  ],
+  "files": [
+    "assets/source/zen-cherry.png",
+    "assets/source/zen-maple.png",
+    "assets/source/zen-pine.png"
+  ]
+}

@@ -1,7 +1,7 @@
 /** Pure PCM synthesis: usable in Node, a worker, Web Audio or an offline exporter. */
 export const BIRD_KINDS=['bird','trill','warble','woodpecker','chatter','gull'] as const;
 export type BirdKind=typeof BIRD_KINDS[number];
-export type SoundKind='leaves'|'water'|'rain'|'insects'|'step'|'hover'|'alien'|BirdKind;
+export type SoundKind='leaves'|'water'|'rain'|'insects'|'step'|'hover'|'alien'|'zen'|BirdKind;
 /** Shared controls for every sound; values in src/config.ts are the application's defaults. */
 export interface SoundTuning {
  /** False removes this sound from playback and the browser's buffer bank. */
@@ -23,12 +23,14 @@ export interface SoundTuning {
 }
 export interface SoundBuffer { sampleRate:number; channels:Float32Array[]; loop:boolean }
 export function synthesize(kind:SoundKind, sampleRate=24000, seed=123, tuning:Partial<SoundTuning>={}):SoundBuffer {
- const loop=['leaves','water','rain','insects','hover'].includes(kind);
+ // This low-register bed needs no ultrasonic bandwidth; share compact PCM everywhere.
+ if(kind==='zen')sampleRate=Math.min(sampleRate,8000);
+ const loop=['leaves','water','rain','insects','hover','zen'].includes(kind);
  const durations:Record<string,number>={step:.22,bird:1.25,trill:1.8,warble:2.1,woodpecker:1.4,chatter:1.35,gull:1.7,alien:.85};
- const seconds=tuning.duration??(kind==='hover'?1.5:loop?11:durations[kind]!),pitch=tuning.pitch??1,rhythm=tuning.rhythm??1,texture=tuning.texture??1;
+ const seconds=tuning.duration??(kind==='zen'?6:kind==='hover'?1.5:loop?11:durations[kind]!),pitch=tuning.pitch??1,rhythm=tuning.rhythm??1,texture=tuning.texture??1;
  if(!Number.isFinite(seconds)||seconds<=(loop?.5:0)||!Number.isFinite(pitch)||pitch<=0||!Number.isFinite(rhythm)||rhythm<=0||!Number.isFinite(texture)||texture<0)throw new Error(`Invalid sound tuning: ${kind}`);
  const length=Math.round(seconds*sampleRate),channels:Float32Array[]=[];
- for(let channel=0;channel<2;channel++){
+ for(let channel=0;channel<(kind==='zen'?1:2);channel++){
   let state=(seed+channel*7591)>>>0,low=0,mid=0,phase=0,whistle=0;
   const samples=new Float32Array(length);
   for(let i=0;i<length;i++){
@@ -64,6 +66,15 @@ export function synthesize(kind:SoundKind, sampleRate=24000, seed=123, tuning:Pa
    if(kind==='chatter'){
     phase+=Math.PI*2*(1250+500*Math.sin(rt*42))*pitch/sampleRate;
     value=(Math.sin(phase)*.16+(noise-mid)*.09)*Math.max(0,Math.sin(rt*35))**2*envelope;
+   }
+   // A breathing pentatonic flute phrase over a gently decaying bowl.
+   if(kind==='zen'){
+    const notes=[261.626,293.665,329.628,391.995,440],note=notes[Math.floor(rt/1.1)%notes.length]!;
+    phase+=Math.PI*2*note*pitch/sampleRate;
+    const breath=Math.sin((rt%1.1)/1.1*Math.PI)**2;
+    const bowlAge=rt%7.7,bowl=Math.exp(-bowlAge*.8)*(1-Math.exp(-bowlAge*30));
+    value=(Math.sin(phase)*.075+Math.sin(phase*2)*.015+mid*.012*texture)*breath
+      +(Math.sin(t*2*Math.PI*196*pitch)+.35*Math.sin(t*2*Math.PI*523*pitch))*.055*bowl;
    }
    // Soft propulsion harmonics with a fast, shallow beating texture, never a siren.
    if(kind==='hover'){

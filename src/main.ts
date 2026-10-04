@@ -1,3 +1,4 @@
+import { ARTIFACT_GROUPS, ARTIFACT_DEFAULTS, artifactLabel, type ArtifactKey } from './jungle/artifacts';
 import { SPACE_KINDS } from './jungle/ecology';
 import { mobileDevice, startupSeed } from './platform';
 import { AnimationBudget } from './iso/animation-budget';
@@ -14,7 +15,7 @@ import { ECO_KINDS } from './jungle/ecology';
 import { ease } from './agents';
 import { InfiniteWorld } from './jungle/infinite';
 import { cameraBounds, composeInfinite, gestureCamera, panCamera, type InfiniteView } from './jungle/infinite-scene';
-import { TouchTaps, InteractionPause, PointerNavigation } from './iso/navigation';
+import { TouchTaps, TapSequence, InteractionPause, PointerNavigation } from './iso/navigation';
 import { TerrainKind, TERRAIN_NAMES } from './jungle/terrain';
 import { CanvasRenderer } from './iso/canvas';
 import { WebGLRenderer } from './iso/webgl';
@@ -45,6 +46,7 @@ let drift = CONFIG.camera.drift && !paused, cameraVX = 0, cameraVY = 0, last = 0
 const keys = new Set<string>();
 const pointers = new PointerNavigation();
 const menuTap = new TouchTaps();
+const secretTaps=new TapSequence();
 const driftPause = new InteractionPause(CONFIG.camera.driftResumeSeconds);
 /** Browser time is confined to input/presentation; it never changes simulation randomness. */
 function pauseDrift(): void { driftPause.touch(performance.now() / 1000); }
@@ -60,7 +62,7 @@ const menuPointers=new Set<number>();
 /** Only idle, closed-panel controls disappear. A held control gets a fresh delay on release. */
 function keepMenuAwake():void {
   clearTimeout(menuTimer);
-  if(!uiVisible||!el('help').hidden||!el('settings').hidden||menuPointers.size)return;
+  if(!uiVisible||!el('help').hidden||!el('settings').hidden||!el('artifacts').hidden||menuPointers.size)return;
   menuTimer=setTimeout(()=>{if(uiVisible)toggleUI();},CONFIG.interface.menuIdleSeconds*1000);
 }
 function toggleUI():void {
@@ -116,7 +118,7 @@ function nextWildlife():void { pauseDrift();
 }
 function help(open = !uiVisible || el('help').hidden): void {
   if(open&&!uiVisible)toggleUI();
-  if(open){showSettings(false);el<HTMLDetailsElement>('keyboard-commands').open=true;}
+  if(open){showArtifacts(false);showSettings(false);el<HTMLDetailsElement>('keyboard-commands').open=true;}
   el('help').hidden=!open;
   if(open)el('help').scrollTop=0;
   el('help-button').setAttribute('aria-expanded',String(open));keepMenuAwake();
@@ -124,12 +126,13 @@ function help(open = !uiVisible || el('help').hidden): void {
 function showSettings(open=el('settings').hidden):void{
   if(open&&!uiVisible)return;
   el('settings').hidden=!open;el('settings-button').setAttribute('aria-expanded',String(open));
-  if(open){el('help').hidden=true;el('help-button').setAttribute('aria-expanded','false');keys.clear();}
+  if(open){showArtifacts(false);el('help').hidden=true;el('help-button').setAttribute('aria-expanded','false');keys.clear();}
   keepMenuAwake();
 }
 el('settings-button').onclick=()=>showSettings();el('close-settings').onclick=()=>{showSettings(false);el('settings-button').focus();};
 let settingsTimer:ReturnType<typeof setTimeout>|undefined;
 function applyWorldSettings():void{
+  clearTimeout(settingsTimer);settingsTimer=undefined;
   const weather=world.weather;world=new InfiniteWorld(world.seed,world.habitat,undefined,settings);world.weather=weather;
   clock.reset();soundscape.reset();syncUI();announce('Landscape settings applied.');
 }
@@ -144,7 +147,28 @@ function slider(container:HTMLElement,key:string,label:string,max:number,value:n
 const worldControls=controls.map(([key,label,max])=>({key,...slider(el('world-sliders'),key,label,max,settings[key],value=>{
  settings=normalizeSettings({...settings,[key]:value});clearTimeout(settingsTimer);settingsTimer=setTimeout(applyWorldSettings,CONFIG.interface.settingsDebounceMs);
 },key==='animals'||key==='plants'?'×':'')}));
-el('reset-settings').onclick=()=>{clearTimeout(settingsTimer);settings=normalizeSettings(DEFAULT_SETTINGS);for(const c of worldControls){c.input.value=String(Math.round(settings[c.key]*100));c.render();}applyWorldSettings();};
+el('reset-settings').onclick=()=>{clearTimeout(settingsTimer);settings=normalizeSettings({...settings,...CONFIG.world.settings});for(const c of worldControls){c.input.value=String(Math.round(settings[c.key]*100));c.render();}applyWorldSettings();};
+/** Hidden editor has no toolbar entry and never changes the current seed. */
+function showArtifacts(open=el('artifacts').hidden):void{
+ if(open&&!uiVisible)toggleUI();
+ el('artifacts').hidden=!open;
+ if(open){help(false);showSettings(false);keys.clear();el('artifacts').scrollTop=0;}
+ keepMenuAwake();
+}
+el('close-artifacts').onclick=()=>showArtifacts(false);
+const artifactControls:{key:ArtifactKey;input:HTMLInputElement;render:()=>void}[]=[];
+for(const [group,kinds] of Object.entries(ARTIFACT_GROUPS)){
+ const section=document.createElement('details'),title=document.createElement('summary');title.textContent=group;section.append(title);el('artifact-sliders').append(section);
+ for(const kind of kinds){const key:ArtifactKey=`chance_${kind}`;
+  artifactControls.push({key,...slider(section,key,artifactLabel(kind),group==='Vegetation'?100:300,settings[key],value=>{
+   settings=normalizeSettings({...settings,[key]:value});clearTimeout(settingsTimer);settingsTimer=setTimeout(applyWorldSettings,CONFIG.interface.settingsDebounceMs);
+  })});
+ }
+}
+el('reset-artifacts').onclick=()=>{
+ clearTimeout(settingsTimer);settings=normalizeSettings({...settings,...ARTIFACT_DEFAULTS});
+ for(const c of artifactControls){c.input.value=String(settings[c.key]*100);c.render();}applyWorldSettings();
+};
 for(const [key,label] of [['master','Master volume'],['ambience','Environment volume'],['wildlife','Animal sounds']] as const)slider(el('audio-sliders'),key,label,100,audioSettings[key],value=>{audioSettings[key]=value;updateAudio(0);});
 function updateAudio(dt:number):void{
  if(lastAudioState!==audio.state){lastAudioState=audio.state;syncSound();}
@@ -186,12 +210,15 @@ el('zoom-in').onclick = () => zoom(CONFIG.camera.zoomStep); el('zoom-out').oncli
 let nextCalledShip=0;
 /** One action path for physical shortcuts and the tappable field guide. */
 function executeCommand(key:string):void {
-  if (key === '?' || key === 'h') help();
-  else if (key === 'escape') {help(false);showSettings(false);}
+  if(settingsTimer){clearTimeout(settingsTimer);applyWorldSettings();}
+  if (key === '?') help();
+  else if(key==='h')showArtifacts();
+  else if(key==='shift+z'){const s=world.zenLandmark(view.cameraX,view.cameraY);if(!s){announce('Raise Pagoda likelihood in H controls to find a sanctuary.');return;}pauseDrift();drift=false;view.cameraX=s.x;view.cameraY=s.y;cameraVX=cameraVY=0;showArtifacts(false);syncUI();announce('Visiting a zen sanctuary. P resumes automatic travel.');}
+  else if (key === 'escape') {help(false);showSettings(false);showArtifacts(false);}
   else if(key==='o')showSettings();
   else if (key === 'r') regrow();
   else if (key === 't') weather();
-  else if (key === 'v') {pauseDrift();const v=world.volcanoLandmark(view.cameraX,view.cameraY);view.cameraX=v.x;view.cameraY=v.y-.75;cameraVX=cameraVY=0;syncUI();announce('Exploring an active volcano.');}
+  else if (key === 'v') {if(!settings.chance_volcano){announce('Raise Volcano likelihood in H controls to visit one.');return;}pauseDrift();const v=world.volcanoLandmark(view.cameraX,view.cameraY);view.cameraX=v.x;view.cameraY=v.y-.75;cameraVX=cameraVY=0;syncUI();announce('Exploring an active volcano.');}
   else if(key==='shift+u'){
     const ship=world.callSpacecraft(view.cameraX,view.cameraY,SPACE_KINDS[nextCalledShip]);
     if(!ship){announce('No safe landing area nearby. Explore toward a dry clearing and try Shift+U again.');return;}
@@ -240,10 +267,10 @@ window.addEventListener('keydown', e => {
   if (e.repeat) return;
   if(key===' '&&e.target instanceof HTMLButtonElement)return;
   if([' ','home','0','?'].includes(key))e.preventDefault();
-  executeCommand(key==='u'&&e.shiftKey?'shift+u':key);
+  executeCommand(['u','z'].includes(key)&&e.shiftKey?`shift+${key}`:key);
 });
 window.addEventListener('keyup', e => { if (keys.delete(e.key.toLowerCase())&&e.key.toLowerCase()!=='shift') pauseDrift(); });
-function clearNavigation(): void { if(pointers.navigating||keys.size>Number(keys.has('shift')))pauseDrift(); keys.clear(); pointers.clear(); menuTap.clear(); menuPointers.clear();keepMenuAwake();cameraVX = cameraVY = 0; }
+function clearNavigation(): void { if(pointers.navigating||keys.size>Number(keys.has('shift')))pauseDrift(); keys.clear(); pointers.clear(); menuTap.clear(); secretTaps.clear(); menuPointers.clear();keepMenuAwake();cameraVX = cameraVY = 0; }
 window.addEventListener('blur', clearNavigation);
 document.addEventListener('visibilitychange', () => { last = 0; clearNavigation(); updateAudio(0); });
 function bindCanvas(): void {
@@ -266,7 +293,10 @@ function bindCanvas(): void {
     const tapped=e.type==='pointerup'?menuTap.end(e.pointerId,e.timeStamp):0;
     if(e.type!=='pointerup')menuTap.cancel(e.pointerId);
     // Mouse clicks toggle individually; a touch double-tap always leaves the menu open.
-    if(tapped&&(e.pointerType!=='touch'||tapped===1||!uiVisible))toggleUI();
+    const secret=e.pointerType==='touch'&&tapped&&secretTaps.accept(e.timeStamp,{x:e.clientX,y:e.clientY});
+    if(e.type==='pointercancel'||e.type==='pointerup'&&!tapped)secretTaps.clear();
+    if(secret)showArtifacts();
+    else if(tapped&&(e.pointerType!=='touch'||tapped===1||!uiVisible))toggleUI();
     else if(tapped===2)keepMenuAwake();
     if(pointers.end(e.pointerId)&&moved)pauseDrift();
   };

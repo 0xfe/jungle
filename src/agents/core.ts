@@ -10,7 +10,7 @@ export class AgentRandom {
     return ((t ^ t >>> 14) >>> 0) / 4294967296;
   }
 }
-export interface EnvironmentSample { moisture: number; light: number; wind: number; elevation: number; water: boolean; depth?: number; beach?: boolean; bank?: boolean }
+export interface EnvironmentSample { moisture: number; light: number; wind: number; elevation: number; water: boolean; depth?: number; beach?: boolean; bank?: boolean; refuge?:boolean }
 export interface Neighbor extends Vec2 { id: string; kind: string; speed: number; heading?: number; groupId?: string; juvenile?: boolean; alarm?: number; altitude?:number; stimulus?:LocalStimulus }
 export interface AgentEnvironment {
   time: number;

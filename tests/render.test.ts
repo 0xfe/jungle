@@ -16,7 +16,7 @@ const digest = (data: Uint8Array) => createHash('sha256').update(data).digest('h
 test('atlas frames are disjoint, in bounds and transparent; keyed sources have no magenta leaks', () => {
   // Registered ship pieces can be solid interior pixels, or empty in individual
   // poses. Their complete silhouettes are reconstructed in spacecraft.test.ts.
-  const spacecraftParts=new Set(Object.values(manifest.spacecraftParts??{}).flat());
+  const spacecraftParts=new Set([...Object.values(manifest.spacecraftParts??{}),...Object.values(manifest.zenParts??{})].flat());
   for(const name of spacecraftParts)assert.ok(manifest.sprites[name],`missing spacecraft part ${name}`);
   const occupied = new Set<number>();
   const shared = new Set<string>();

@@ -15,6 +15,7 @@ export abstract class EcologicalAgent extends WildlifeAgent {
  protected allowed(x:number,y:number,env:AgentEnvironment):boolean {
   if(!this.within(x,y))return false;
   const mode=this.spec.mode,s=env.sample(x,y);
+  if(s.refuge&&['wolf','blackBear','crocodile','boa'].includes(this.kind)&&this.pace>.86)return false;
   if(mode==='air')return this.kind==='seagull'?habitatAllows(this.kind,s):true;
   if(mode==='canopy')return this.altitude>1||(!s.water&&env.canMove(x,y));
   if(!habitatAllows(this.kind,s))return false;

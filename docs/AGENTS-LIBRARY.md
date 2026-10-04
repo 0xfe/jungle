@@ -106,3 +106,7 @@ Recurring colorful regions, canopy population/perch changes, new generated sourc
 ## Spacecraft encounters
 
 Three rare spacecraft and their owned alien crews use world/agent schemas **22/18**. See [spacecraft design, retained artwork and validation](SPACECRAFT.md) for landing admission, bounded ownership, timed exploration, exact continuation and preview commands.
+
+## Zen sanctuaries
+
+See [zen sanctuaries and the hidden artifact editor](ZEN.md) for original tree provenance, baked directional inhabitants, localized music, H/five-tap controls, bounded ownership and validation. Current world/agent schemas are **23/19**.

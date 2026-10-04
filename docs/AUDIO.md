@@ -69,3 +69,7 @@ Current sound, input, bears/zebras, giraffe proportions, elephant sampling, shar
 ## Space visitors
 
 Flight-only `hover` is a short shared stereo loop with gentle beating harmonics and a faint high whistle, panned toward nearby spacecraft and ramped over 0.12 seconds. It is mixed by the wildlife slider rather than the quiet environmental bed slider. Multiple nearby ships feed the same bounded propulsion layer. `alien` supplies short formant-like syllables only during crew exploration; individual audio-only callers vary pitch and phrase spacing, with species-specific rates. Both respect per-sound tuning, distance, mute, pause and the existing caller/effect budgets. They never consume behavior RNG. See [spacecraft](SPACECRAFT.md#flight-effects-and-voices) and audition `hover.wav` / `alien.wav` from `npm run audio:preview`.
+
+## Zen sanctuaries
+
+See [zen sanctuaries and the hidden artifact editor](ZEN.md) for original tree provenance, baked directional inhabitants, localized music, H/five-tap controls, bounded ownership and validation. Current world/agent schemas are **23/19**.

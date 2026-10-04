@@ -41,3 +41,7 @@ Automatic drift reveals this progression over a shorter distance (previously 48 
 Keeping the mature density bounded preserves the existing scale budget. Clearings, shoreline encounters and species stands interrupt the canopy rather than turning the outside world into an endlessly increasing wall of trees. Further authored landmarks and cross-chunk migration remain future work.
 
 Recurring colorful regions, canopy population/perch changes, new generated source provenance and black bear type 58 behavior/rig/codecs are documented in [regional variety](REGIONAL-VARIETY.md). Current world/agent schemas are **15/12**.
+
+## Zen sanctuaries
+
+See [zen sanctuaries and the hidden artifact editor](ZEN.md) for original tree provenance, baked directional inhabitants, localized music, H/five-tap controls, bounded ownership and validation. Current world/agent schemas are **23/19**.

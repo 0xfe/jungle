@@ -1,3 +1,6 @@
+import { zenAt, zenSitesIn, zenPlants, nearestZen, type ZenSite, type ZenPlant } from './zen-sites';
+import { ZenGardenAgent } from './agents/zen';
+import { ARTIFACT_KINDS } from './artifacts';
 import { volcanicApproaches } from './volcanic-encounters';
 import { spacecraftCandidate, landingClear } from './space-sites';
 import { SpacecraftAgent, SPACE_CLASSES } from './agents/spacecraft';
@@ -26,8 +29,10 @@ export interface WorldBounds { minX: number; minY: number; maxX: number; maxY: n
 interface ChunkRecord { terrain: Uint8Array; agents: Uint8Array }
 export interface ActiveChunk { x: number; y: number; terrain: TerrainChunk; tiles: TerrainTile[]; agents: Agent[] }
 export const DEFAULT_WORLD_BUDGET: CacheBudget = Object.freeze({...CONFIG.world.cache});
-export function faunaPlan(cx:number,cy:number,seed:number, density=DEFAULT_SETTINGS.animals, canopy=1) {
-  const random=new AgentRandom(coordinateHash(cx,cy,seed ^ 0x57494c44)),p=CONFIG.world.population;
+export function faunaPlan(cx:number,cy:number,seed:number, density=DEFAULT_SETTINGS.animals, canopy=1,settings:Readonly<WorldSettings>=DEFAULT_SETTINGS) {
+  const random=new AgentRandom(coordinateHash(cx,cy,seed ^ 0x57494c44)),p={...CONFIG.world.population};
+  for(const k of ARTIFACT_KINDS)if(k in p)(p as Record<string,number>)[k]!*=settings[`chance_${k}`];
+  p.jaguarWithDeer*=settings.chance_jaguar;
   const open=1+(1-canopy)*1.25,birds=open+canopy*p.canopyBirdBoost,cover=.12+.88*canopy*canopy;
   const deer=random.next()<p.deer*density*open,toucan=random.next()<p.toucan*density*birds,orangutan=random.next()<p.orangutan*density,jaguar=random.next()<(deer?p.jaguarWithDeer*density*cover:p.jaguar*density*cover);
   const monkey=random.next()<p.monkey*density,wolf=random.next()<p.wolf*density*cover,giraffe=random.next()<p.giraffe*density,elephant=random.next()<p.elephant*density;
@@ -49,6 +54,8 @@ export class InfiniteWorld {
   agents: Agent[] = []; tiles: TerrainTile[] = []; private tileMap = new Map<string, TerrainTile>();
   rivers: RiverPath[] = [];
   volcanoes: Volcano[] = [];
+  pagodas:ZenSite[]=[];
+  gardenPlants=new Map<string,ZenPlant[]>();
   /** Presentation provides a conservative visibility test for replacement admission. */
   spawnHidden: ((x:number,y:number)=>boolean)|undefined;
   bankCover: RiverBank[] = [];
@@ -63,9 +70,14 @@ export class InfiniteWorld {
   populationPlan(cx:number,cy:number) {
     const x=cx*4+2,y=cy*4+2;
     const canopy=Math.min(1,this.settings.plants*journeyDensity(x,y,this.origin).plants*forestRegion(x,y,this.seed).canopy*groundVegetation(interpolatedFields(x,y,this.seed,this.settings)));
-    const volcanic=volcanicGround(x,y,this.seed);
+    const volcanic=volcanicGround(x,y,this.seed,this.settings.chance_volcano);
     const boost=volcanic.scar>0&&!volcanic.core?CONFIG.world.volcanoes.animalBoost:1;
-    return faunaPlan(cx,cy,this.seed,this.settings.animals*journeyDensity(x,y,this.origin).animals*boost,canopy);
+    const plan=faunaPlan(cx,cy,this.seed,this.settings.animals*journeyDensity(x,y,this.origin).animals*boost,canopy,this.settings);
+    const sanctuary=zenAt(x,y,this.seed,this.settings);
+    if(sanctuary){for(const kind of ARTIFACT_KINDS)if(kind in plan){const retention=['deer','zebra','toucan','macaw','parakeet','kingfisher','seagull','hawk'].includes(kind)?.3:.02;
+      if(hash(cx,cy,this.seed+9300+ARTIFACT_KINDS.indexOf(kind))>retention)(plan as unknown as Record<string,unknown>)[kind]=false;
+    }}return plan;
+
   }
   private generate(cx: number, cy: number, track = true): ChunkRecord {
     const terrain = TerrainChunk.generate(cx, cy, this.seed,this.settings);
@@ -90,7 +102,7 @@ export class InfiniteWorld {
     // Streaming terrain uses compound landscapes only. The finite regression
     // fixture retains its old individual sprites, but none are spawned here.
     for(const tile of generatedTiles)if(track)this.explored.add(coordinateHash(tile.x,tile.y,671));
-    const sites=volcanoesIn({minX:cx*4,minY:cy*4,maxX:cx*4+4,maxY:cy*4+4},this.seed);
+    const sites=volcanoesIn({minX:cx*4,minY:cy*4,maxX:cx*4+4,maxY:cy*4+4},this.seed,11,this.settings.chance_volcano);
     const dry = (x: number, y: number) => {
       if(sites.some(v=>volcanicClearance(v,x,y)<.25))return false;
       const tx = Math.floor(x) - cx * CHUNK_SIZE, ty = Math.floor(y) - cy * CHUNK_SIZE;
@@ -191,7 +203,8 @@ export class InfiniteWorld {
         a.timer=kind==='vulture'?45+ecoRandom.next()*55:kind==='boa'?12+ecoRandom.next()*25:kind==='smallSnake'?2+ecoRandom.next()*10:kind==='monkey'?18+ecoRandom.next()*40:kind==='fish'?.1+ecoRandom.next()*.6:kind==='whale'?.1:1+ecoRandom.next()*6;a.previous=a.sample();agents.push(a);
       }
     }
-    const visitorKind=spacecraftCandidate(cx,cy,this.seed,this.settings.animals);
+    for(const site of zenSitesIn({minX:cx*4,minY:cy*4,maxX:cx*4+4,maxY:cy*4+4},this.seed,this.settings,0))if(Math.floor(site.x/4)===cx&&Math.floor(site.y/4)===cy)agents.push(ZenGardenAgent.create(site,this.settings));
+    const visitorKind=zenAt(cx*4+2,cy*4+2,this.seed,this.settings)?undefined:spacecraftCandidate(cx,cy,this.seed,this.settings.animals,this.settings);
     if(visitorKind){
       const ship=new SPACE_CLASSES[visitorKind](`ship:${cx}:${cy}`,cx*4+2,cy*4+2,coordinateHash(cx,cy,this.seed^0x414c4945));
       const clear=(x:number,y:number)=>landingClear(x,y,sample,clearanceTrees,(px,py)=>sites.some(v=>volcanicClearance(v,px,py)<.4));
@@ -246,7 +259,10 @@ export class InfiniteWorld {
       const corners=[[-1,-1],[1,-1],[-1,1],[1,1]];
       if(corners.every(([dx,dy])=>{const x=a.x+dx!*radius,y=a.y+dy!*radius,t=this.tileAt(x,y);return t && t.materialAt(x,y)<TerrainKind.Shallow;}))this.groundCover.push({x:a.x,y:a.y,radius,opacity:.28+Math.min(3,neighbors)*.035,variant:coordinateHash(Math.floor(a.x*20),Math.floor(a.y*20),this.seed)%4});
     }
-    this.volcanoes=volcanoesIn({minX:x0*4,minY:y0*4,maxX:(x1+1)*4,maxY:(y1+1)*4},this.seed);
+    this.volcanoes=volcanoesIn({minX:x0*4,minY:y0*4,maxX:(x1+1)*4,maxY:(y1+1)*4},this.seed,11,this.settings.chance_volcano);
+    this.pagodas=zenSitesIn({minX:x0*4,minY:y0*4,maxX:(x1+1)*4,maxY:(y1+1)*4},this.seed,this.settings);
+    this.gardenPlants=new Map(this.pagodas.map(s=>[s.id,zenPlants(s,this.settings)]));
+    for(const site of this.pagodas)for(const p of this.gardenPlants.get(site.id)!)if(p.kind==='tree')this.trunks.insert(p.x,p.y,{x:p.x,y:p.y,scale:p.scale,height:90*p.scale});
     this.rivers=riverPaths({minX:x0*4,minY:y0*4,maxX:(x1+1)*4,maxY:(y1+1)*4},this.seed,this.settings);
     this.bankCover=riverBanks(this.rivers,this.settings.water,this.seed,(x,y)=>this.tileAt(x,y)?.fieldAt(x,y,0));
     this.visitors=this.agents.filter((a):a is SpacecraftAgent=>a instanceof SpacecraftAgent);
@@ -256,6 +272,7 @@ export class InfiniteWorld {
   tileAt(x: number, y: number): TerrainTile | undefined { return this.tileMap.get(chunkKey(Math.floor(x), Math.floor(y))); }
   heightAt(x: number, y: number): number { return this.tileAt(x, y)?.heightAt(x, y) ?? landscape(x, y, this.seed,this.settings).elevation; }
   canMove(x: number, y: number): boolean {
+    if(this.pagodas.some(s=>Math.abs(x-(s.x-1.2))<.85&&Math.abs(y-(s.y+.2))<.85))return false;
     if(this.occupiedLandings.some(p=>Math.hypot(p.x-x,p.y-y)<p.radius))return false;
     if(this.volcanoes.some(v=>{
       if(Math.hypot(x-v.x,y-v.y)>=v.radius*.82)return false;
@@ -274,6 +291,7 @@ export class InfiniteWorld {
   canLand(x:number,y:number):boolean {
     const supports:TreeSupport[]=[];
     this.trunks.visit(x-2.5,y-2.5,x+2.5,y+2.5,p=>supports.push(p));
+    if(zenAt(x,y,this.seed,this.settings))return false;
     return landingClear(x,y,(px,py)=>{
       const tile=this.tileAt(px,py);
       return {water:!tile||tile.materialAt(px,py)>=TerrainKind.Shallow,elevation:this.heightAt(px,py),moisture:.5,light:1,wind:1};
@@ -289,7 +307,8 @@ export class InfiniteWorld {
       sample: (x, y) => {
         const tile = this.tileAt(x,y), material=tile?.materialAt(x,y), elevation=tile?.heightAt(x,y);
         const light=this.weather==='dusk'?.25:.8,wind=this.weather==='rain'?1.5:1;
-        if(tile)return {moisture:terrainMoisture(material!),elevation:elevation!,water:material!>=TerrainKind.Shallow,
+        const refuge=this.pagodas.some(s=>Math.hypot(x-s.x,y-s.y)<6);
+        if(tile)return {refuge,moisture:terrainMoisture(material!),elevation:elevation!,water:material!>=TerrainKind.Shallow,
           depth:material===TerrainKind.Deep?1:material!>=TerrainKind.Shallow?.25:0,
           beach:material===TerrainKind.Dry&&tile.fieldAt(x,y,0)<.024,bank:material!<TerrainKind.Shallow&&tile.fieldAt(x,y,0)<.14,light,wind};
         return {...terrainEnvironment(x,y,this.seed,this.settings),light,wind};
@@ -305,7 +324,7 @@ export class InfiniteWorld {
   get stats() {
     return { worldSize: this.explored.estimate, renderedUnique: this.drawn.estimate, renderedNow: this.renderedNow, renderedTotal: this.renderedTotal,
       generated: this.generated, resident: this.cache.size * 16, active: this.tiles.length, expired: this.cache.expired * 16,
-      cachedBytes: this.cache.bytes, estimatedBytes: this.cache.bytes + this.agents.length * 896 + this.agents.reduce((n,a)=>n+(a instanceof LandscapePatchAgent?a.pieces.length*224+a.supports.length*104:a instanceof VolcanicWildlifeAgent?a.template.byteLength+1024:a instanceof SpacecraftAgent?a.crew.length*768:0),0) + this.tiles.length * 6144 + 8192 + 512 * 1024 + this.rivers.length * 4096 + this.bankCover.length * 128, agents: this.agents.length, animals: this.agents.filter(a=>a.speed!==undefined&&!(a instanceof SpacecraftAgent)).length, herds: new Set(this.agents.filter(a=>(a instanceof DeerAgent||(a instanceof VolcanicWildlifeAgent&&a.animal instanceof DeerAgent&&a.phase==='alive'))&&a.groupId).map(a=>a.groupId)).size };
+      cachedBytes: this.cache.bytes, estimatedBytes: this.cache.bytes + this.agents.length * 896 + this.agents.reduce((n,a)=>n+(a instanceof LandscapePatchAgent?a.pieces.length*224+a.supports.length*104:a instanceof VolcanicWildlifeAgent?a.template.byteLength+1024:a instanceof SpacecraftAgent?a.crew.length*768:a instanceof ZenGardenAgent?a.residents.length*512:0),0) + this.tiles.length * 6144 + [...this.gardenPlants.values()].reduce((n,p)=>n+p.length*160,0) + 8192 + 512 * 1024 + this.rivers.length * 4096 + this.bankCover.length * 128, agents: this.agents.length, animals: this.agents.filter(a=>a.speed!==undefined&&!(a instanceof SpacecraftAgent)).length, herds: new Set(this.agents.filter(a=>(a instanceof DeerAgent||(a instanceof VolcanicWildlifeAgent&&a.animal instanceof DeerAgent&&a.phase==='alive'))&&a.groupId).map(a=>a.groupId)).size };
   }
   /** Capture active state before taking a compact checkpoint. Cache eviction remains intentional. */
   checkpoint(): Uint8Array {
@@ -313,7 +332,7 @@ export class InfiniteWorld {
       const record = { terrain: a.terrain.data, agents: jungleAgents.encode(a.agents) };
       this.cache.put(a.x, a.y, record, record.terrain.length + record.agents.length + 256, this.pinned);
     }
-    const w = new BinaryWriter(); w.u32(0x4a4e474c); w.u8(22); w.u32(this.seed);
+    const w = new BinaryWriter(); w.u32(0x4a4e474c); w.u8(23); w.u32(this.seed);
     for(const key of SETTING_KEYS)w.f64(this.settings[key]);
     w.u8(['rainforest', 'flowering', 'wetland'].indexOf(this.habitat)); w.u8(['sun', 'rain', 'dusk'].indexOf(this.weather));
     for (const n of [this.time, this.previousTime, this.generated, this.renderedTotal, this.cache.expired]) w.f64(n);
@@ -324,7 +343,7 @@ export class InfiniteWorld {
   static restore(bytes: Uint8Array, budget = DEFAULT_WORLD_BUDGET): InfiniteWorld {
     if (bytes.length > budget.maxBytes + 65536) throw new Error('Checkpoint exceeds memory budget');
     const r = new BinaryReader(bytes);
-    if (r.u32() !== 0x4a4e474c || r.u8() !== 22) throw new Error('Unsupported world checkpoint');
+    if (r.u32() !== 0x4a4e474c || r.u8() !== 23) throw new Error('Unsupported world checkpoint');
     const seed = r.u32(), settings=Object.fromEntries(SETTING_KEYS.map(k=>[k,r.f64()])) as unknown as WorldSettings;
     for(const k of SETTING_KEYS)if(settings[k]!==normalizeSettings(settings)[k])throw new Error('Invalid world settings');
     const habitat = (['rainforest', 'flowering', 'wetland'] as const)[r.u8()], weather = (['sun', 'rain', 'dusk'] as const)[r.u8()];
@@ -355,7 +374,8 @@ export class InfiniteWorld {
     }
     return{x:fromX,y:fromY};
   }
-  volcanoLandmark(fromX=0,fromY=0):Volcano {return nearestVolcano(this.seed,fromX,fromY);}
+  zenLandmark(fromX=0,fromY=0):ZenSite|undefined {return nearestZen(this.seed,fromX,fromY,this.settings);}
+  volcanoLandmark(fromX=0,fromY=0):Volcano {return nearestVolcano(this.seed,fromX,fromY,this.settings.chance_volcano);}
   /** Explicit user call: bounded active-chunk search, normal landing safety and persistence. */
   callSpacecraft(fromX:number,fromY:number,kind?:SpaceKind):SpacecraftAgent|undefined {
     // Repeated presses focus an existing visit, never pile ships into the same clearing.
@@ -380,7 +400,7 @@ export class InfiniteWorld {
     if(!this.settings.animals)return;
     const cx=Math.floor(fromX/4),cy=Math.floor(fromY/4);
     for(let r=0;r<70;r++)for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){
-      if(Math.max(Math.abs(dx),Math.abs(dy))!==r||!spacecraftCandidate(cx+dx,cy+dy,this.seed,this.settings.animals))continue;
+      if(Math.max(Math.abs(dx),Math.abs(dy))!==r||!spacecraftCandidate(cx+dx,cy+dy,this.seed,this.settings.animals,this.settings))continue;
       const record=this.cache.peek(cx+dx,cy+dy)??this.generate(cx+dx,cy+dy,false);
       const agents=this.active.get(chunkKey(cx+dx,cy+dy))?.agents??jungleAgents.decode(record.agents);
       const a=agents.find(a=>a instanceof SpacecraftAgent);if(a)return{x:a.x,y:a.y};

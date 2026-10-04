@@ -74,3 +74,7 @@ Volcanic presentation also exposes `lavaFlowSpeed` (river travel cycles/second, 
 Volcanic encounters use `encounterMinSeconds` / `encounterMaxSeconds` (10 / 20) for per-site nomination opportunities, `approachSeconds` (16) to bound the walking trip, and `encounterContactSeconds` (0.1) for a nominee's ignition delay after touching hot lava. Ordinary wildlife keeps avoidance, with a 0.12-second `contactSeconds` threshold on hot contact. `burnSeconds` (0.45) controls the planted flame flash before the expanding smoke puff and ash. Cadence depends on available walkers and valid routes; replacements still require off-screen ground.
 
 Spacecraft audio uses `audio.sounds.hover` (flight-only soft propulsion loop) and `audio.sounds.alien` (exploration chatter). Both use the wildlife slider and the existing `SoundTuning` controls. Hover ignores `intervalScale` because it loops; alien uses it for per-explorer phrase spacing. These presentation-only settings do not change encounter codecs or behavior RNG.
+
+## Zen sanctuaries
+
+See [zen sanctuaries and the hidden artifact editor](ZEN.md) for original tree provenance, baked directional inhabitants, localized music, H/five-tap controls, bounded ownership and validation. Current world/agent schemas are **23/19**.

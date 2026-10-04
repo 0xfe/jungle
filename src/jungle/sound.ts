@@ -9,6 +9,7 @@ const calls:Readonly<Record<string,BirdKind|'elephant'>>={elephant:'elephant',to
 export function jungleSound(world:InfiniteWorld,x:number,y:number):SoundScene{
  let water=0,trees=0,total=0;const emitters:SoundEmitter[]=[];
  for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){const tile=world.tileAt(x+dx,y+dy);if(tile){total++;water+=Number(tile.materialAt(x+dx,y+dy)>=TerrainKind.Shallow);}}
+ for(const s of world.pagodas)emitters.push({id:s.id,x:s.x,y:s.y,speed:0,phase:0,bird:false,loop:'zen',intensity:1});
  for(const record of world.agents){
   if(record instanceof VolcanicWildlifeAgent&&record.phase!=='alive')continue;
   const a=record instanceof VolcanicWildlifeAgent?record.animal:record;

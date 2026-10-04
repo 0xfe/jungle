@@ -6,7 +6,7 @@ export interface WebAudioOptions {
  /** Shared decoded recordings supplied by the application, independent of synthetic layers. */
  recordings?:Partial<Record<AudioKind,SoundBuffer>>;
 }
-/** Lazy browser adapter. One context, shared buffers, five beds and at most twelve effects. */
+/** Lazy browser adapter. One context, shared buffers, six beds and at most twelve effects. */
 export class WebAudioSink implements AudioSink {
  private context?:AudioContext;private master?:GainNode;private compressor?:DynamicsCompressorNode;
  private buffers=new Map<AudioKind,AudioBuffer>();private beds=new Map<BedKind,{source:AudioBufferSourceNode;gain:GainNode;pan?:StereoPannerNode}>();

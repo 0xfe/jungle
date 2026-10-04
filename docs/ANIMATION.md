@@ -131,3 +131,7 @@ Recurring colorful regions, canopy population/perch changes, new generated sourc
 Compound ground foliage and flower petals now sway above stationary soil; stronger broad tree motion accompanies optional crown ripples. Base and foliage bands share root-relative registration and contiguous atlas rows. Load feedback changes only ripple coverage, preserving the broad breeze and fixed simulation cadence. See [landscape motion and its limits](LANDSCAPE-PATCHES.md#lively-ground-and-adaptive-crown-detail).
 
 Space visitors use baked rotating saucer/lander headings, banked scout poses and sparse beacon clips. Registered pixel pieces share identical artwork across frames while reconstructing each full pose exactly; see [spacecraft motion](SPACECRAFT.md#baked-ship-motion-and-detail). Ground tremor is the only small hull transform at runtime.
+
+## Zen sanctuaries
+
+See [zen sanctuaries and the hidden artifact editor](ZEN.md) for original tree provenance, baked directional inhabitants, localized music, H/five-tap controls, bounded ownership and validation. Current world/agent schemas are **23/19**.

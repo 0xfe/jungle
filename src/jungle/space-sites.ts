@@ -1,3 +1,4 @@
+import { DEFAULT_SETTINGS, type WorldSettings } from './settings';
 import { AgentRandom, type EnvironmentSample } from '../agents';
 import { CONFIG } from '../config';
 import { coordinateHash } from './terrain';
@@ -5,10 +6,11 @@ import { SPACE_KINDS, type SpaceKind } from './ecology';
 import type { TreeSupport } from './patches';
 
 /** A separate per-chunk stream never changes existing wildlife or landscape placement. */
-export function spacecraftCandidate(cx:number, cy:number, seed:number, animals:number):SpaceKind|undefined {
+export function spacecraftCandidate(cx:number, cy:number, seed:number, animals:number,settings:Readonly<WorldSettings>=DEFAULT_SETTINGS):SpaceKind|undefined {
   const rng = new AgentRandom(coordinateHash(cx, cy, seed ^ 0x53504143));
-  if (rng.next() >= CONFIG.world.spacecraft.frequency * Math.min(1, animals)) return;
-  return SPACE_KINDS[Math.floor(rng.next() * SPACE_KINDS.length)];
+  const weights=SPACE_KINDS.map(k=>settings[`chance_${k}`]),total=weights.reduce((a,b)=>a+b,0);
+  if(rng.next()>=CONFIG.world.spacecraft.frequency*Math.min(1,animals)*total/3)return;
+  let pick=rng.next()*total;for(let i=0;i<3;i++){pick-=weights[i]!;if(pick<0)return SPACE_KINDS[i];}
 }
 
 /** Clear the whole exploration disk, including canopy margins and gently sloped dry ground.

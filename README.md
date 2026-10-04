@@ -64,6 +64,8 @@ The browser console prints a startup banner and repository link, followed by an 
 | `Shift+U` | Cycle saucer → lander → scout; call or visit that design (resumes simulation) |
 | `U` | Watch a rare spacecraft clearing; stops drift until P resumes it |
 | `O` / Settings | With overlays visible: adjust vegetation, wildlife, water, lake size, clearings, hills and sound |
+| `H` / five quick touchscreen taps | Toggle hidden artifact likelihood controls |
+| `Shift+Z` | Visit a rare zen sanctuary; P resumes travel |
 | `?` | Open Help, even with the menu hidden: FPS, per-stage CPU timing, world/cache/memory statistics and expanded, tappable keyboard commands |
 | `R` | Generate a new seeded world |
 | `1` / `2` / `3` | Rainforest / flowering / wetland preset |
@@ -144,3 +146,7 @@ The field guide commands also work as buttons on mobile and desktop. Tap individ
 - [Testing, snapshots and debugging](docs/TESTING.md)
 - [Strategy and original web research](STRATEGY.md)
 - [Contributor/agent instructions](AGENTS.md)
+
+### Zen sanctuaries
+
+Rare pagodas have pink flowering gardens, lotus ponds, koi, ducks, fishing pelicans and monks who meditate, water flowers and walk together. **Shift+Z** visits one. **H** or **five quick nearby touchscreen taps** opens the hidden artifact-likelihood editor, with expandable groups of sliders. **?** opens the ordinary guide. Changes regrow the same seed and reset scrollback. See [sanctuary design and validation](docs/ZEN.md); `npm run zen:preview` writes scene and individual-artifact previews.

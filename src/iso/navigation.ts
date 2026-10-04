@@ -81,3 +81,15 @@ export class TouchTaps {
   cancel(id:number):void {if(this.held.has(id))this.clear();}
   clear():void {this.current=undefined;this.previous=undefined;this.held.clear();}
 }
+
+/** Count nearby short taps without timers or DOM state; a drag/cancel resets the series. */
+export class TapSequence {
+ private count=0;private last?:{time:number;point:PointerPosition};
+ constructor(readonly required=5,readonly gapMs=450){}
+ accept(time:number,point:PointerPosition):boolean{
+  if(!this.last||time-this.last.time>this.gapMs||time<this.last.time||Math.hypot(point.x-this.last.point.x,point.y-this.last.point.y)>32)this.count=0;
+  this.last={time,point};this.count++;
+  if(this.count<this.required)return false;this.clear();return true;
+ }
+ clear(){this.count=0;this.last=undefined;}
+}

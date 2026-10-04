@@ -1,12 +1,12 @@
 import { BIRD_KINDS, type BirdKind, type SoundTuning, type SoundKind } from './synthesis';
 export type AudioKind=SoundKind|'elephant';
-export type BedKind='leaves'|'water'|'rain'|'insects'|'hover';
+export type BedKind='leaves'|'water'|'rain'|'insects'|'hover'|'zen';
 export type CallKind=BirdKind|'elephant'|'alien';
 export interface AudioEvent { kind:'step'|CallKind; gain:number; pan:number; rate:number }
 export interface SoundFrame { beds:Record<BedKind,number>; events:AudioEvent[]; master:number; hoverPan?:number }
 export interface AudioSink { apply(frame:SoundFrame):void; dispose():void }
 /** A nearby sound source; loop intensity is normalized, rate is an optional voice pitch multiplier. */
-export interface SoundEmitter { id:string; x:number;y:number;speed:number;phase:number;bird:boolean;call?:CallKind; loop?:'hover'; intensity?:number; rate?:number }
+export interface SoundEmitter { id:string; x:number;y:number;speed:number;phase:number;bird:boolean;call?:CallKind; loop?:'hover'|'zen'; intensity?:number; rate?:number }
 export interface SoundScene { x:number;y:number;water:number;rain:number;canopy:number;night:number;emitters:readonly SoundEmitter[] }
 export interface AudioSettings { master:number; ambience:number; wildlife:number }
 export const DEFAULT_AUDIO:Readonly<AudioSettings>=Object.freeze({master:.6,ambience:.05,wildlife:.8});
@@ -35,10 +35,11 @@ export class Soundscape {
    // Different pauses and pitches on every phrase; rain/dusk leave more space.
    c.remaining=(kind==='elephant'?18+random(c)*24:(o.callGapMin??1.5)+random(c)*((o.callGapMax??6)-(o.callGapMin??1.5)))*(1+scene.rain*.45+scene.night*.55)*(o.sounds?.[kind]?.intervalScale??1);
   };
-  let hover=0,hoverPan=0;
+  let hover=0,hoverPan=0,zen=0;
   for(const a of nearby){
    const phase=Math.floor(a.phase*2),old=this.voices.get(a.id),c=old??caller(a.id),distance=Math.hypot(a.x-scene.x,a.y-scene.y);
    const gain=(1-distance/radius)**2,pan=clamp(((a.x-scene.x)-(a.y-scene.y))/6,-1,1);
+   if(a.loop==='zen'){zen+=gain*clamp(a.intensity??1);continue;}
    if(a.loop==='hover'){const weight=gain*clamp(a.intensity??1);hover+=weight;hoverPan+=pan*weight;continue;}
    c.remaining-=step;
    if(active&&events.length<(o.maxEvents??4)&&wildlife>0){
@@ -59,12 +60,12 @@ export class Soundscape {
    }
   }
   const g=clamp(settings.ambience);
-  return {master:active?clamp(settings.master)*.75:0,beds:{leaves:g*(.3+.55*clamp(scene.canopy)),water:g*.65*clamp(scene.water),rain:g*.8*clamp(scene.rain),insects:g*.5*clamp(scene.night),hover:active&&o.sounds?.hover?.enabled!==false?clamp(hover)*wildlife*.65:0},hoverPan:hover?hoverPan/hover:0,events};
+  return {master:active?clamp(settings.master)*.75:0,beds:{zen:active&&o.sounds?.zen?.enabled!==false?clamp(zen)*g*3:0,leaves:g*(.3+.55*clamp(scene.canopy)),water:g*.65*clamp(scene.water),rain:g*.8*clamp(scene.rain),insects:g*.5*clamp(scene.night),hover:active&&o.sounds?.hover?.enabled!==false?clamp(hover)*wildlife*.65:0},hoverPan:hover?hoverPan/hover:0,events};
  }
  get trackedEmitters(){return this.voices.size;}
  reset(){this.voices.clear();this.choir=[caller('canopy-low'),caller('canopy-trill'),caller('canopy-drum')];this.eventClock=0;}
 }
 /** In-memory sink useful for application tests; keeps only the latest frame. */
 export class MemoryAudioSink implements AudioSink {frame?:SoundFrame;apply(frame:SoundFrame){this.frame=structuredClone(frame);}dispose(){this.frame=undefined;}}
-export const BED_KINDS:readonly BedKind[]=['leaves','water','rain','insects','hover'];
+export const BED_KINDS:readonly BedKind[]=['leaves','water','rain','insects','hover','zen'];
 export const SOUND_KINDS:readonly SoundKind[]=[...BED_KINDS,'step','alien',...BIRD_KINDS];

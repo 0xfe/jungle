@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {synthesize,Soundscape,MemoryAudioSink,SOUND_KINDS,type SoundScene} from '../src/audio';
 
-test('synthesized layers are deterministic stereo PCM with headroom and continuous loop seams',()=>{
- for(const kind of SOUND_KINDS){const pcm=synthesize(kind),again=synthesize(kind);assert.deepEqual(pcm,again);assert.equal(pcm.channels.length,2);
+test('synthesized layers are deterministic PCM with headroom and continuous loop seams',()=>{
+ for(const kind of SOUND_KINDS){const pcm=synthesize(kind),again=synthesize(kind);assert.deepEqual(pcm,again);assert.equal(pcm.channels.length,kind==='zen'?1:2);
   for(const samples of pcm.channels){let peak=0,sum=0,energy=0;for(const n of samples){assert.ok(Number.isFinite(n));peak=Math.max(peak,Math.abs(n));sum+=n;energy+=n*n;}
    assert.ok(peak<.8&&energy/samples.length>1e-6,kind);assert.ok(Math.abs(sum/samples.length)<.015,`${kind} DC`);
    if(pcm.loop){const seam=Math.abs(samples[0]!-samples.at(-1)!);let typical=0;for(let i=1;i<1000;i++)typical=Math.max(typical,Math.abs(samples[i]!-samples[i-1]!));assert.ok(seam<=typical*1.5+.005,`${kind} seam`);}
@@ -34,10 +34,10 @@ test('Web Audio adapter starts only on enable, shares loops, ramps gains and cap
   createBuffer:(channels:number,length:number)=>({length,numberOfChannels:channels,copyToChannel:()=>{}}),
   createBufferSource:()=>{const s={...node(),playbackRate:param(),onended:undefined as undefined|(()=>void),start:()=>{started++;},stop:()=>s.onended?.()};sources.push(s);return s;}};
  const sink=new WebAudioSink(()=>{created++;return context as unknown as AudioContext;});
- assert.equal(created,0);await sink.enable();await sink.enable();assert.equal(created,1);assert.equal(started,5);
+ assert.equal(created,0);await sink.enable();await sink.enable();assert.equal(created,1);assert.equal(started,6);
  const mixer=new Soundscape(),frame=mixer.update({...scene,rain:1},.1);frame.events=Array.from({length:40},()=>({kind:'step',gain:.2,pan:0,rate:1}));
- sink.apply(frame);assert.equal(sink.voiceCount,12);assert.equal(started,17);assert.ok(ramps.includes(frame.master)&&ramps.includes(frame.beds.rain));assert.ok(sink.bytes<10*1048576);
- sources[5]!.onended?.();assert.equal(sink.voiceCount,11);sink.apply({...frame,master:0,events:[]});assert.equal(ramps.at(-1),0);
+ sink.apply(frame);assert.equal(sink.voiceCount,12);assert.equal(started,18);assert.ok(ramps.includes(frame.master)&&ramps.includes(frame.beds.rain));assert.ok(sink.bytes<10*1048576);
+ sources[6]!.onended?.();assert.equal(sink.voiceCount,11);sink.apply({...frame,master:0,events:[]});assert.equal(ramps.at(-1),0);
  sink.dispose();assert.equal(closed,1);assert.equal(sink.voiceCount,0);assert.equal(sink.bytes,0);assert.ok(disconnected>12);
 });
 

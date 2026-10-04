@@ -21,3 +21,8 @@
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}@keyframes breathe{to{opacity:.3}}
 @media(max-width:400px){.control-bar{gap:0;padding:5px}.control-bar button{padding:0 5px;gap:4px}.control-bar button>span[aria-hidden]{width:12px}.zoom-control{margin:0 1px;padding:0 2px}.zoom-control button{width:30px;padding:0}.zoom-control span{min-width:30px}.control-bar #help-button,.control-bar #github-link{width:30px;flex-shrink:0}.help-panel{padding:18px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* The hidden editor shares the bounded, touch-scrollable bottom panel. */
+#artifact-sliders details { border-top: 1px solid #ffffff24; padding: .65rem 0; }
+#artifact-sliders summary { cursor: pointer; font-weight: 600; padding: .3rem 0; }
+#artifact-sliders .setting { margin-top: .8rem; }

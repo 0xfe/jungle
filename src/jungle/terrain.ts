@@ -1,3 +1,4 @@
+import { zenAt, zenBlend, pondRadius } from './zen-sites';
 import { DEFAULT_SETTINGS, type WorldSettings } from './settings';
 import { clamp, hash, lerp, noise } from '../iso/math';
 import { riverField } from './rivers';
@@ -16,11 +17,15 @@ export function terrainFields(x:number,y:number,seed:number,settings:Readonly<Wo
  const wx=x+(noise(x/5,y/5,seed+440)-.5)*1.2,wy=y+(noise(x/5,y/5,seed+441)-.5)*1.2;
  const channel=riverField(x,y,seed,settings);
  let lake=Math.min(channel,settings.water===0?1:noise(wx/size,wy/size,seed+12)*.8+noise(wx/2.7,wy/2.7,seed+72)*.2-(.15+settings.water*(.42+CONFIG.world.regions.wetDepth*regionalWetness(x,y,seed))));
- const ridge=settings.hills===0?-1:noise(x/6,y/6,seed+271)-(.94-settings.hills*.54);
+ let ridge=settings.hills===0?-1:noise(x/6,y/6,seed+271)-(.94-settings.hills*.54);
  let dry=settings.barren===0?-1:noise(x/4.5,y/4.5,seed+351)-(.93-settings.barren*.57);
- const meadow=settings.meadow===0?-1:noise(x/6,y/6,seed+91)-(.91-settings.meadow*.57);
- const volcanic=volcanicGround(x,y,seed);
+ let meadow=settings.meadow===0?-1:noise(x/6,y/6,seed+91)-(.91-settings.meadow*.57);
+ const volcanic=volcanicGround(x,y,seed,settings.chance_volcano);
  if(volcanic.scar>0){lake=Math.min(channel,Math.max(lake,volcanic.scar*.32));dry=Math.max(dry,volcanic.scar*.16);}
+ const sanctuary=zenAt(x,y,seed,settings);
+ if(sanctuary){const blend=zenBlend(sanctuary,x,y),pond=pondRadius(sanctuary,x,y);
+  lake=lerp(lake,settings.water===0?.25:Math.min(.25,(pond-1)*.32),blend);ridge=lerp(ridge,-1,blend);dry=lerp(dry,-1,blend);meadow=lerp(meadow,settings.meadow===0?-1:.15,blend);
+ }
  return [lake,ridge,dry,meadow].map(v=>Math.round(v*4096)/4096) as unknown as TerrainFields;
 }
 export function fieldKind(f:readonly number[]):TerrainKind{

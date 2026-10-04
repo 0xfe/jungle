@@ -6,25 +6,25 @@ import { clamp, hash, lerp, unproject } from '../iso/math';
 export interface Volcano { id:string; x:number; y:number; form:number; radius:number; phase:number; heading:number }
 export interface LavaPoint { x:number; y:number; width:number; heat:number; normalX:number; normalY:number }
 export const VOLCANO_REACH=11;
-export function volcanoSite(cx:number,cy:number,seed:number):Volcano|undefined {
+export function volcanoSite(cx:number,cy:number,seed:number,multiplier=1):Volcano|undefined {
   const c=CONFIG.world.volcanoes;
-  if(hash(cx,cy,seed+8101)>c.frequency)return;
+  if(hash(cx,cy,seed+8101)>c.frequency*multiplier)return;
   const x=(cx+.5)*c.spacing+(hash(cx,cy,seed+8102)-.5)*c.spacing*.3;
   const y=(cy+.5)*c.spacing+(hash(cx,cy,seed+8103)-.5)*c.spacing*.3;
   if(Math.hypot(x,y)<40)return;
   return{id:`volcano:${cx}:${cy}`,x,y,form:Math.floor(hash(cx,cy,seed+8104)*4),radius:2.2+hash(cx,cy,seed+8105)*.65,phase:hash(cx,cy,seed+8106)*100,heading:Math.PI/4+(hash(cx,cy,seed+8107)-.5)*.7};
 }
-export function volcanoesIn(bounds:{minX:number;minY:number;maxX:number;maxY:number},seed:number,halo=VOLCANO_REACH):Volcano[] {
+export function volcanoesIn(bounds:{minX:number;minY:number;maxX:number;maxY:number},seed:number,halo=VOLCANO_REACH,multiplier=1):Volcano[] {
   const size=CONFIG.world.volcanoes.spacing,result:Volcano[]=[];
   for(let cy=Math.floor((bounds.minY-halo)/size);cy<=Math.floor((bounds.maxY+halo)/size);cy++)for(let cx=Math.floor((bounds.minX-halo)/size);cx<=Math.floor((bounds.maxX+halo)/size);cx++){
-    const v=volcanoSite(cx,cy,seed);
+    const v=volcanoSite(cx,cy,seed,multiplier);
     if(v&&v.x>=bounds.minX-halo&&v.x<=bounds.maxX+halo&&v.y>=bounds.minY-halo&&v.y<=bounds.maxY+halo)result.push(v);
   }
   return result;
 }
 /** The same signed-coordinate radial scar controls ground, vegetation and clearance. */
-export function volcanicGround(x:number,y:number,seed:number):{scar:number;core:boolean} {
-  const sites=volcanoesIn({minX:x,minY:y,maxX:x,maxY:y},seed,9);
+export function volcanicGround(x:number,y:number,seed:number,multiplier=1):{scar:number;core:boolean} {
+  const sites=volcanoesIn({minX:x,minY:y,maxX:x,maxY:y},seed,9,multiplier);
   let scar=0,core=false;
   for(const v of sites){const d=Math.hypot(x-v.x,y-v.y);scar=Math.max(scar,clamp((8.5-d)/4.5,0,1));core ||= d<v.radius+.3;}
   return{scar,core};
@@ -85,10 +85,10 @@ export function volcanicClearance(v:Volcano,x:number,y:number):number {
   if(radial>4)return radial;
   return Math.min(radial,lavaDanger(v,x,y).distance-.5);
 }
-export function nearestVolcano(seed:number,x=0,y=0):Volcano {
+export function nearestVolcano(seed:number,x=0,y=0,multiplier=1):Volcano {
   const s=CONFIG.world.volcanoes.spacing,cx=Math.floor(x/s),cy=Math.floor(y/s);let best:Volcano|undefined;
   for(let r=0;r<=8;r++){
-    for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++)if(Math.max(Math.abs(dx),Math.abs(dy))===r){const v=volcanoSite(cx+dx,cy+dy,seed);if(v&&(!best||Math.hypot(v.x-x,v.y-y)<Math.hypot(best.x-x,best.y-y)))best=v;}
+    for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++)if(Math.max(Math.abs(dx),Math.abs(dy))===r){const v=volcanoSite(cx+dx,cy+dy,seed,multiplier);if(v&&(!best||Math.hypot(v.x-x,v.y-y)<Math.hypot(best.x-x,best.y-y)))best=v;}
     if(best&&r*s>Math.hypot(best.x-x,best.y-y)+s)return best;
   }
   if(!best)throw new Error('No volcano found within the bounded landmark search');return best;
