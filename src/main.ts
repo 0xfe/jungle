@@ -213,12 +213,16 @@ function executeCommand(key:string):void {
   if(settingsTimer){clearTimeout(settingsTimer);applyWorldSettings();}
   if (key === '?') help();
   else if(key==='h')showArtifacts();
+  else if(key==='teleport'){
+    const options=el('teleport-options');options.hidden=!options.hidden;
+    el('teleport-toggle').setAttribute('aria-expanded',String(!options.hidden));
+  }
   else if(key==='shift+z'){const s=world.zenLandmark(view.cameraX,view.cameraY);if(!s){announce('Raise Pagoda likelihood in H controls to find a sanctuary.');return;}pauseDrift();drift=false;view.cameraX=s.x-.4;view.cameraY=s.y-.4;view.zoom=Math.min(view.zoom,.85);cameraVX=cameraVY=0;showArtifacts(false);syncUI();announce('Visiting a zen sanctuary. P resumes automatic travel.');}
   else if (key === 'escape') {help(false);showSettings(false);showArtifacts(false);}
   else if(key==='o')showSettings();
   else if (key === 'r') regrow();
   else if (key === 't') weather();
-  else if (key === 'v') {if(!settings.chance_volcano){announce('Raise Volcano likelihood in H controls to visit one.');return;}pauseDrift();const v=world.volcanoLandmark(view.cameraX,view.cameraY);view.cameraX=v.x;view.cameraY=v.y-.75;cameraVX=cameraVY=0;syncUI();announce('Exploring an active volcano.');}
+  else if (key === 'v') {if(!settings.chance_volcano){announce('Raise Volcano likelihood in H controls to visit one.');return;}pauseDrift();const v=world.volcanoLandmark(view.cameraX,view.cameraY);view.cameraX=v.x;view.cameraY=v.y-.75;cameraVX=cameraVY=0;showArtifacts(false);syncUI();announce('Exploring an active volcano.');}
   else if(key==='shift+u'){
     const ship=world.callSpacecraft(view.cameraX,view.cameraY,SPACE_KINDS[nextCalledShip]);
     if(!ship){announce('No safe landing area nearby. Explore toward a dry clearing and try Shift+U again.');return;}
@@ -229,7 +233,7 @@ function executeCommand(key:string):void {
   else if (key === 'u') {
     const site=world.spacecraftLandmark(view.cameraX,view.cameraY);
     if(!site){announce('No spacecraft clearing found nearby. Increase animal life in Settings or explore farther.');return;}
-    pauseDrift();drift=false;view.cameraX=site.x;view.cameraY=site.y;cameraVX=cameraVY=0;syncUI();
+    pauseDrift();drift=false;view.cameraX=site.x;view.cameraY=site.y;cameraVX=cameraVY=0;showArtifacts(false);syncUI();
     announce('Watching a rare spacecraft clearing. Visitors arrive and depart; P resumes automatic travel.');
   }
   else if (key === 'n') nextLandscape();

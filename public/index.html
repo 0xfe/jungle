@@ -35,7 +35,12 @@
         <h2 id="artifacts-title">What might appear.</h2>
         <p class="settings-note">Choose a kind to adjust its likelihood. 0 removes it; 100% keeps the default. Habitat and safe placement still apply. Changes regrow this seed and reset scrollback. Garden life has its own controls.</p>
         <div id="artifact-sliders"></div>
-        <button id="visit-pagoda" class="panel-button" data-command="shift+z">Visit a zen pagoda</button>
+        <button id="teleport-toggle" class="panel-button" data-command="teleport" aria-expanded="false" aria-controls="teleport-options">Teleport</button>
+        <div id="teleport-options" class="teleport-options" role="group" aria-label="Teleport destination" hidden>
+          <button class="panel-button" data-command="v">Volcano</button>
+          <button class="panel-button" data-command="u">UFO</button>
+          <button class="panel-button" data-command="shift+z">Pagoda</button>
+        </div>
         <button id="reset-artifacts" class="panel-button">Restore artifact defaults</button>
       </aside>
       <aside id="help" data-ui class="help-panel" hidden aria-labelledby="help-title">

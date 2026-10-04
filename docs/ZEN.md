@@ -1,6 +1,6 @@
 # Zen sanctuaries and the hidden world editor
 
-**Shift+Z** visits the nearest eligible sanctuary, frames the tall roof/finial at up to 85% zoom and stops automatic travel. **P** resumes travel. **H** toggles the hidden artifact editor; five short, nearby touchscreen taps also toggle it. `?` continues to open the field guide. The editor has no toolbar button. Its native expanding groups and labeled sliders work with keyboard and touch; Escape closes it.
+**Shift+Z** visits the nearest eligible sanctuary, frames the tall roof/finial at up to 85% zoom and stops automatic travel. **P** resumes travel. **H** toggles the hidden artifact editor; five short, nearby touchscreen taps also toggle it. `?` continues to open the field guide. Its **Teleport** button expands **Volcano**, **UFO**, and **Pagoda** choices, using the same destinations as V, U, and Shift+Z. UFO visits a spacecraft clearing. A successful jump closes the editor; unavailable destinations keep their existing actionable message. The editor has no toolbar button. Its native expanding groups and labeled sliders work with keyboard and touch; Escape closes it.
 
 ## Generation and settings
 

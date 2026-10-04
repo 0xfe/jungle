@@ -26,3 +26,5 @@
 #artifact-sliders details { border-top: 1px solid #ffffff24; padding: .65rem 0; }
 #artifact-sliders summary { cursor: pointer; font-weight: 600; padding: .3rem 0; }
 #artifact-sliders .setting { margin-top: .8rem; }
+
+.teleport-options{display:flex;gap:8px;margin:10px 0}.teleport-options button{flex:1;min-height:44px}
