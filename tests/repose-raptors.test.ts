@@ -11,10 +11,10 @@ import { bakeMesh } from '../src/iso/bake/rasterize';
 
 const land:AgentEnvironment={time:0,nearby:()=>[],canMove:()=>true,sample:()=>({water:false,moisture:.4,light:1,wind:1,elevation:0})};
 
-test('quiet wildlife rests on the ground, with bears using occasional grounded bouts',()=>{
+test('quiet wildlife including bears settles into ground rest',()=>{
  for(const C of [DeerAgent,ZebraAgent,JaguarAgent,BlackBearAgent]){
   const a=new C('quiet',0,0,12);let rested=false;
-  for(let i=0;i<18000;i++){a.update(1/60,land);rested||=a instanceof BlackBearAgent?a.grounded&&a.speed===0:a.repose.mode==='lying';}
+  for(let i=0;i<18000;i++){a.update(1/60,land);rested||=a.repose.mode==='lying';}
   assert.ok(rested,C.name);
  }
 });

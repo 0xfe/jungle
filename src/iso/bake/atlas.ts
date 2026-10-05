@@ -1,11 +1,11 @@
 import { createHash } from 'node:crypto';
-import type { PixelImage, Region } from '../render';
+import type { PixelImage, Region, SpriteFrames } from '../render';
 /** Build-only sprite input. Anchors are measured in the untrimmed logical canvas. */
 export interface BakeSprite { id: string; frames: PixelImage[]; anchor: [number, number]; trim?: boolean }
 export interface PackedAtlas {
   image: PixelImage;
   manifest: { version: number; width: number; height: number;
-    sprites: Record<string, { width: number; height: number; anchor: [number, number]; frames: Region[] }>;
+    sprites: Record<string, { width: number; height: number; anchor: [number, number]; frames: Region[]; frameIndices?:number[] }>;
     stats: { frames: number; uniqueFrames: number; rgbaBytes: number; occupiedPixels: number } };
 }
 
@@ -86,4 +86,16 @@ export function packAtlas(inputs: BakeSprite[], width = 2048, maxHeight = 2048):
   for (const s of sprites) manifest.sprites[s.id] = { width: s.frames[0]!.width, height: s.frames[0]!.height, anchor: s.anchor,
     frames: keys.get(s.id)!.map(key => unique.get(key)!.region) };
   return { image: { width, height, data }, manifest };
+}
+
+/** Build-only lossless compaction for clips made of many tiny shared pieces. */
+export function compactSpriteFrames(sprite:SpriteFrames):void {
+ const unique:Region[]=[],indices:number[]=[],seen=new Map<string,number>();
+ for(const frame of sprite.frames){
+  const key=`${frame.x},${frame.y},${frame.width},${frame.height}`;
+  let index=seen.get(key);
+  if(index===undefined){index=unique.length;seen.set(key,index);unique.push(frame);}
+  indices.push(index);
+ }
+ if(unique.length<sprite.frames.length*.75){sprite.frames=unique;sprite.frameIndices=indices;}
 }

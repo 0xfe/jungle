@@ -107,11 +107,11 @@ export abstract class EcologicalAgent extends WildlifeAgent {
   const dx=this.target.x-this.x,dy=this.target.y-this.y,d=Math.hypot(dx,dy),desired=Math.atan2(dy,dx),turn=this.spec.mode==='water'?1.8:3;
   const delta=angleDelta(this.heading,desired);this.heading+=clamp(delta,-turn*dt,turn*dt);
   if((this.type>=53||this.kind==='elephant')&&Math.abs(delta)>.2){this.motor.stop();return;}
-  const running=this.kind==='tiger'?this.state==='chase':(this.kind==='wolf'||this.kind==='boar'||this.kind==='zebra'||this.kind==='bison')&&this.state==='run';
-  const speed=(running?(this.kind==='bison'?.7:this.kind==='tiger'?1:.95):this.state==='stalk'?.075:this.spec.speed)*this.pace*this.tripPace*(this.juvenile?.88:1)*(this.spec.mode==='air'?(this.flight.powered?1.08:.9):1),accel=running?2.6:this.kind==='elephant'?.22:this.spec.mode==='air'?1.5:.6;
+  const running=this.kind==='tiger'?this.state==='chase':(this.kind==='wolf'||this.kind==='boar'||this.kind==='zebra'||this.kind==='bison'||this.spec.runSpeed!==undefined)&&this.state==='run';
+  const speed=(running?(this.spec.runSpeed??(this.kind==='bison'?.7:this.kind==='tiger'?1:.95)):this.state==='stalk'?.075:this.spec.speed)*this.pace*this.tripPace*(this.juvenile?.88:1)*(this.spec.mode==='air'?(this.flight.powered?1.08:.9):1),accel=running?2.6:this.kind==='elephant'?.22:this.spec.mode==='air'?1.5:.6;
   this.motor.update(Math.min(speed,d/.24,Math.sqrt(2*accel*d)*.65)*Math.max(0,Math.cos(delta)),dt,accel,accel*7);
   const step=Math.min(d,this.speed*dt),x=this.x+Math.cos(this.heading)*step,y=this.y+Math.sin(this.heading)*step;
-  if(this.allowed(x,y,env)){this.x=x;this.y=y;if(this.spec.mode!=='air')this.gait+=step/((running?(this.kind==='boar'?.27:this.kind==='zebra'?.40:this.kind==='bison'?.40:this.kind==='tiger'?.38:.42):this.spec.stride)*this.size);}
+  if(this.allowed(x,y,env)){this.x=x;this.y=y;if(this.spec.mode!=='air')this.gait+=step/((running?(this.spec.runStride??(this.kind==='boar'?.27:this.kind==='zebra'?.40:this.kind==='bison'?.40:this.kind==='tiger'?.38:.42)):this.spec.stride)*this.size);}
   else{this.motor.stop();this.state='rest';this.timer=.3;}
   if(this.spec.mode==='air'){
    this.gait=this.flight.advance(this.gait,dt,this.targetAltitude-this.altitude,this.pace*this.tripPace,this.random,BIRD_FLIGHT[this.kind]!);

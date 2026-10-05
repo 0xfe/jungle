@@ -4,12 +4,14 @@ import { readFile } from 'node:fs/promises';
 import { AgentSystem, type AgentEnvironment } from '../src/agents';
 import { TigerAgent,HippoAgent,BisonAgent,jungleAgents } from '../src/jungle/agents';
 import { ECO_SPECS,ecoClips,habitatAllows } from '../src/jungle/ecology';
+import { BEAR_MOTION,BEAR_ONE_SHOTS } from '../src/jungle/bear-motion';
 import { InfiniteWorld,faunaPlan } from '../src/jungle/infinite';
 import { normalizeSettings } from '../src/jungle/settings';
 import { ecologyMesh } from '../scripts/art/ecology-model';
 import { bakeMesh } from '../src/iso/bake/rasterize';
 import { spritePieces } from '../scripts/art/sprite-pieces';
-import { trimClip } from '../src/iso/bake/atlas';
+import { spriteRegion } from '../src/iso/render';
+import { compactSpriteFrames, trimClip } from '../src/iso/bake/atlas';
 import { populationRange } from '../src/jungle/encounters';
 import { CONFIG } from '../src/config';
 import { decodePcmWav,Soundscape,SOUND_KINDS,synthesize } from '../src/audio';
@@ -66,11 +68,15 @@ test('rare solitary tigers, bank hippos and spaced bison herds are seeded and co
 });
 test('all new rigs fit every heading and action; shared pieces reconstruct every pixel',()=>{
  for(const kind of ['tiger','hippo','bison','blackBear'] as const)for(const form of (kind==='hippo'||kind==='bison'?[0,1]:[0])){
-  const spec=ECO_SPECS[kind],camera={width:112,height:112,anchor:[56,87] as [number,number],scale:spec.cameraScale};
+  const spec=ECO_SPECS[kind],camera={width:112,height:112,anchor:[56,87] as [number,number],scale:kind==='blackBear'?BEAR_MOTION.bakeScale:spec.cameraScale};
   for(const [clip,count] of Object.entries(ecoClips(kind)))for(let d=0;d<spec.directions;d++){
-   const source=trimClip({id:`${kind}-${clip}-${d}`,anchor:camera.anchor,frames:Array.from({length:count},(_,i)=>bakeMesh(ecologyMesh(kind,clip,i/count,form),d/spec.directions*Math.PI*2,camera))});
+   const frames=Array.from({length:count},(_,i)=>bakeMesh(ecologyMesh(kind,clip,i/(BEAR_ONE_SHOTS.includes(clip)?count-1:count),form),d/spec.directions*Math.PI*2,camera));
+   if(kind==='blackBear')for(const f of frames)for(let edge=0;edge<112;edge++){
+    for(const pixel of [edge,111*112+edge,edge*112,edge*112+111])assert.equal(f.data[pixel*4+3],0,`${kind}/${clip}/${d} clipped edge`);
+   }
+   const source=trimClip({id:`${kind}-${clip}-${d}`,anchor:camera.anchor,frames});
    assert.ok(source.frames[0]!.width<100&&source.frames[0]!.height<100,source.id);
-   const pieces=spritePieces(source,3);
+   const pieces=spritePieces(source,kind==='blackBear'&&(clip==='run'||clip==='play')?2:3);
    for(const [i,f] of source.frames.entries()){
     const joined=new Uint8Array(f.data.length);
     for(const piece of pieces){const frame=piece.frames[i%piece.frames.length]!,x=source.anchor[0]-piece.anchor[0],y=source.anchor[1]-piece.anchor[1];for(let row=0;row<frame.height;row++)joined.set(frame.data.subarray(row*frame.width*4,(row+1)*frame.width*4),((y+row)*f.width+x)*4);}
@@ -114,4 +120,14 @@ test('hippo travel chooses space away from nearby elephants without getting trap
  for(let i=0;i<30;i++)a.update(1/60,env);
  assert.equal(a.state,'travel');
  assert.ok(Math.hypot(a.target.x-.5,a.target.y-.2)>.65);
+});
+
+
+test('packed frame indirection preserves repeated poses and their cyclic playback',()=>{
+ const a={x:1,y:2,width:3,height:4},b={x:8,y:9,width:3,height:4};
+ const source=[a,a,b,a,b,b,a,a],sprite={frames:[...source]};
+ compactSpriteFrames(sprite);assert.equal(sprite.frames.length,2);
+ for(let frame=0;frame<source.length*3;frame++)assert.deepEqual(spriteRegion(sprite,frame),source[frame%source.length]);
+ const restored=JSON.parse(JSON.stringify(sprite));
+ for(let frame=0;frame<source.length;frame++)assert.deepEqual(spriteRegion(restored,frame),source[frame]);
 });

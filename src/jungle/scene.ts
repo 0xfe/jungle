@@ -2,11 +2,11 @@ import type { VolcanoLavaArt } from './volcano-animation';
 import { restingSprite } from './resting';
 import { PlantAgent } from './agents';
 import { project, hash, lerp, clamp } from '../iso/math';
-import { color, sortCommands, type DrawCommand, type Frame, type Region } from '../iso/render';
+import { color, sortCommands, type DrawCommand, type Frame, type Region, type SpriteFrames } from '../iso/render';
 import { TILE, waterAt, type World, type Deer, type DeerSample, type Plant, HABITATS, WORLD_SIZE } from './world';
 import { DEER_CLIPS, directionIndex, PLANT_FPS, HEAD_SECONDS, angleDelta } from './animation';
 import { SpatialGrid } from '../iso/spatial';
-export interface Sprite { frames: Region[]; width: number; height: number; anchor: [number, number] }
+export interface Sprite extends SpriteFrames { width: number; height: number; anchor: [number, number] }
 export interface AtlasManifest {
   animalClips?:Record<string,{parts:string[];frames:number}>; zenParts?:Record<string,string[]>; spacecraftParts?:Record<string,string[]>; volcanoLava?:VolcanoLavaArt[]; version: number; width: number; height: number; sprites: Record<string, Sprite>; stats?: { frames: number; uniqueFrames: number; rgbaBytes: number; occupiedPixels: number } }
 export interface View { width: number; height: number; panX: number; panY: number; zoom: number; grid: boolean }

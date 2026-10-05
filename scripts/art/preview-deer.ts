@@ -1,3 +1,4 @@
+import { BEAR_MOTION, BEAR_ONE_SHOTS } from '../../src/jungle/bear-motion';
 import sharp from 'sharp';
 import { mkdir } from 'node:fs/promises';
 import { deerMesh } from './deer-model';
@@ -45,7 +46,7 @@ console.log('Wildlife directional and action sheets → artifacts/');
 const {ecologyMesh}=await import('./ecology-model');
 const {ECO_KINDS,ECO_SPECS,ecoClips}=await import('../../src/jungle/ecology');
 for(const kind of ECO_KINDS){
- const spec=ECO_SPECS[kind],camera={width:112,height:112,anchor:[56,87] as [number,number],scale:spec.cameraScale},clips=Object.entries(ecoClips(kind));
+ const spec=ECO_SPECS[kind],camera={width:112,height:112,anchor:[56,87] as [number,number],scale:kind==='blackBear'?BEAR_MOTION.bakeScale:spec.cameraScale},clips=Object.entries(ecoClips(kind));
  const panels:sharp.OverlayOptions[]=[];
  for(const [row,[clip]] of clips.entries())for(let d=0;d<spec.directions;d++){
   const pixels=bakeMesh(ecologyMesh(kind,clip,.25),d/spec.directions*TAU,camera);
@@ -53,7 +54,7 @@ for(const kind of ECO_KINDS){
  }
  await sharp({create:{width:spec.directions*112,height:clips.length*112,channels:4,background:'#dce6ce'}}).composite(panels).png().toFile(`artifacts/${kind}-directions.png`);
  for(const [clip,count] of clips){const panels:sharp.OverlayOptions[]=[];
-  for(let frame=0;frame<count;frame++){const pixels=bakeMesh(ecologyMesh(kind,clip,frame/(clip==='drink'||clip==='spray'||clip==='wrap'||clip==='hop'||clip==='rise'||clip==='lower'?count-1:count)),Math.PI/4,camera);panels.push({input:Buffer.from(pixels.data),raw:{width:112,height:112,channels:4},left:frame*112,top:0});}
+  for(let frame=0;frame<count;frame++){const pixels=bakeMesh(ecologyMesh(kind,clip,frame/(BEAR_ONE_SHOTS.includes(clip)||clip==='drink'||clip==='spray'||clip==='wrap'||clip==='hop'?count-1:count)),Math.PI/4,camera);panels.push({input:Buffer.from(pixels.data),raw:{width:112,height:112,channels:4},left:frame*112,top:0});}
   await sharp({create:{width:count*112,height:112,channels:4,background:'#dce6ce'}}).composite(panels).png().toFile(`artifacts/${kind}-${clip}-strip.png`);
  }
 }

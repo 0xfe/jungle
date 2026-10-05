@@ -36,7 +36,8 @@
     "serve:cached": "node scripts/serve.mjs --cache",
     "volcanoes:preview": "tsx scripts/volcano-preview.ts",
     "zen:preview": "npm run assets && tsx scripts/zen-preview.ts",
-    "megafauna:preview": "npm run assets && tsx scripts/megafauna-preview.ts"
+    "megafauna:preview": "npm run assets && tsx scripts/megafauna-preview.ts",
+    "bears:preview": "npm run assets && tsx scripts/bear-preview.ts"
   },
   "c8": {
     "all": true,

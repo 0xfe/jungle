@@ -1,3 +1,4 @@
+import { BEAR_MOTION, BEAR_ONE_SHOTS } from '../src/jungle/bear-motion';
 import { spritePieces } from './art/sprite-pieces';
 import { bakeZen } from './art/zen';
 import { VOLCANO_ART_SCALE, VOLCANO_TEXEL_SCALE } from '../src/jungle/volcanoes';
@@ -16,7 +17,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { hash, unproject } from '../src/iso/math';
 import { HABITATS, TILE, WORLD_SIZE, waterAt } from '../src/jungle/world';
 import { DEER_CLIPS, DEER_DIRECTIONS, TAU } from '../src/jungle/animation';
-import { packAtlas, trimClip, type BakeSprite } from '../src/iso/bake/atlas';
+import { compactSpriteFrames, packAtlas, trimClip, type BakeSprite } from '../src/iso/bake/atlas';
 import { bakeMesh } from '../src/iso/bake/rasterize';
 import { meshToObj } from '../src/iso/bake/mesh';
 import { deerMesh } from './art/deer-model';
@@ -33,7 +34,7 @@ const dependencies = ['src/jungle/volcano-animation.ts','src/jungle/agents/volca
   'src/iso/bake/mesh.ts', 'src/iso/bake/rasterize.ts', 'src/iso/bake/atlas.ts', 'src/iso/math.ts',
   'src/iso/spatial.ts', 'src/jungle/animation.ts', 'src/jungle/world.ts', 'src/jungle/agents/deer.ts', 'src/jungle/agents/fixed.ts', 'src/jungle/agents/index.ts', 'src/agents/core.ts', 'src/agents/motion.ts', 'src/agents/system.ts', 'src/agents/index.ts', 'assets/source/trees.png', 'assets/source/plants.png',
   'package-lock.json'];
-dependencies.push('scripts/art/megafauna-model.ts','src/jungle/agents/megafauna.ts','scripts/art/sprite-pieces.ts','scripts/art/zen.ts','scripts/art/zen-dock.ts','src/jungle/zen-layout.ts','assets/source/zen-pagoda.png','assets/source/zen-pagoda-wide.png','assets/source/zen-cherry.png','assets/source/zen-maple.png','assets/source/zen-pine.png','assets/zen-prompts.json','assets/zen-pagoda-wide-prompts.json','src/jungle/agents/zen.ts');
+dependencies.push('src/jungle/bear-motion.ts','scripts/art/megafauna-model.ts','src/jungle/agents/megafauna.ts','scripts/art/sprite-pieces.ts','scripts/art/zen.ts','scripts/art/zen-dock.ts','src/jungle/zen-layout.ts','assets/source/zen-pagoda.png','assets/source/zen-pagoda-wide.png','assets/source/zen-cherry.png','assets/source/zen-maple.png','assets/source/zen-pine.png','assets/zen-prompts.json','assets/zen-pagoda-wide-prompts.json','src/jungle/agents/zen.ts');
 const sources: Record<string, string> = {};
 dependencies.push('src/jungle/space-animation.ts','scripts/art/space-visitors.ts','src/jungle/agents/spacecraft.ts','src/jungle/space-sites.ts','assets/source/space-visitors-reference.png','assets/space-visitors-prompts.json');
 const visitorModels=SPACE_KINDS.flatMap(kind=>[`ship-${kind}`,`alien-${kind}`]);
@@ -131,9 +132,9 @@ for(const kind of ['toucan','orangutan','jaguar'] as WildlifeKind[]){
 }
 for(const kind of ECO_KINDS)for(const form of (kind==='hippo'||kind==='bison'?[0,1]:[0])){
  const prefix=`${kind}${form?'-form1':''}`;
- const spec=ECO_SPECS[kind],camera={width:112,height:112,anchor:[56,87] as [number,number],scale:kind==='elephant'?17.5:spec.cameraScale};
+ const spec=ECO_SPECS[kind],camera={width:112,height:112,anchor:[56,87] as [number,number],scale:kind==='blackBear'?BEAR_MOTION.bakeScale:kind==='elephant'?17.5:spec.cameraScale};
  for(const [clip,count] of Object.entries(ecoClips(kind))){
-  const poses=Array.from({length:count},(_,i)=>ecologyMesh(kind,clip,i/(clip==='drink'||clip==='spray'||clip==='wrap'||clip==='hop'||clip==='rise'||clip==='lower'?count-1:count),form));
+  const poses=Array.from({length:count},(_,i)=>ecologyMesh(kind,clip,i/(BEAR_ONE_SHOTS.includes(clip)||clip==='drink'||clip==='spray'||clip==='wrap'||clip==='hop'?count-1:count),form));
   for(let d=0;d<spec.directions;d++){
    const heading=d/spec.directions*TAU;
    if(kind!=='boa'||(clip!=='wrap'&&clip!=='coil'))inputs.push({id:`${prefix}-${clip}-${d}`,anchor:camera.anchor,frames:poses.map(mesh=>bakeMesh(mesh,heading,camera))});
@@ -145,7 +146,7 @@ for(const kind of ECO_KINDS)for(const form of (kind==='hippo'||kind==='bison'?[0
 // Rest poses are shared across all individuals. Reverse the same lowering clip
 // when rising, retaining union bounds and root registration in either direction.
 for(const kind of ['deer','zebra','jaguar','blackBear'] as const){
- const scale=kind==='deer'?21:kind==='jaguar'?25:ECO_SPECS[kind].cameraScale;
+ const scale=kind==='deer'?21:kind==='jaguar'?25:kind==='blackBear'?BEAR_MOTION.bakeScale:ECO_SPECS[kind].cameraScale;
  const camera={width:112,height:112,anchor:[56,87] as [number,number],scale};
  for(const [clip,count] of Object.entries(REPOSE_CLIPS)){
   const poses=Array.from({length:count},(_,i)=>kind==='deer'?deerMesh(clip as keyof typeof REPOSE_CLIPS,i/(clip==='lieDown'?count-1:count)):
@@ -266,11 +267,13 @@ for(const s of inputs)if(/^(tree|plant)-/.test(s.id)){
 // Share exact small pixel blocks across the new large-animal poses, preserving every pixel.
 const animalClips:Record<string,{parts:string[];frames:number}>={};
 for(let i=inputs.length-1;i>=0;i--)if(/^(tiger|hippo|bison|blackBear)-|^(elephant|giraffe)-rest-/.test(inputs[i]!.id)){
- const source=inputs[i]!,parts=spritePieces(trimClip(source),/^(giraffe|blackBear)-/.test(source.id)?4:3);
+ const source=inputs[i]!,parts=spritePieces(trimClip(source),source.id.startsWith('giraffe-')?4:/^blackBear-(run|play)-/.test(source.id)?2:3);
  animalClips[source.id]={parts:parts.map(p=>p.id),frames:source.frames.length};
  inputs.splice(i,1,...parts);
 }
 const { image, manifest } = packAtlas(inputs, 4096, 4096);
+manifest.version=3; // Optional frame indices retain exact timing with compact repeated regions.
+for(const clip of Object.values(animalClips))for(const part of clip.parts)compactSpriteFrames(manifest.sprites[part]!);
 const spacecraftParts:Record<string,string[]>={};
 for(const s of inputs)if(s.id.startsWith('ship-')){const id=s.id.split(':tile:')[0]!;(spacecraftParts[id]??=[]).push(s.id);}
 const zenParts:Record<string,string[]>={};
@@ -278,7 +281,7 @@ for(const s of inputs)if(s.id.startsWith('zen-')){const id=s.id.split(':tile:')[
 Object.assign(manifest,{volcanoLava,spacecraftParts,zenParts,animalClips});
 for(const [id,s] of Object.entries(manifest.sprites)){
  if(id.startsWith('ship-')||id.startsWith('alien-')){const factor=id.startsWith('ship-')?24/18:19/15;s.width*=factor;s.height*=factor;s.anchor=[s.anchor[0]*factor,s.anchor[1]*factor];}
- const scale=/^volcano-[0-3]$/.test(id)?VOLCANO_ART_SCALE/VOLCANO_TEXEL_SCALE:/^(tree|plant)-/.test(id)?2:id.startsWith('deer-')?28/21:id.startsWith('jaguar-')?28/25:id.startsWith('elephant-')?21/17.5:id.startsWith('patch-')?patchLogicalScale(id):/^ground-\d/.test(id)?2:1;
+ const scale=/^volcano-[0-3]$/.test(id)?VOLCANO_ART_SCALE/VOLCANO_TEXEL_SCALE:/^(tree|plant)-/.test(id)?2:id.startsWith('deer-')?28/21:id.startsWith('jaguar-')?28/25:id.startsWith('blackBear-')?BEAR_MOTION.cameraScale/BEAR_MOTION.bakeScale:id.startsWith('elephant-')?21/17.5:id.startsWith('patch-')?patchLogicalScale(id):/^ground-\d/.test(id)?2:1;
  if(scale!==1){s.width*=scale;s.height*=scale;s.anchor=[s.anchor[0]*scale,s.anchor[1]*scale];}
 }
 // The broad, soft legacy-island shadow needs fewer texels, with the same logical bounds.

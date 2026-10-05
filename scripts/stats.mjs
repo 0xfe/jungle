@@ -71,7 +71,7 @@ export async function collectStats(root = projectRoot) {
     decodedBytes: manifest.width * manifest.height * 4,
     budgetBytes: 4096 * 4096 * 4,
     sprites: Object.keys(manifest.sprites).length,
-    frames: Object.values(manifest.sprites).reduce((sum, sprite) => sum + sprite.frames.length, 0),
+    frames: Object.values(manifest.sprites).reduce((sum, sprite) => sum + (sprite.frameIndices?.length ?? sprite.frames.length), 0),
   };
   const coverage = JSON.parse(await readFile(resolve(root, 'coverage/coverage-summary.json'), 'utf8'));
   if (!coverage.total?.lines || Object.keys(coverage).length < 2) {

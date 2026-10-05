@@ -60,3 +60,10 @@ export class MemoryRenderer implements Renderer {
   }
   dispose(): void { this.pixels = { width: 0, height: 0, data: new Uint8Array() }; }
 }
+
+/** Optional frame indirection shares repeated atlas rectangles without changing playback. */
+export interface SpriteFrames { frames:Region[]; frameIndices?:number[] }
+export function spriteRegion(sprite:SpriteFrames,frame:number):Region {
+ const i=frame%(sprite.frameIndices?.length??sprite.frames.length);
+ return sprite.frames[sprite.frameIndices?.[i]??i]!;
+}

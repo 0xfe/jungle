@@ -1,3 +1,4 @@
+import { BEAR_MOTION } from '../src/jungle/bear-motion';
 import sharp from 'sharp';
 import { mkdir,readFile,writeFile } from 'node:fs/promises';
 import { InfiniteWorld } from '../src/jungle/infinite';
@@ -12,7 +13,7 @@ const renderer=new MemoryRenderer({width:raw.info.width,height:raw.info.height,d
 for(const kind of ['tiger','hippo','bison','blackBear'] as const){
  const forms=kind==='bison'||kind==='hippo'?2:1;
  const spec=ECO_SPECS[kind],clips=Object.entries(ecoClips(kind)),panels:sharp.OverlayOptions[]=[];
- const camera={width:112,height:112,anchor:[56,87] as [number,number],scale:spec.cameraScale};
+ const camera={width:112,height:112,anchor:[56,87] as [number,number],scale:kind==='blackBear'?BEAR_MOTION.bakeScale:spec.cameraScale};
  for(let form=0;form<forms;form++)for(const [row,[clip]] of clips.entries())for(let d=0;d<spec.directions;d++){
   const p=bakeMesh(ecologyMesh(kind,clip,.25,form),d/spec.directions*Math.PI*2,camera);
   panels.push({input:Buffer.from(p.data),raw:{width:112,height:112,channels:4},left:d*112,top:(row+form*clips.length)*112});

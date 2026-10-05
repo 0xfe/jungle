@@ -1,3 +1,5 @@
+import { spriteRegion } from '../iso/render';
+import { BEAR_COATS, BEAR_ONE_SHOTS } from './bear-motion';
 import { composeZen } from './zen-scene';
 import { composeVolcanoes } from './volcano-scene';
 import { VolcanicWildlifeAgent } from './agents/volcanic-wildlife';
@@ -112,14 +114,14 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
   // A full sprite margin prevents visible respawn even at the viewport edges.
   world.spawnHidden=(x,y)=>spawnOutsideView(world,view,x,y);
   let burning:VolcanicWildlifeAgent|undefined;
-  const sprite = (id: string, name: string, x: number, y: number, size: number, frame: number, layer: number, opacity = 1, tint = 255, altitude = 0, depth = x + y) => {
+  const sprite = (id: string, name: string, x: number, y: number, size: number, frame: number, layer: number, opacity = 1, tint: number|readonly [number,number,number] = 255, altitude = 0, depth = x + y) => {
     const parts=atlas.animalClips?.[name]?.parts;
     const p=screen(x,y,world.heightAt(x,y)+altitude),z=scale*size;
     // Pieces share one root/depth; compute the terrain projection once per animal.
     for(let part=0;part<(parts?.length??1);part++){
       const s=atlas.sprites[parts?.[part]??name];if(!s)throw new Error(`Unknown sprite: ${name}`);
       const command:DrawCommand={id:part?`${id}:${part}`:id,x:p.x-s.anchor[0]*z,y:p.y-s.anchor[1]*z,width:s.width*z,height:s.height*z,
-        region:s.frames[frame%s.frames.length],color:[255,tint,tint,Math.round(opacity*255)],layer,depth};
+        region:spriteRegion(s,frame),color:[...(typeof tint==='number'?[255,tint,tint] as const:tint),Math.round(opacity*255)],layer,depth};
       if(burning&&layer===2){
         const t=lerp(burning.previousElapsed,burning.elapsed,alpha),fade=clamp(1-t/CONFIG.world.volcanoes.burnSeconds,0,1);
         command.color=[110,75,65,Math.round(opacity*fade*255)];
@@ -309,7 +311,7 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
         +Math.sin(phase*PLANT_FPS/PLANT_FRAMES*Math.PI*2)*(a.kind==='tree'?.009:.018);
       const corners=rootedQuad(point,s.width,s.height,s.anchor,z*traits.width,z*traits.height,lean,traits.mirror);
       const box=quadBounds(corners),frame=Math.floor(phase*PLANT_FPS);
-      if(visible(box,view.width,view.height))commands.push({...box,corners,id:a.id,region:s.frames[frame%s.frames.length],
+      if(visible(box,view.width,view.height))commands.push({...box,corners,id:a.id,region:spriteRegion(s,frame),
         color:traits.tone?[244,255,239,255]:[255,255,255,255],flip:traits.mirror,layer:2,depth:a.x+a.y});
       if(a.kind==='tree'&&traits.vine&&a.variant!==2&&a.scale>.8){
         const v=atlas.sprites[`vine-${traits.vine-1}`]!;
@@ -324,7 +326,7 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
       const rest=restingSprite(a.kind,a.repose,d.heading,alpha);
       const size=a.size*(a instanceof DeerAgent?1.05:a instanceof EcologicalAgent?a.spec.displayScale:1);
       sprite(`${a.id}-shadow`,'shadow',d.x,d.y,.4*a.size,0,1,.2);
-      sprite(a.id,rest.name,d.x,d.y,size,rest.frame,2,1,[255,248,240][a.coat]);
+      sprite(a.id,rest.name,d.x,d.y,size,rest.frame,2,1,a.kind==='blackBear'?BEAR_COATS[a.coat]:[255,248,240][a.coat]);
     } else if (a instanceof DeerAgent) {
       const d = sampleDeer(a, alpha), clip = d.state === 'lower' ? 'raise' : d.state, count = DEER_CLIPS[clip];
       let phase = ['walk', 'run', 'turn'].includes(d.state) ? d.gait % 1 : ((time + a.phase) / 1.2) % 1;
@@ -363,12 +365,12 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
       }
       const name=`${a.kind}${(a.kind==='hippo'||a.kind==='bison')&&a.coat===1?'-form1':''}-${clip}-${ecoDirection(a.kind,d.heading)}`,count=atlas.animalClips?.[name]?.frames??atlas.sprites[name]?.frames.length;
       if(!count)throw new Error(`Unknown ecology sprite ${name}`);
-      const oneShot=d.state==='drink'||d.state==='spray'||d.state==='hop'||d.state==='rise'||d.state==='lower';
+      const oneShot=BEAR_ONE_SHOTS.includes(d.state)||d.state==='drink'||d.state==='spray'||d.state==='hop'||d.state==='rise'||d.state==='lower';
       const pose=oneShot?Math.min(count-1,Math.floor(d.gait*(count-1))):Math.min(count-1,Math.floor((d.state==='swing'?d.gait:d.gait%1)*count));
       const water=spec.mode==='water',visibility=a.kind==='whale'?clamp((d.altitude+12)/12,0,1):1;
       const heading=a.kind==='crab'?d.heading+Math.PI/2:d.heading;
       if(!water)sprite(`${a.id}-shadow`,'shadow',d.x,d.y,(spec.mode==='air'?.18:.4)*a.size,0,1,.16);
-      sprite(a.id,name,d.x,d.y,a.size*spec.displayScale,pose,water?.8:2,a.kind==='fish'?.65:submerged?.78:visibility,[255,250,243][a.coat],d.altitude);
+      sprite(a.id,name,d.x,d.y,a.size*spec.displayScale,pose,water?.8:2,a.kind==='fish'?.65:submerged?.78:visibility,a.kind==='blackBear'?BEAR_COATS[a.coat]:[255,250,243][a.coat],d.altitude);
       if(a instanceof ElephantAgent&&d.state==='spray'&&a.loaded){
         const tip=elephantTrunk('spray',pose/(count-1))[3]!,heading=ecoDirection('elephant',d.heading)/spec.directions*Math.PI*2;
         const factor=ELEPHANT_MODEL_TO_TILE*a.size,nx=d.x+(tip[0]*Math.cos(heading)-tip[1]*Math.sin(heading))*factor,ny=d.y+(tip[0]*Math.sin(heading)+tip[1]*Math.cos(heading))*factor;
@@ -396,7 +398,7 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
       const name=`${a.kind}-${clip}-${directionIndex(d.heading)}`,count=atlas.animalClips?.[name]?.frames??atlas.sprites[name]?.frames.length;
       if(!count)throw new Error(`Unknown wildlife sprite ${name}`);
       sprite(`${a.id}-shadow`,'shadow',d.x,d.y,(a.kind==='toucan'?.2:.4)*a.size,0,1,.22);
-      sprite(a.id,name,d.x,d.y,a.size,Math.floor(phase*count),2,1,[255,248,240][a.coat],d.altitude);
+      sprite(a.id,name,d.x,d.y,a.size,Math.floor(phase*count),2,1,a.kind==='blackBear'?BEAR_COATS[a.coat]:[255,248,240][a.coat],d.altitude);
     } else if (a instanceof MoteAgent) {
       const t = lerp(a.previousPhase, a.phase, alpha);
       rect(a.id, point.x + Math.sin(t * .7) * 20 * scale, point.y - (20 + Math.cos(t * .4) * 13) * scale, scale, scale, '#eff4aa', (world.weather === 'dusk' ? .9 : .4) * (.6 + .4 * Math.sin(t) ** 2), 3);
