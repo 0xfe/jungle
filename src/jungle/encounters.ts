@@ -20,6 +20,12 @@ export function nearestThreat(kind:string,x:number,y:number,neighbors:readonly N
  * The narrow overlap permits occasional encounters without visit-order state. */
 export function predatorRange(x:number,y:number,seed:number):number {return noise(x/14,y/14,seed+18371);}
 export function populationRange(kind:string,x:number,y:number,seed:number):boolean {
+ // Broad, continuous territories keep mixed megafauna gatherings unusual. The
+ // narrow overlap bands permit encounters without depending on chunk visit order.
+ const grazing=noise(x/24,y/24,seed+28193);
+ if(kind==='hippo')return grazing<.39;
+ if(kind==='elephant')return grazing>.37&&grazing<.64;
+ if(kind==='bison')return grazing>.62;
  const range=predatorRange(x,y,seed);
  if(['tiger','jaguar','wolf','blackBear'].includes(kind))return range>.56;
  if(['deer','zebra'].includes(kind))return range<.60;

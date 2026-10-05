@@ -361,7 +361,7 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
           commands.push({...quadBounds(corners),corners,id:`${a.id}-support`,color:[92,116,48,255],layer:2,depth:d.x+d.y});
         }
       }
-      const name=`${a.kind}-${clip}-${ecoDirection(a.kind,d.heading)}`,count=atlas.animalClips?.[name]?.frames??atlas.sprites[name]?.frames.length;
+      const name=`${a.kind}${(a.kind==='hippo'||a.kind==='bison')&&a.coat===1?'-form1':''}-${clip}-${ecoDirection(a.kind,d.heading)}`,count=atlas.animalClips?.[name]?.frames??atlas.sprites[name]?.frames.length;
       if(!count)throw new Error(`Unknown ecology sprite ${name}`);
       const oneShot=d.state==='drink'||d.state==='spray'||d.state==='hop'||d.state==='rise'||d.state==='lower';
       const pose=oneShot?Math.min(count-1,Math.floor(d.gait*(count-1))):Math.min(count-1,Math.floor((d.state==='swing'?d.gait:d.gait%1)*count));

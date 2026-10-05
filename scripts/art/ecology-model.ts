@@ -9,10 +9,10 @@ import { bone, ellipsoid, rotateZ, type Mesh, type RGB, type V3 } from '../../sr
 import { MONKEY_GRIP_Z, type EcoKind } from '../../src/jungle/ecology';
 const TAU=Math.PI*2,black:RGB=[35,39,37],cream:RGB=[241,225,181];
 /** Small authored rigs: mesh coordinates face +X, same projection/root convention as deer. */
-export function ecologyMesh(kind:EcoKind,clip:string,p:number):Mesh {
+export function ecologyMesh(kind:EcoKind,clip:string,p:number,form=0):Mesh {
  if(kind==='tiger')return tigerMesh(clip,p);
- if(kind==='hippo')return hippoMesh(clip,p);
- if(kind==='bison')return bisonMesh(clip,p);
+ if(kind==='hippo')return hippoMesh(clip,p,form);
+ if(kind==='bison')return bisonMesh(clip,p,form);
  if(kind==='hawk'||kind==='vulture')return raptorMesh(kind,clip,p);
  if(kind==='zebra')return zebraMesh(clip,p);
  if(kind==='blackBear')return blackBearMesh(clip,p);

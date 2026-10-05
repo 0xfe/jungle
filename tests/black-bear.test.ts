@@ -59,10 +59,10 @@ test('bear generation is mostly solitary, with occasional single-parent families
  assert.ok(singles>families&&families>2&&cubs>=families);
 });
 
-test('bears raise, stand and pick at registered roots with planted feet and exact continuation',()=>{
+test('upright bears stand and pick at registered roots with planted feet and exact continuation',()=>{
  const env={...forest,canMove:()=>true,perches:()=>[{x:1.17,y:1,height:100,root:{x:1,y:1}}]};
  const a=new BlackBearAgent('picker',.71,1,27);a.heading=0;a.forageTarget=true;a.treeTarget=true;a.supportX=1;a.supportY=1;a.timer=0;
- a.update(1/60,env);assert.equal(a.state,'rise');
+ a.update(1/60,env);assert.equal(a.state,'stand');
  const seen=new Set<string>();
  for(let i=0;i<1000;i++){
   seen.add(a.state);
@@ -72,6 +72,24 @@ test('bears raise, stand and pick at registered roots with planted feet and exac
    assert.deepEqual(jungleAgents.encode([a]),jungleAgents.encode([b]));assert.equal(a.x,x);assert.equal(a.y,y);assert.equal(a.speed,0);
   }else a.update(1/60,env);
  }
- for(const state of ['rise','stand','pick','lower','rest'])assert.ok(seen.has(state),state);
- a.state='pick';a.gait=.4;a.update(1/60,{...env,perches:()=>[]});assert.equal(a.state,'lower');
+ for(const state of ['stand','pick','rest'])assert.ok(seen.has(state),state);
+ a.state='pick';a.gait=.4;a.update(1/60,{...env,perches:()=>[]});assert.equal(a.state,'rest');
+});
+
+
+test('larger bears mostly walk upright, with smooth occasional ground bouts that resume exactly',()=>{
+ const a=new BlackBearAgent('walker',0,0,91),env={...forest,canMove:()=>true,perches:()=>[]};
+ a.timer=0;let upright=0,ground=0;const seen=new Set<string>();
+ for(let i=0;i<600*60;i++){
+  a.update(1/60,env);seen.add(a.sample().state);
+  if(a.speed>.01){if(a.grounded)ground++;else upright++;}
+  if(i%601===0){
+   const copy=jungleAgents.decode(jungleAgents.encode([a]))[0]!;
+   for(let j=0;j<90;j++){a.update(1/60,env);copy.update(1/60,env);}
+   assert.deepEqual(jungleAgents.encode([a]),jungleAgents.encode([copy]));
+  }
+ }
+ assert.ok(ECO_SPECS.blackBear.displayScale>2);
+ assert.ok(upright>ground*3,`${upright} upright / ${ground} ground steps`);
+ for(const state of ['travel','lower','forage','rise','crawl'])assert.ok(seen.has(state),state);
 });

@@ -53,10 +53,14 @@ function waterline(mesh:Mesh,z:number):Mesh {
  return out;
 }
 /** Barrel-shaped hippo with high eyes/ears, broad muzzle, folds and small toes. */
-export function hippoMesh(clip:string,p:number):Mesh {
+export function hippoMesh(clip:string,p:number,form=0):Mesh {
  const m:Mesh=[],wave=Math.sin(p*TAU),wet=clip==='wallow'||clip==='wade',moving=clip==='travel'||clip==='wade',graze=clip==='graze';
- const skin:RGB=[132,123,128],pink:RGB=[172,135,140],bob=moving?Math.cos(p*TAU*2)*.01:wave*.009;
- ellipsoid(m,[-.1,0,.63+bob],[.79,.40,.41],skin,undefined,n=>n[2]<-.3?pink:skin,28,16);
+ const skin:RGB=form?[149,133,125]:[113,124,133],pink:RGB=form?[181,143,137]:[158,133,150],bob=moving?Math.cos(p*TAU*2)*.01:wave*.009;
+ ellipsoid(m,[-.1,0,.63+bob],[.79,.40,.41],skin,undefined,n=>{
+  if(n[2]<-.3)return pink;
+  const pore=Math.sin(n[0]*79+n[1]*31)*Math.cos(n[2]*67-n[1]*19);
+  return skin.map(c=>c+(pore>.7?10:pore<-.75?-9:0)) as unknown as RGB;
+ },40,24);
  legs(m,p,moving,false,.45,.29,.55,.346,skin,.13);
  const h:V3=[.69,0,(graze?.32:.63)+bob];
  ellipsoid(m,h,[.43,.30,.28],skin);ellipsoid(m,[1.01,0,h[2]-.04],[.30,.32,.19],pink);
@@ -66,33 +70,72 @@ export function hippoMesh(clip:string,p:number):Mesh {
   ellipsoid(m,[.65,side*.278,h[2]+.277],[.024,.022,.021],ink);
   ellipsoid(m,[.40,side*.29,h[2]+.31],[.07,.057,.085],skin);
   ellipsoid(m,[.42,side*.307,h[2]+.32],[.037,.029,.046],pink);
-  ellipsoid(m,[1.15,side*.17,h[2]+.117],[.047,.035,.03],[79,68,73]);
+  // Raised nostril rims, dark openings, cheek folds and a glint in each eye.
+  ellipsoid(m,[1.15,side*.17,h[2]+.13],[.065,.047,.041],skin);
+  ellipsoid(m,[1.17,side*.17,h[2]+.154],[.030,.024,.017],[58,57,61]);
+  ellipsoid(m,[.66,side*.291,h[2]+.284],[.009,.007,.008],[233,221,199]);
+  for(let j=0;j<3;j++){
+   const x=.30+j*.045;
+   bone(m,[x,side*(.29+j*.009),h[2]+.14],[x-.025,side*(.32+j*.008),h[2]-.12],.009,[94,95,108]);
+  }
+  for(let j=0;j<4;j++)ellipsoid(m,[1.1-j*.045,side*(.275+j*.004),h[2]-.045],[.012,.012,.01],skin);
   for(let j=0;j<3;j++)bone(m,[-.12+j*.09,side*.389,.61],[-.14+j*.09,side*.36,.49],.008,[104,92,99]);
  }
  bone(m,[-.8,0,.67],[-1.04,wave*.09,.57],.033,skin);
- return wet?waterline(m,.57+Math.sin(p*TAU)*.016):m;
+ // A round slate form and a slimmer warm form share exactly calibrated strides.
+ if(form)reshape(m,.90,.94);
+ return wet?waterline(m,(form?.53:.57)+Math.sin(p*TAU)*.016):m;
 }
 /** Humped bison: shaggy shoulders/beard, short curved horns and narrow hindquarters. */
-export function bisonMesh(clip:string,p:number):Mesh {
+export function bisonMesh(clip:string,p:number,form=0):Mesh {
  const m:Mesh=[],wave=Math.sin(p*TAU),run=clip==='run',moving=clip==='travel'||run,graze=clip==='graze';
- const fur:RGB=[103,66,38],dark:RGB=[62,43,30],bob=run?Math.cos(p*TAU*2)*.045:moving?wave*.012:wave*.008;
- ellipsoid(m,[-.18,0,.78+bob],[.66,.29,.33],fur);
- ellipsoid(m,[.28,0,.94+bob],[.48,.35,.49],dark);
- legs(m,p,moving,run,.43,.23,.7+bob,run?.50:.458,fur,.083,true);
- // Coarse locks are rooted in the shoulder, not per-instance runtime objects.
- for(let i=0;i<18;i++){
-  const a=i*2.4,z=.62+(i%4)*.16,x=.15+Math.cos(a)*.32,y=Math.sin(a)*.29;
-  bone(m,[x,y,z+bob],[x-.04,y*1.06,z-.12+bob],.046,i%3?dark:fur);
+ const fur:RGB=form?[110,78,53]:[74,57,45],dark:RGB=form?[65,44,32]:[40,33,29],mane:RGB=form?[137,93,53]:[111,77,51];
+ const bob=run?Math.cos(p*TAU*2)*.045:moving?wave*.012:wave*.008;
+ // Smoother, tapered hindquarters contrast with the high woolly shoulder mass.
+ ellipsoid(m,[-.24,0,.77+bob],[.64,.28,.34],fur,undefined,n=>n[2]>.35?fur.map(c=>c+9) as unknown as RGB:fur,28,16);
+ const wool=(n:V3):RGB=>{
+  const curl=Math.sin(n[0]*47+n[2]*13)*Math.cos(n[1]*39-n[2]*29);
+  return mane.map(c=>Math.max(0,c+(curl>.35?17:curl<-.25?-24:0))) as unknown as RGB;
+ };
+ ellipsoid(m,[.23,0,.98+bob],[.51,.37,form?.44:.52],mane,undefined,wool,44,28);
+ ellipsoid(m,[.48,0,.64+bob],[.32,.34,.39],dark,undefined,n=>n[2]>.3?mane:dark,28,18);
+ legs(m,p,moving,run,.43,.23,.7+bob,run?.50:.458,dark,.091,true);
+ // Layered locks hang off the shoulders and dewlap, following the body's pose.
+ for(let i=0;i<54;i++){
+  const a=i*2.399963,z=.58+(i%6)*.125,x=.23+Math.cos(a)*(.38-(z-.7)*.1),y=Math.sin(a)*.32;
+  bone(m,[x,y,z+bob],[x-.055,y*1.1,z-.15-(i%3)*.015+bob],.035,i%4===0?mane:dark);
  }
- const h:V3=[.78,0,(graze?.37:.75)+bob];
- ellipsoid(m,h,[.30,.27,.29],dark);ellipsoid(m,[h[0]+.23,0,h[2]-.12],[.19,.20,.13],[75,55,39]);
- bone(m,[.77,0,h[2]-.17],[.68,0,h[2]-.37],.12,dark);
+ const h:V3=[.80,0,(graze?.38:.68)+bob];
+ ellipsoid(m,h,[.31,.275,.31],dark);
+ // A broad curly forehead, long face, wet nose and drooping chin beard.
+ ellipsoid(m,[.85,0,h[2]+.16],[.25,.28,.20],mane,undefined,n=>{
+  const tuft=Math.sin(n[0]*39+n[2]*12)*Math.cos(n[1]*43);
+  return dark.map(c=>c+(tuft>.1?16:0)) as unknown as RGB;
+ },36,22);
+ ellipsoid(m,[h[0]+.20,0,h[2]-.13],[.19,.19,.19],fur);
+ ellipsoid(m,[1.145,0,h[2]-.17],[.066,.15,.069],[37,34,30]);
+ for(let j=0;j<7;j++)bone(m,[.86+(j%2)*.025,(j-3)*.029,h[2]-.21],[.76,(j-3)*.038,h[2]-.40-(j%3)*.022],.026,dark);
  for(const side of [-1,1]){
-  ellipsoid(m,[.91,side*.21,h[2]+.05],[.027,.022,.028],ink);
-  ellipsoid(m,[.58,side*.31,h[2]+.08],[.11,.09,.045],fur);
-  bone(m,[.66,side*.22,h[2]+.19],[.67,side*.40,h[2]+.29],.046,ivory);
-  bone(m,[.67,side*.40,h[2]+.29],[.74,side*.39,h[2]+.43],.025,ivory);
+  ellipsoid(m,[.976,side*.205,h[2]+.016],[.052,.029,.039],fur);
+  ellipsoid(m,[.99,side*.226,h[2]+.019],[.024,.016,.020],ink);
+  ellipsoid(m,[1.001,side*.235,h[2]+.027],[.008,.005,.007],[205,177,117]);
+  ellipsoid(m,[1.183,side*.08,h[2]-.153],[.019,.034,.016],ink);
+  ellipsoid(m,[.59,side*.34,h[2]+.11],[.105,.09,.045],fur);
+  // Horns sweep sideways then upward, tapering to dark tips.
+  const points:V3[]=[[.71,side*.23,h[2]+.20],[.71,side*.36,h[2]+.25],[.75,side*.41,h[2]+.34],[.81,side*.40,h[2]+.47]];
+  for(let j=1;j<points.length;j++)bone(m,points[j-1]!,points[j]!,[.052,.037,.019][j-1]!,j===3?[100,101,91]:ivory);
  }
  bone(m,[-.77,0,.86],[-.94,wave*.06,.39],.025,fur);ellipsoid(m,[-.94,wave*.06,.34],[.06,.047,.095],dark);
+ if(form)reshape(m,.92,.94);
  return m;
+}
+/** Alter body build without changing fore/aft foot excursion or the ground root. */
+function reshape(mesh:Mesh,width:number,height:number):void {
+ const seen=new Set<Mesh[number]['vertices'][number]>();
+ for(const triangle of mesh)for(const vertex of triangle.vertices){
+  if(seen.has(vertex))continue;seen.add(vertex);
+  const [x,y,z]=vertex.position;vertex.position=[x,y*width,z*height];
+  const [nx,ny,nz]=vertex.normal,length=Math.hypot(nx,ny/width,nz/height);
+  vertex.normal=[nx/length,ny/width/length,nz/height/length];
+ }
 }

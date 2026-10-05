@@ -10,6 +10,7 @@ import { ecologyMesh } from '../scripts/art/ecology-model';
 import { bakeMesh } from '../src/iso/bake/rasterize';
 import { spritePieces } from '../scripts/art/sprite-pieces';
 import { trimClip } from '../src/iso/bake/atlas';
+import { populationRange } from '../src/jungle/encounters';
 import { CONFIG } from '../src/config';
 import { decodePcmWav,Soundscape,SOUND_KINDS,synthesize } from '../src/audio';
 
@@ -58,16 +59,16 @@ test('rare solitary tigers, bank hippos and spaced bison herds are seeded and co
   const w=new InfiniteWorld(2718),p=w.wildlifeLandmark(kind);w.ensure({minX:p.x-3,minY:p.y-3,maxX:p.x+3,maxY:p.y+3});
   const animals=w.agents.filter(a=>a.kind===kind) as (TigerAgent|HippoAgent|BisonAgent)[];assert.ok(animals.length,kind);
   if(kind==='tiger')assert.ok(animals.every(a=>!a.groupId));
-  if(kind==='bison')assert.ok(animals.some(a=>animals.filter(b=>b.groupId===a.groupId).length>=4));
+  if(kind==='bison'){assert.ok(animals.some(a=>animals.filter(b=>b.groupId===a.groupId).length>=4));assert.ok(new Set(animals.map(a=>a.coat)).size===2);assert.ok(Math.max(...animals.map(a=>a.size))-Math.min(...animals.map(a=>a.size))>.15);}
   const settings=normalizeSettings({[`chance_${kind}`]:0});
   for(let i=-30;i<30;i++)assert.equal(faunaPlan(i,-i,2718,5,1,settings)[kind],false);
  }
 });
 test('all new rigs fit every heading and action; shared pieces reconstruct every pixel',()=>{
- for(const kind of ['tiger','hippo','bison'] as const){
+ for(const kind of ['tiger','hippo','bison','blackBear'] as const)for(const form of (kind==='hippo'||kind==='bison'?[0,1]:[0])){
   const spec=ECO_SPECS[kind],camera={width:112,height:112,anchor:[56,87] as [number,number],scale:spec.cameraScale};
   for(const [clip,count] of Object.entries(ecoClips(kind)))for(let d=0;d<spec.directions;d++){
-   const source=trimClip({id:`${kind}-${clip}-${d}`,anchor:camera.anchor,frames:Array.from({length:count},(_,i)=>bakeMesh(ecologyMesh(kind,clip,i/count),d/spec.directions*Math.PI*2,camera))});
+   const source=trimClip({id:`${kind}-${clip}-${d}`,anchor:camera.anchor,frames:Array.from({length:count},(_,i)=>bakeMesh(ecologyMesh(kind,clip,i/count,form),d/spec.directions*Math.PI*2,camera))});
    assert.ok(source.frames[0]!.width<100&&source.frames[0]!.height<100,source.id);
    const pieces=spritePieces(source,3);
    for(const [i,f] of source.frames.entries()){
@@ -90,4 +91,27 @@ test('recorded tiger roar is bounded, muted with wildlife, and fits the shared P
  for(let i=0;i<100;i++)assert.equal(planner.update(scene,.1).events.length,0);
  planner.reset();assert.equal(planner.update(scene,.1,{master:.6,ambience:.05,wildlife:0}).events.length,0);
  assert.equal(planner.update(scene,.1,undefined,false).events.length,0);
+});
+
+
+test('large herbivore ranges are sparse, mostly separate, and deterministic across signed boundaries',()=>{
+ const kinds=['bison','elephant','hippo'] as const,counts=[0,0,0];let shared=0,occupied=0;
+ for(let x=-120;x<120;x++)for(let y=-120;y<120;y++){
+  const regions=kinds.map(k=>populationRange(k,x*4+2,y*4+2,2718));
+  const n=regions.filter(Boolean).length;occupied+=Number(n>0);shared+=Number(n>1);
+  const plan=faunaPlan(x,y,2718);
+  for(let i=0;i<kinds.length;i++)if(regions[i]&&plan[kinds[i]!])counts[i]!++;
+ }
+ assert.ok(shared>0&&shared<occupied*.15,`${shared} overlapping / ${occupied} occupied regions`);
+ assert.ok(counts.every(n=>n>50&&n<4000),counts.join(','));
+ assert.ok(CONFIG.world.population.bison<.025&&CONFIG.world.population.hippo<.045&&CONFIG.world.population.elephant<.085);
+ for(const x of [-24,-4,0,4,24])for(const k of kinds)assert.equal(populationRange(k,x-1e-8,-4,2718),populationRange(k,x+1e-8,-4,2718));
+});
+
+test('hippo travel chooses space away from nearby elephants without getting trapped',()=>{
+ const a=new HippoAgent('h',0,.2,17);a.timer=0;a.cooldown=100;a.heading=Math.PI;
+ const env={...bank,nearby:()=>[{id:'e',kind:'elephant',x:.5,y:.2,speed:0}]};
+ for(let i=0;i<30;i++)a.update(1/60,env);
+ assert.equal(a.state,'travel');
+ assert.ok(Math.hypot(a.target.x-.5,a.target.y-.2)>.65);
 });

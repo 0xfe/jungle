@@ -179,7 +179,7 @@ export const CONFIG = {
       /** Black bear candidate probability; most solitary, some mothers with 1–2 cubs. */
       blackBear: .05,
       /** Rare solitary cats; bank hippos and small dry-grass bison herds. */
-      tiger: .007, hippo: .045, bison: .025,
+      tiger: .007, hippo: .030, bison: .017,
       /** Small zebra herds favor dry, open woodland. */
       zebra: .045,
       /** Rare solitary large birds; probabilities per candidate owner chunk. */
@@ -211,7 +211,7 @@ export const CONFIG = {
       /** Giraffe group candidate probability per chunk. */
       giraffe: .035,
       /** Elephant family candidate probability; habitat checks still apply. */
-      elephant: .085,
+      elephant: .055,
       /** Fraction of inland elephant candidates retained (others favor water). */
       inlandElephantRetention: .12,
       /** Shorebird group candidate probability per chunk. */

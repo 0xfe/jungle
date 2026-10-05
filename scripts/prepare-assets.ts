@@ -46,7 +46,7 @@ try {
       cache.atlas === sha(await readFile('public/assets/jungle.png')) &&
       cache.manifest === sha(await readFile('public/assets/jungle.json')) &&
       cache.model === sha(await readFile('assets/models/deer.obj')) &&
-      (await Promise.all(['toucan','orangutan','jaguar',...ECO_KINDS,...visitorModels].map(async kind => cache.models?.[kind] === sha(await readFile(`assets/models/${kind}.obj`))))).every(Boolean)) {
+      (await Promise.all(['toucan','orangutan','jaguar',...ECO_KINDS,'hippo-form1','bison-form1',...visitorModels].map(async kind => cache.models?.[kind] === sha(await readFile(`assets/models/${kind}.obj`))))).every(Boolean)) {
     console.log('Assets unchanged; verified atlas/model hashes, skipping bake.'); process.exit(0);
   }
 } catch { /* First build, changed dependencies or missing generated outputs: rebuild. */ }
@@ -129,13 +129,14 @@ for(const kind of ['toucan','orangutan','jaguar'] as WildlifeKind[]){
   for(let direction=0;direction<16;direction++)inputs.push({id:`${kind}-${clip}-${direction}`,anchor:camera.anchor,frames:poses.map(mesh=>bakeMesh(mesh,direction/16*TAU,camera))});
  }
 }
-for(const kind of ECO_KINDS){
+for(const kind of ECO_KINDS)for(const form of (kind==='hippo'||kind==='bison'?[0,1]:[0])){
+ const prefix=`${kind}${form?'-form1':''}`;
  const spec=ECO_SPECS[kind],camera={width:112,height:112,anchor:[56,87] as [number,number],scale:kind==='elephant'?17.5:spec.cameraScale};
  for(const [clip,count] of Object.entries(ecoClips(kind))){
-  const poses=Array.from({length:count},(_,i)=>ecologyMesh(kind,clip,i/(clip==='drink'||clip==='spray'||clip==='wrap'||clip==='hop'||clip==='rise'||clip==='lower'?count-1:count)));
+  const poses=Array.from({length:count},(_,i)=>ecologyMesh(kind,clip,i/(clip==='drink'||clip==='spray'||clip==='wrap'||clip==='hop'||clip==='rise'||clip==='lower'?count-1:count),form));
   for(let d=0;d<spec.directions;d++){
    const heading=d/spec.directions*TAU;
-   if(kind!=='boa'||(clip!=='wrap'&&clip!=='coil'))inputs.push({id:`${kind}-${clip}-${d}`,anchor:camera.anchor,frames:poses.map(mesh=>bakeMesh(mesh,heading,camera))});
+   if(kind!=='boa'||(clip!=='wrap'&&clip!=='coil'))inputs.push({id:`${prefix}-${clip}-${d}`,anchor:camera.anchor,frames:poses.map(mesh=>bakeMesh(mesh,heading,camera))});
    if(kind==='boa'&&(clip==='wrap'||clip==='coil'))for(const front of [false,true])
     inputs.push({id:`${kind}-${clip}-${d}-${front?'front':'back'}`,anchor:camera.anchor,frames:poses.map(mesh=>bakeMesh(snakeSide(mesh,heading,front),heading,camera))});
   }
@@ -264,8 +265,8 @@ for(const s of inputs)if(/^(tree|plant)-/.test(s.id)){
 }
 // Share exact small pixel blocks across the new large-animal poses, preserving every pixel.
 const animalClips:Record<string,{parts:string[];frames:number}>={};
-for(let i=inputs.length-1;i>=0;i--)if(/^(tiger|hippo|bison)-|^(elephant|giraffe)-rest-/.test(inputs[i]!.id)){
- const source=inputs[i]!,parts=spritePieces(trimClip(source),source.id.startsWith('giraffe-')?4:3);
+for(let i=inputs.length-1;i>=0;i--)if(/^(tiger|hippo|bison|blackBear)-|^(elephant|giraffe)-rest-/.test(inputs[i]!.id)){
+ const source=inputs[i]!,parts=spritePieces(trimClip(source),/^(giraffe|blackBear)-/.test(source.id)?4:3);
  animalClips[source.id]={parts:parts.map(p=>p.id),frames:source.frames.length};
  inputs.splice(i,1,...parts);
 }
@@ -295,12 +296,13 @@ for(const kind of SPACE_KINDS){
 for(const kind of ['toucan','orangutan','jaguar'] as WildlifeKind[])await writeFile(`assets/models/${kind}.obj`,meshToObj(wildlifeMesh(kind,'rest',0)).replaceAll('deer',kind));
 for(const kind of ECO_KINDS)await writeFile(`assets/models/${kind}.obj`,meshToObj(ecologyMesh(kind,'rest',0)).replaceAll('deer',kind));
 const model = meshToObj(deerMesh('look', 0));
+for(const kind of ['hippo','bison'] as const)await writeFile(`assets/models/${kind}-form1.obj`,meshToObj(ecologyMesh(kind,'rest',0,1)).replaceAll('deer',`${kind}-form1`));
 await writeFile('assets/models/deer.obj', model);
 await sharp(image.data, { raw: { width: image.width, height: image.height, channels: 4 } }).png().toFile('public/assets/jungle.png');
 const json = JSON.stringify(manifest, null, 2) + '\n';
 await writeFile('public/assets/jungle.json', json);
 const png = await readFile('public/assets/jungle.png');
-const models:Record<string,string>={};for(const kind of ['toucan','orangutan','jaguar',...ECO_KINDS,...visitorModels])models[kind]=sha(await readFile(`assets/models/${kind}.obj`));
+const models:Record<string,string>={};for(const kind of ['toucan','orangutan','jaguar',...ECO_KINDS,'hippo-form1','bison-form1',...visitorModels])models[kind]=sha(await readFile(`assets/models/${kind}.obj`));
 await writeFile('assets/derived.json', JSON.stringify({ pipeline: 6, fingerprint, sources, atlas: sha(png), manifest: sha(json), model: sha(model), models,
   stats: { ...manifest.stats, pngBytes: png.length, width: image.width, height: image.height } }, null, 2) + '\n');
 console.log(`Baked ${manifest.stats.frames} frames (${manifest.stats.uniqueFrames} unique) → ${image.width} × ${image.height}; ${(image.data.length / 1048576).toFixed(2)} MiB RGBA, ${(png.length / 1024).toFixed(0)} KiB PNG; ${((performance.now() - started) / 1000).toFixed(2)}s.`);

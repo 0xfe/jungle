@@ -53,10 +53,13 @@ export class HippoAgent extends EcologicalAgent {
   const here=env.sample(this.x,this.y),water=here.water;
   // Independent residence timers, followed by a bounded search across the bank.
   if(!this.cooldown){this.state=water?'wallow':'graze';this.timer=water?18+this.random.next()*28:8+this.random.next()*12;this.cooldown=this.timer+8;this.gait=0;return;}
+  const elephants=env.nearby(this.x,this.y,3).filter(a=>a.kind==='elephant');
   const seekWater=this.random.next()<(here.light<.4?.35:.8);
   for(let i=0;i<48;i++){
    const a=this.random.next()*Math.PI*2,d=.25+this.random.next()*1.8,x=this.x+Math.cos(a)*d,y=this.y+Math.sin(a)*d;
    if(env.sample(x,y).water!==seekWater||!this.routeClear(x,y,env))continue;
+   // Keep room around elephants, but allow an already close hippo to walk out.
+   if(elephants.some(e=>Math.hypot(x-e.x,y-e.y)<Math.min(1.8,Math.hypot(this.x-e.x,this.y-e.y)+.15)))continue;
    this.target={x,y};this.state='travel';this.timer=25;this.tripPace=.8+this.random.next()*.25;return;
   }
   this.timer=4;

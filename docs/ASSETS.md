@@ -168,3 +168,5 @@ Detailed ship rigs now bake flight rotation, banking and beacon states into regi
 See [zen sanctuaries and the hidden artifact editor](ZEN.md) for original tree provenance, baked directional inhabitants, localized music, H/five-tap controls, bounded ownership and validation. Current world/agent schemas are **25/20**.
 
 Tigers (75), hippos (76), bison (77), registered monk stair transitions and the retained CC0 tiger recording are documented in [megafauna](MEGAFAUNA.md). Current world/agent schemas are **26/21**.
+
+Detailed bison and hippo variants are original articulated geometry in `scripts/art/megafauna-model.ts`; both static forms are exported under `assets/models/`, fingerprinted and baked offline. Larger black bears use shared upright/resting/walking and ground transition clips. Exact registered pixel pieces keep all these directional frames inside the common atlas; form selection never allocates per-animal textures. Reference provenance and current validation are in [megafauna](MEGAFAUNA.md).
