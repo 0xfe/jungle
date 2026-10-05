@@ -2,6 +2,8 @@
 
 Reviewed against [the animal quality standard](ANIMAL-QUALITY.md). This is a source/rig/action-sheet review of the active catalog, with focused simulation and browser validation for the bear changes. It is **not** a claim that every species was watched through every behavior in a browser, or that all proposed improvements are implemented. Source pointers below are the basis for behavior findings; `npm run assets:preview` regenerates the inspectable directional/action sheets.
 
+The follow-up implementation is tracked in [ANIMAL-IMPLEMENTATION.md](ANIMAL-IMPLEMENTATION.md). The findings below are the original baseline, retained to make the changes reviewable.
+
 ## Changes completed in this pass
 
 Black bears again travel on **four legs**. Occasional upright sniffing or tree picking has explicit rise/hold/lower phases and 60–120-second recovery, rather than bipedal travel. Hind feet stay at the same coordinates while raising/lowering the torso; relaxed forepaws replace the forward-reaching walking pose. Feeding lowers and raises the head over registered transition clips. Quiet lying/resting returns; cubs can briefly paw/play near their mother and run to catch up. Adults occasionally take a short run. Mothers wait for lagging cubs, searches remain bounded, and dry-ground/obstacle checks still apply.

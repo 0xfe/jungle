@@ -23,8 +23,10 @@ abstract class RaptorAgent extends EcologicalAgent {
   this.altitude=ease(this.altitude,height,.7,dt);
  }
  protected circle(dt:number,env:AgentEnvironment,height:number):void {
-  this.orbit+=dt*.58/this.radius;
-  this.fly(dt,env,this.homeX+Math.cos(this.orbit+.35)*this.radius,this.homeY+Math.sin(this.orbit+.35)*this.radius,height,.65*this.pace);
+  this.orbit+=dt*(.48+.1*Math.sin(this.breathClock*.09))/this.radius;
+  const radius=this.radius*(.82+.13*Math.sin(this.orbit*1.7+this.pace)),a=this.orbit+.35;
+  const x=clamp(this.homeX+Math.cos(a)*radius,this.territory[0]+.2,this.territory[2]-.2),y=clamp(this.homeY+Math.sin(a)*radius*.86,this.territory[1]+.2,this.territory[3]-.2);
+  this.fly(dt,env,x,y,height,.65*this.pace*(.9+.1*Math.sin(a*.7)));
  }
  protected tick(dt:number):void {
   Object.assign(this.previous,this.sample());this.previousBreath=this.breathClock;this.breathClock+=dt;
@@ -50,7 +52,7 @@ export class HawkAgent extends RaptorAgent {
    this.heading+=clamp(angleDelta(this.heading,desired),-dt*2,dt*2);
    this.motor.speed=Math.hypot(x-this.x,y-this.y)/dt;this.x=x;this.y=y;
    this.altitude=this.routeHeight+(105-this.routeHeight)*s-89*Math.sin(Math.PI*t)**2;
-   this.gait=this.flight.advance(this.gait,dt,t>.5?12:-12,this.pace,this.random,BIRD_FLIGHT.hawk!);
+   this.gait=t;
    if(t===1){this.state='travel';this.cooldown=55+this.random.next()*55;this.action=0;}
    return;
   }
@@ -80,17 +82,23 @@ export class VultureAgent extends RaptorAgent {
    this.motor.stop();this.gait+=dt*.45*this.pace;
    const desired=Math.atan2(this.homeY-this.y,this.homeX+.16-this.x);
    this.heading+=clamp(angleDelta(this.heading,desired),-dt,dt);
-   if(this.timer<=0){this.state='travel';this.timer=18+this.random.next()*14;this.orbit=this.heading;}
+   if(this.timer<=0){this.state='takeoff';this.action=0;this.gait=0;this.orbit=this.heading;}
    return;
   }
-  if(this.state==='land'){
+  if(this.state==='takeoff'||this.state==='land'){
+   const takeoff=this.state==='takeoff';this.action=Math.min(1,this.action+dt/.7);this.gait=this.action;this.motor.stop();
+   this.altitude=takeoff?this.action*this.action*(3-2*this.action)*3:0;
+   if(this.action===1){this.state=takeoff?'travel':'forage';this.timer=takeoff?18+this.random.next()*14:50+this.random.next()*65;this.gait=0;this.action=0;}
+   return;
+  }
+  if(this.state==='approach'){
    const d=Math.hypot(this.homeX-this.x,this.homeY-this.y);
    this.fly(dt,env,this.homeX,this.homeY,Math.min(72,d*45),.5);
-   if(d<.025&&this.altitude<.5){this.x=this.homeX;this.y=this.homeY;this.altitude=0;this.state='forage';this.timer=50+this.random.next()*65;this.gait=0;this.motor.stop();}
+   if(d<.025&&this.altitude<.5){this.x=this.homeX;this.y=this.homeY;this.altitude=0;this.state='land';this.action=0;this.gait=0;this.motor.stop();}
    return;
   }
   this.circle(dt,env,72);
-  if(this.timer<=0){this.state='land';}
+  if(this.timer<=0){this.state='approach';}
  }
  static read(r:BinaryReader):VultureAgent {return RaptorAgent.restoreRaptor(r,(...a)=>new VultureAgent(...a));}
 }

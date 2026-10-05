@@ -36,7 +36,7 @@ test('deer graze, look, walk, cross tiles, and remain on land for a simulated fi
       }
     }
   }
-  assert.deepEqual([...states].sort(), ['graze', 'look', 'lower', 'raise', 'run', 'turn', 'walk']); assert.ok(crossed);
+  assert.deepEqual([...states].sort(), ['graze', 'groom', 'look', 'lower', 'raise', 'run', 'turn', 'walk']); assert.ok(crossed);
 });
 test('tree trunks and deep water block walking, rain changes movement speed', () => {
   const world = createWorld(); const tree = world.plants[0]!;

@@ -36,7 +36,7 @@ npm run check                  # build, tests and whole-scene PNG/JSON snapshots
 Generated deliverables:
 
 - [`public/assets/jungle.png`](../public/assets/jungle.png): packed runtime texture.
-- [`public/assets/jungle.json`](../public/assets/jungle.json): regions, per-clip anchors and packing statistics.
+- [`assets/jungle-manifest.json.gz`](../assets/jungle-manifest.json.gz): retained lossless manifest archive. `npm run assets` restores the inspectable, ignored `public/assets/jungle.json` with regions, anchors and packing statistics.
 - [`assets/derived.json`](../assets/derived.json): input fingerprints, source/output SHA-256 hashes and byte sizes.
 - [`assets/models/deer.obj`](../assets/models/deer.obj): standing colored triangle mesh.
 - `artifacts/deer-directions.png`: six action rows × sixteen headings.
@@ -57,7 +57,7 @@ No generated asset should be hand-edited. Change its source/model or bake settin
 7. Share byte-identical frames, then pack stable best-fit shelves with one-pixel transparent gutters. Atlas texel (0,0) is reserved white for solid-color quads. The 4096 × 4096 allocation budget fails explicitly if exceeded.
 8. Encode the PNG, JSON manifest, static OBJs and provenance hashes. All 3D and image deformation work ends here; the application only selects sprite frames.
 
-There are currently **11,345 logical frames / 9,616 unique frames**:
+The following is the historical pre-catalog breakdown (**11,345 logical frames / 9,616 unique frames**); current totals live in `assets/derived.json` and [the implementation results](ANIMAL-IMPLEMENTATION.md):
 
 - Deer 1,536; original toucan/orangutan/jaguar 1,600.
 - Active ecological animals 5,440: eight species use 16 headings, fish/parakeet use 8. Monkey adds walking/climbing clips; four bird species use 24-phase flight clips. Wolves add 320 run frames. Elephants use 1,088 frames across rest, walking, drinking and spraying. Crab is omitted.
@@ -144,9 +144,9 @@ The elephant recording was the first third-party audio asset; the later tiger re
 
 Five woodland/river rigs and the denser packing contract are documented in [RIVERS.md](RIVERS.md). Their authored mesh sources, OBJ exports and build dependencies are retained.
 
-Study 15 adds shared multi-tile landscape groups, tint masks and static trunk templates. Current world/agent schemas are **15/12**; see [landscape groups](LANDSCAPE-PATCHES.md) for source provenance, animation, navigation and memory details.
+Study 15 adds shared multi-tile landscape groups, tint masks and static trunk templates. World/agent schemas at that stage were **15/12**; see [landscape groups](LANDSCAPE-PATCHES.md) for source provenance, animation, navigation and memory details.
 
-Recurring colorful regions, canopy population/perch changes, new generated source provenance and black bear type 58 behavior/rig/codecs are documented in [regional variety](REGIONAL-VARIETY.md). Current world/agent schemas are **15/12**.
+Recurring colorful regions, canopy population/perch changes, new generated source provenance and black bear type 58 behavior/rig/codecs are documented in [regional variety](REGIONAL-VARIETY.md). World/agent schemas at that stage were **15/12**.
 
 
 The landscape wind pass separates four original flower-carpet petal masks from the existing neutral base. No new generated source is needed: the exact original artwork/prompts remain retained. Petals keep source RGB, stems retain tint masks, and soil stays stationary. Runtime crown bands reuse atlas subregions. The rebuilt atlas has 11,589 logical / 9,844 unique frames at 4096×4064 (63.50 MiB decoded), within the existing budget. The existing landscape-baker fingerprint covers this mask change.
@@ -165,10 +165,23 @@ Detailed ship rigs now bake flight rotation, banking and beacon states into regi
 
 ## Zen sanctuaries
 
-See [zen sanctuaries and the hidden artifact editor](ZEN.md) for original tree provenance, baked directional inhabitants, localized music, H/five-tap controls, bounded ownership and validation. Current world/agent schemas are **25/20**.
+See [zen sanctuaries and the hidden artifact editor](ZEN.md) for original tree provenance, baked directional inhabitants, localized music, H/five-tap controls, bounded ownership and validation. World/agent schemas at that stage were **25/20**.
 
-Tigers (75), hippos (76), bison (77), registered monk stair transitions and the retained CC0 tiger recording are documented in [megafauna](MEGAFAUNA.md). Current world/agent schemas are **26/21**.
+Tigers (75), hippos (76), bison (77), registered monk stair transitions and the retained CC0 tiger recording are documented in [megafauna](MEGAFAUNA.md). World/agent schemas at that stage were **26/21**.
 
 Detailed bison and hippo variants are original articulated geometry in `scripts/art/megafauna-model.ts`; both static forms are exported under `assets/models/`, fingerprinted and baked offline. Larger black bears use shared upright/resting/walking and ground transition clips. Exact registered pixel pieces keep all these directional frames inside the common atlas; form selection never allocates per-animal textures. Reference provenance and current validation are in [megafauna](MEGAFAUNA.md).
 
 Bear refinement: 26-pixel/model-unit baking is scaled back to the existing world size; 16 headings and 32-frame walking/running share exact pixel pieces. Manifest version 3 adds optional `frameIndices` for piece clips: the chronological frame index maps into a smaller unique-region list through `spriteRegion()`. No pose, timing, palette or texel is discarded. `scripts/bear-preview.ts` reconstructs the delivered atlas regions for its action sheets and normal-speed HTML review.
+
+
+## Full catalog animation follow-up
+
+The [31-type implementation](ANIMAL-IMPLEMENTATION.md) extends original articulated geometry in `scripts/art/`, retaining a static OBJ for each ordinary animal form in `assets/models/`. Native pond rigs bake three forms directly; they no longer rely on whole-sprite brightness changes. These are code-authored rigs, not new downloaded or generated bitmap sources. Existing source images, prompts and licenses are unchanged. `assets/derived.json` fingerprints all producers and shared pose/appearance dependencies; ordinary builds remain offline.
+
+`stationarySpritePieces()` separates pixels that are identical in every pose into one registered layer and tiles only changing pixels. Both layers preserve exact RGBA, clip-union anchors and painter ordering. This reduces submission and metadata costs without dropping resolution or motion samples. `npm run wildlife:preview` reconstructs the delivered atlas for all 31 types; `npx tsx scripts/animal-variety-preview.ts` writes four labeled variant sheets.
+
+The site build delivers a content-hashed `.atlas` file: gzip-compressed JSON with numeric shared-region/part references. The browser uses `DecompressionStream` and reconstructs immutable shared UV objects before starting. The raw inspection JSON is omitted from deployment. The retained archive prevents hundreds of megabytes of repetitive JSON from entering Git; missing inspection JSON is restored offline and hash-checked.
+
+Per-rig/form raw-frame caches under ignored `artifacts/.animal-cache` are replaceable, hashed entries. Their source key includes camera/clip assembly and every pose dependency; packing-only edits can reuse raw frames. Corruption causes a rebuild. Piece RGBA arrays and identical registered timelines are interned during packing to bound build memory. Normal builds still validate all retained outputs and provenance.
+
+Current world/agent schemas are **29/24**; older checkpoints fail explicitly. `npm test` and `npm run benchmark` restore/verify the retained atlas in their pre-script, so they also work on a clean checkout.

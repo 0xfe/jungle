@@ -33,11 +33,14 @@ export function trimClip(sprite: BakeSprite): BakeSprite {
 export function packAtlas(inputs: BakeSprite[], width = 2048, maxHeight = 2048): PackedAtlas {
   const sprites = inputs.map(trimClip);
   const unique = new Map<string, { image: PixelImage; region: Region }>();
+  // Build-time piece interning shares image objects; hash each immutable image once.
+  const imageKeys=new WeakMap<PixelImage,string>();
   const keys = new Map<string, string[]>();
   for (const s of sprites) {
     if (keys.has(s.id)) throw new Error(`Duplicate sprite ID: ${s.id}`);
     keys.set(s.id, s.frames.map(image => {
-      const hash = `${image.width}x${image.height}:${createHash('sha256').update(image.data).digest('hex')}`;
+      let hash=imageKeys.get(image);
+      if(!hash){hash=`${image.width}x${image.height}:${createHash('sha256').update(image.data).digest('hex')}`;imageKeys.set(image,hash);}
       if (!unique.has(hash)) unique.set(hash, { image, region: { x: 0, y: 0, width: image.width, height: image.height } });
       return hash;
     }));

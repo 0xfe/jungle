@@ -3,7 +3,7 @@ import { lerp, hash } from '../iso/math';
 import { rootedQuad } from '../iso/sprite-geometry';
 import { quadBounds } from '../iso/quad';
 import { visible, type DrawCommand } from '../iso/render';
-import { ZenGardenAgent, ZenMonkAgent, type ZenResident } from './agents/zen';
+import { PondResident, ZenGardenAgent, ZenMonkAgent, type ZenResident } from './agents/zen';
 import type { InfiniteWorld } from './infinite';
 import type { AtlasManifest } from './scene';
 /** Composed through the same transparent painter-ordered batch as the jungle. */
@@ -60,14 +60,16 @@ export function composeZen(world:InfiniteWorld,atlas:AtlasManifest,commands:Draw
   if(owner)for(const c of owner.residents){
    const p=c.presentation(alpha);if(p.visibility<.01)continue;
    const d=((Math.round(p.heading/(Math.PI*2)*8)%8)+8)%8;
-   const action=c.kind==='monk'?(c.state===2?'sit':c.state===3?'water':c.speed>.002?'walk':'idle'):c.kind==='koi'?'swim':c.state===2?'dip':c.state===1?'preen':'swim';
-   const phase=action==='walk'?p.gait*12:action==='swim'?p.clock*3:action==='dip'?p.clock*5:p.clock*2;
-   draw(c.id,`zen-${c.kind}-${action}-${d}`,p.x,p.y,c.kind==='monk'?1.25:1.15,phase,c.kind==='koi'?.95:2,c.kind==='koi'?.84:p.visibility,c instanceof ZenMonkAgent?lerp(c.previousLift,c.lift,alpha):Math.sin(p.clock*1.7+c.index)*.3,0,[255,236,218][c.variant],c instanceof ZenMonkAgent&&c.route?Math.max(p.x+p.y,s.x+s.y+ZEN_TEMPLE.rootX+ZEN_TEMPLE.rootY+.02):p.x+p.y);
+   const wet=(world.tileAt(p.x,p.y)?.materialAt(p.x,p.y)??0)>=4;
+   const action=c.kind==='monk'?(c.state===2?'sit':c.state===3?'water':c.speed>.002?'walk':'idle'):c.kind==='koi'?(c.state===2?'feed':'swim'):c.kind==='pelican'?(c.state===2?'dip':c.state===1?'settle':'swim'):c.state===2?'dip':[1,4].includes(c.state)?'preen':!wet?'walk':'swim';
+   const oneShot=['dip','preen','feed','settle'].includes(action);
+   const phase=c instanceof PondResident?(oneShot?lerp(c.previousAction,c.actionPhase,alpha)*23:p.gait*(action==='walk'?24:16)):(action==='walk'?p.gait*12:p.clock*2);
+   draw(c.id,`zen-${c.kind}${c.kind!=='monk'&&c.variant?`-form${c.variant}`:''}-${action}-${d}`,p.x,p.y,c.kind==='monk'?1.25:1.15*c.size,phase,c.kind==='koi'?.95:2,c.kind==='koi'?.84:p.visibility,c instanceof ZenMonkAgent?lerp(c.previousLift,c.lift,alpha):Math.sin(p.clock*1.7+c.index)*.3,0,c.kind==='monk'?[255,236,218][c.variant]:255,c instanceof ZenMonkAgent&&c.route?Math.max(p.x+p.y,s.x+s.y+ZEN_TEMPLE.rootX+ZEN_TEMPLE.rootY+.02):p.x+p.y);
    if(c instanceof ZenMonkAgent&&c.state===3)for(let i=0;i<5;i++){
     const t=(p.clock*2+i/5)%1,px=p.x+Math.cos(p.heading)*(.2+t*.18),py=p.y+Math.sin(p.heading)*(.2+t*.18),pos=screen(px,py,world.heightAt(px,py)+9*(1-t));
     commands.push({id:`${c.id}:water:${i}`,x:pos.x,y:pos.y,width:scale,height:2*scale,color:[170,221,230,180],layer:2,depth:px+py});
    }
-   if(c.kind!=='monk')for(let i=0;i<2;i++)glint(`${c.id}:wake:${i}`,p.x-Math.cos(p.heading)*(.14+i*.1),p.y-Math.sin(p.heading)*(.14+i*.1),.6,5+i*4,.14,[196,229,207]);
+   if(c.kind!=='monk'&&wet&&c.speed>.02)for(let i=0;i<2;i++)glint(`${c.id}:wake:${i}`,p.x-Math.cos(p.heading)*(.14+i*.1),p.y-Math.sin(p.heading)*(.14+i*.1),.6,5+i*4,.14,[196,229,207]);
    if(c.kind==='pelican'&&c.state===2)for(let i=0;i<5;i++){const t=(p.clock*3+i/5)%1;glint(`${c.id}:splash:${i}`,p.x+Math.cos(p.heading)*.3+Math.sin(i)*t*.1,p.y+Math.sin(p.heading)*.3,Math.sin(t*Math.PI)*7,2,(1-t)*.6,[222,244,232]);}
   }
  }

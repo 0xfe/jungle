@@ -175,3 +175,12 @@ Read [docs/ANIMAL-QUALITY.md](docs/ANIMAL-QUALITY.md) before adding or substanti
 - Define habitat, predator/prey relationships and solitary/family/herd rules. Exercise common scenarios: obstacles, shoreline/deep water, nearby threats, lost support, lagging young and crowded groups. Reactions must be bounded, species-appropriate and use neighbor snapshots; do not mutate another animal or invent universal fleeing/hunting.
 - Before calling an animal finished: inspect all headings/actions, several sizes/variants, transition endpoints and normal-speed animated previews in context. Test grounded stance, blocked gait, action occupancy/cadence, family/escape behavior, exact binary continuation and atlas margins. Run the full check and scale benchmark, then Chrome WebGL/Canvas and mobile-layout QA. Prefer the user's connected Chrome; never substitute another browser without instruction. Report browser/device limits honestly.
 - Preserve the single 64 MiB decoded atlas, painter order, bounded streaming, seeded behavior and existing populations unless the task explicitly changes them. Record measured tradeoffs and unresolved gaps in the animal review; do not claim every species meets the standard merely because a generic test passes.
+
+
+## Catalog animation maintenance
+
+- The implemented follow-up and validation are tracked in `docs/ANIMAL-IMPLEMENTATION.md`; keep the original review as the baseline. Current world/agent schemas are 29/24.
+- `animal-appearance.ts` maps serialized coats/ages to shared authored forms; `animal-actions.ts` defines inclusive one-shot endpoints. Keep controller, baker and compositor phase rules aligned.
+- Quiet action triggers stay species-specific. Feeding cooldowns must not consume monkey swing eligibility; preening must not suppress bird departures. Ducks may temporarily occupy the immediate valid bank during explicit shore states.
+- Preserve exact static/dynamic pixel separation and fractional-scale reconstruction. Report draw counts and metadata alongside decoded atlas bytes; texture savings alone do not establish a performance improvement.
+- The retained manifest is `assets/jungle-manifest.json.gz`; `npm run assets` restores ignored inspection JSON. Keep archive/manifest hashes and the compressed runtime codec aligned. Raw-frame cache keys include camera/clip assembly; never bypass source invalidation.

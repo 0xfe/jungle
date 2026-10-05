@@ -169,3 +169,14 @@ test('failed builds/uploads or a changed remote release cannot trigger cleanup',
   await writeFile(join(root,'dist/index.html'),'corrupted release');
   const invalid=await run(['dev','--clean']);assert.notEqual(invalid.status,0);assert.ok(!invalid.calls.some(c=>c.tool==='gcloud'));
 });
+
+test('the site delivers a compressed shared-region atlas and omits the raw inspection manifest',async t=>{
+ const root=await fixture(t),atlas={version:3,width:16,height:16,sprites:{sample:{width:2,height:2,anchor:[1,2],frames:[{x:1,y:1,width:2,height:2}]}},animalClips:{sample:{parts:['sample'],frames:1}}};
+ await writeFile(join(root,'public/assets/jungle.json'),JSON.stringify(atlas));
+ await writeFile(join(root,'src/main.ts'),"import atlas from '../public/assets/jungle.json?atlas';globalThis.atlasURL=atlas;");
+ await buildSite(root);const first=await verifyBuild(join(root,'dist')),files=Object.keys(first.files),packed=files.find(p=>p.endsWith('.atlas'));
+ assert.ok(packed);assert.ok(!files.some(p=>/jungle.*\.json$/.test(p)));
+ const {gunzipSync}=await import('node:zlib');const data=JSON.parse(gunzipSync(await readFile(join(root,'dist',packed))));
+ assert.equal(data.format,'jungle-atlas-1');assert.equal(data.sprites[0][0],'sample');assert.deepEqual(data.regions,[1,1,2,2]);
+ await buildSite(root);assert.deepEqual(await verifyBuild(join(root,'dist')),first);
+});

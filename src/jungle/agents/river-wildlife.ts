@@ -1,4 +1,4 @@
-import { BinaryReader, type AgentEnvironment } from '../../agents';
+import { BinaryReader, BinaryWriter, type AgentEnvironment } from '../../agents';
 import { clamp, lerp } from '../../iso/math';
 import { angleDelta, TAU } from '../animation';
 import { EcologicalAgent } from './ecological-base';
@@ -18,11 +18,12 @@ export class SquirrelAgent extends EcologicalAgent {
   protected override perceiveSplash(env:AgentEnvironment):void {if(this.altitude===0&&this.targetAltitude===0)super.perceiveSplash(env);}
   protected decide(env:AgentEnvironment):void {
     if(this.state!=='rest'||this.timer>0)return;
+    if(this.cooldown===0&&(env.perches?.(this.x,this.y,.4)??[]).length){this.beginActivity(this.random.next()<.8?'feed':'groom',5);this.cooldown=22;return;}
     if(this.altitude>0){this.state='descend';this.targetAltitude=0;return;}
     if(!this.cooldown&&this.random.next()<.45&&this.tryClimb(env))return;
     this.targetAltitude=0;this.journey(env);this.timer=8;
   }
-  protected override stationaryAction(dt:number,_env:AgentEnvironment):boolean {
+  protected override stationaryAction(dt:number,env:AgentEnvironment):boolean {
     if(this.state==='rest'&&this.targetAltitude>0&&this.altitude===0){
       if(Math.hypot(this.x-this.routeX,this.y-this.routeY)<.03){
         const turn=angleDelta(this.heading,Math.PI);this.motor.stop();
@@ -32,6 +33,7 @@ export class SquirrelAgent extends EcologicalAgent {
       }
       else this.targetAltitude=0;
     }
+    if(this.altitude>0&&!(env.perches?.(this.x,this.y,.2)??[]).length){this.state='descend';this.targetAltitude=0;}
     if(this.state!=='climb'&&this.state!=='descend')return false;
     this.motor.stop();const before=this.altitude;
     this.altitude+=clamp(this.targetAltitude-this.altitude,-dt*13*this.pace,dt*13*this.pace);
@@ -55,9 +57,13 @@ export class BoarAgent extends EcologicalAgent {
         if(distance>.65&&this.routeClear(x,y,env)){this.target={x,y};this.state='run';this.timer=1.8;this.cooldown=32+this.random.next()*38;this.tripPace=1;return;}
       }
     }
+    if(this.cooldown===0&&env.sample(this.x,this.y).moisture>.25&&this.random.next()<.65){
+      this.beginFeeding(5+this.random.next()*7);return;
+    }
     this.journey(env);
   }
-  protected override stationaryAction(_dt:number,env:AgentEnvironment):boolean {
+  protected override stationaryAction(dt:number,env:AgentEnvironment):boolean {
+    if(this.feedingAction(dt,.65,.75))return true;
     if(this.state==='run'&&env.nearby(this.x,this.y,.48).some(n=>n.kind==='deer')){
       this.motor.stop();this.state='rest';this.timer=8;return true;
     }
@@ -68,6 +74,12 @@ export class BoarAgent extends EcologicalAgent {
 
 /** Shared shoreline transport; each species owns its timing, target policy and action. */
 abstract class BankAgent extends EcologicalAgent {
+  bankWet=false;bankTravel=false;
+  override write(w:BinaryWriter):void{super.write(w);w.u8(Number(this.bankWet));w.u8(Number(this.bankTravel));}
+  static readBank<T extends BankAgent>(r:BinaryReader,create:(id:string,x:number,y:number,seed:number)=>T):T{
+    const a=EcologicalAgent.readAs(r,create),wet=r.u8(),travel=r.u8();if(wet>1||travel>1)throw new Error('Invalid bank transition');a.bankWet=Boolean(wet);a.bankTravel=Boolean(travel);return a;
+  }
+
   protected crossBank(env:AgentEnvironment, range=this.spec.range):boolean {
     const water=env.sample(this.x,this.y).water;
     const supports=this.kind==='beaver'&&!water&&this.random.next()<.2?(env.perches?.(this.x,this.y,range)??[]):[];
@@ -94,21 +106,58 @@ abstract class BankAgent extends EcologicalAgent {
       if(t===1){this.altitude=0;this.state='rest';this.timer=2+this.random.next()*5;}
       return true;
     }
-    this.altitude=env.sample(this.x,this.y).water?-2:0;
+    const wet=env.sample(this.x,this.y).water;
+    if(this.kind!=='toad'){
+      if(!['enterWater','leaveWater'].includes(this.state)&&wet!==this.bankWet){this.bankTravel=this.state==='travel';this.state=wet?'enterWater':'leaveWater';this.gait=0;}
+      if(this.state==='enterWater'||this.state==='leaveWater'){
+        this.motor.stop();this.gait=Math.min(1,this.gait+dt/1.1);
+        if(this.gait===1){this.bankWet=wet;this.state=this.bankTravel?'travel':'rest';this.gait=0;this.timer=this.bankTravel?20:8;}
+        return true;
+      }
+    }
+    this.altitude+=clamp((env.sample(this.x,this.y).water?-2:0)-this.altitude,-dt*2,dt*2);
     return false;
   }
 }
 /** Beaver alternates swimming with short bank trips toward woody cover. */
 export class BeaverAgent extends BankAgent {
   readonly kind='beaver';readonly type=55;
-  protected decide(env:AgentEnvironment):void {if(this.state==='rest'&&this.timer<=0)this.crossBank(env);}
-  static read(r:BinaryReader){return EcologicalAgent.readAs(r,(...a)=>new BeaverAgent(...a));}
+  protected decide(env:AgentEnvironment):void {
+    if(this.state!=='rest')return;
+    const roots=(env.perches?.(this.x,this.y,1.2)??[]).slice(0,32).map(p=>p.root??p);
+    if(!env.sample(this.x,this.y).water&&this.cooldown===0){
+      const near=roots.find(p=>Math.hypot(p.x-this.x,p.y-this.y)<.38);
+      if(near){this.routeX=near.x;this.routeY=near.y;this.beginFeeding(8+this.random.next()*9);return;}
+      for(const root of roots){
+        const angle=Math.atan2(this.y-root.y,this.x-root.x),x=root.x+Math.cos(angle)*.23,y=root.y+Math.sin(angle)*.23;
+        if(env.sample(x,y).water||!this.routeClear(x,y,env))continue;
+        this.target={x,y};this.state='travel';this.timer=15;return;
+      }
+    }
+    if(this.timer<=0){if(!env.sample(this.x,this.y).water&&this.random.next()<.3){this.beginActivity('groom',6);return;}this.crossBank(env);}
+  }
+  protected override stationaryAction(dt:number,env:AgentEnvironment):boolean {
+    if(this.state==='feedDown'&&this.gait===0){
+      const delta=angleDelta(this.heading,Math.atan2(this.routeY-this.y,this.routeX-this.x));
+      this.heading+=clamp(delta,-dt*3,dt*3);this.motor.stop();if(Math.abs(delta)>.06)return true;
+    }
+    if(this.feedingAction(dt,.6,1.1))return true;
+    return super.stationaryAction(dt,env);
+  }
+  static read(r:BinaryReader){return BankAgent.readBank(r,(...a)=>new BeaverAgent(...a));}
 }
 /** Solitary crocodile basks for long intervals, then slips between bank and water. */
 export class CrocodileAgent extends BankAgent {
   readonly kind='crocodile';readonly type=56;
-  protected decide(env:AgentEnvironment):void {if(this.state==='rest'&&this.timer<=0)this.crossBank(env);}
-  static read(r:BinaryReader){return EcologicalAgent.readAs(r,(...a)=>new CrocodileAgent(...a));}
+  protected decide(env:AgentEnvironment):void {
+    if(this.state!=='rest'||this.timer>0)return;
+    if(!env.sample(this.x,this.y).water&&this.cooldown===0){
+      const alert=env.nearby(this.x,this.y,1.5).some(n=>n.id!==this.id&&n.speed>.2);
+      this.beginActivity(alert?'alert':'bask',alert?5:14);this.cooldown=24;return;
+    }
+    this.crossBank(env);
+  }
+  static read(r:BinaryReader){return BankAgent.readBank(r,(...a)=>new CrocodileAgent(...a));}
 }
 /** Short individually timed hops along and across pond/stream margins. */
 export class ToadAgent extends BankAgent {
@@ -121,6 +170,11 @@ export class ToadAgent extends BankAgent {
       this.state='hop';this.routeX=this.x;this.routeY=this.y;this.routeProgress=0;this.routeDuration=.55;
     }
   }
-  protected decide(env:AgentEnvironment):void {if(this.state==='rest'&&this.timer<=0)this.crossBank(env);}
-  static read(r:BinaryReader){return EcologicalAgent.readAs(r,(...a)=>new ToadAgent(...a));}
+  protected override perceivePredator(env:AgentEnvironment):void {if(this.state!=='hop')super.perceivePredator(env);}
+  protected decide(env:AgentEnvironment):void {
+    if(this.state!=='rest'||this.timer>0)return;
+    if(this.cooldown===0&&!env.sample(this.x,this.y).water&&env.sample(this.x,this.y).moisture>.3){this.beginActivity('feed',2.5);this.cooldown=15+this.random.next()*15;return;}
+    this.crossBank(env);
+  }
+  static read(r:BinaryReader){return BankAgent.readBank(r,(...a)=>new ToadAgent(...a));}
 }

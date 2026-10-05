@@ -1,3 +1,5 @@
+export const REPOSE_CLIPS={lieDown:16,lying:8,shift:16} as const;
+export const REPOSE_DIRECTIONS=16;
 import { AgentRandom, BinaryReader, BinaryWriter } from './core';
 import { lerp } from '../iso/math';
 

@@ -27,7 +27,7 @@ console.log('Direction, walking and running contact sheets → artifacts/');
 
 const {wildlifeMesh,WILDLIFE_CLIPS}=await import('./wildlife-model');
 for(const kind of ['toucan','orangutan','jaguar'] as const){
- const clips=kind==='toucan'?['rest','travel'] as const:kind==='orangutan'?['rest','travel','climb'] as const:['rest','travel','chase'] as const;
+ const clips=kind==='toucan'?['rest','travel','takeoff','land'] as const:kind==='orangutan'?['rest','travel','climb'] as const:['rest','travel','chase'] as const;
  const panels:sharp.OverlayOptions[]=[];
  const camera={width:80,height:80,anchor:[40,65] as [number,number],scale:28};
  for(const [row,clip] of clips.entries())for(let d=0;d<16;d++){
@@ -54,7 +54,7 @@ for(const kind of ECO_KINDS){
  }
  await sharp({create:{width:spec.directions*112,height:clips.length*112,channels:4,background:'#dce6ce'}}).composite(panels).png().toFile(`artifacts/${kind}-directions.png`);
  for(const [clip,count] of clips){const panels:sharp.OverlayOptions[]=[];
-  for(let frame=0;frame<count;frame++){const pixels=bakeMesh(ecologyMesh(kind,clip,frame/(BEAR_ONE_SHOTS.includes(clip)||clip==='drink'||clip==='spray'||clip==='wrap'||clip==='hop'?count-1:count)),Math.PI/4,camera);panels.push({input:Buffer.from(pixels.data),raw:{width:112,height:112,channels:4},left:frame*112,top:0});}
+  for(let frame=0;frame<count;frame++){const pixels=bakeMesh(ecologyMesh(kind,clip,frame/((BEAR_ONE_SHOTS.includes(clip)||['enterWater','leaveWater','crouch','uncrouch','takeoff','land'].includes(clip))||(kind==='kingfisher'&&clip==='dive')||clip==='drink'||clip==='spray'||clip==='wrap'||clip==='hop'?count-1:count)),Math.PI/4,camera);panels.push({input:Buffer.from(pixels.data),raw:{width:112,height:112,channels:4},left:frame*112,top:0});}
   await sharp({create:{width:count*112,height:112,channels:4,background:'#dce6ce'}}).composite(panels).png().toFile(`artifacts/${kind}-${clip}-strip.png`);
  }
 }

@@ -96,5 +96,6 @@ test('toads escape a low hawk by hopping, while climbing squirrels keep their su
  for(let i=0;i<120;i++){toad.update(1/60,env);assert.ok(ecoClips('toad')[toad.state]);hopped||=toad.altitude>1;}
  assert.ok(hopped&&toad.x>.1);
  const squirrel=new SquirrelAgent('s',0,0,8);squirrel.state='climb';squirrel.altitude=3;squirrel.targetAltitude=25;
- squirrel.update(1/60,env);assert.equal(squirrel.state,'climb');assert.equal(squirrel.startle.remaining,0);
+ squirrel.update(1/60,{...env,perches:()=>[{x:0,y:0,height:45}]});assert.equal(squirrel.state,'climb');assert.equal(squirrel.startle.remaining,0);
+ squirrel.update(1/60,{...env,perches:()=>[]});assert.equal(squirrel.state,'descend');
 });

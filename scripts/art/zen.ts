@@ -4,6 +4,7 @@ import { bakeZenDock } from './zen-dock';
 import { ellipsoid, bone, type Mesh, type V3, type RGB } from '../../src/iso/bake/mesh';
 import { bakeMesh } from '../../src/iso/bake/rasterize';
 import { trimClip, type BakeSprite } from '../../src/iso/bake/atlas';
+import { transformMesh } from './pose-tools';
 import { hash } from '../../src/iso/math';
 import { windFrames } from './wind';
 import type { ZenKind } from '../../src/jungle/agents/zen';
@@ -68,22 +69,23 @@ export function zenMesh(kind:ZenKind,action:string,phase:number,variant=0):Mesh{
   }
   if(water){bone(m,[.32,-.14,.34],[.36,0,.53],.023,[144,177,154]);bone(m,[.36,0,.53],[.4,.14,.34],.023,[144,177,154]);ellipsoid(m,[.36,0,.31],[.13,.15,.12],[90,148,137]);bone(m,[.4,0,.31],[.65,0,.23+wave*.02],.035,[144,177,154]);}
  }else if(kind==='koi'){
-  const orange:RGB=variant===1?[231,187,77]:[229,112,66];
-  ellipsoid(m,[0,0,.08],[.32,.105,.08],[238,229,205],undefined,n=>n[0]<-.2||n[1]>.4?orange:[238,229,205]);
+  const orange:RGB=variant===1?[231,187,77]:variant===2?[60,64,58]:[229,112,66];
+  ellipsoid(m,[0,0,.08],[.32,.105,.08],[238,229,205],undefined,n=>n[0]<-.2+variant*.12||n[1]>.4-variant*.12?orange:[238,229,205]);
   bone(m,[-.24,0,.08],[-.47,wave*.06,.085],.045,orange);
   ellipsoid(m,[-.48,wave*.06,.08],[.07,.14,.017],orange);
   for(const side of [-1,1])bone(m,[.06,side*.075,.06],[-.08,side*(.19+wave*.018),.035],.027,cream);
   ellipsoid(m,[.25,-.065,.11],[.02,.018,.017],dark);
+  if(action==='feed'){const a=Math.sin(phase*Math.PI)**2*.3;transformMesh(m,([x,y,z])=>[x*Math.cos(a)-(z-.08)*Math.sin(a),y,.08+x*Math.sin(a)+(z-.08)*Math.cos(a)]);}
  }else{
-  const pelican=kind==='pelican',dip=action==='dip'?Math.sin(phase*Math.PI)**2:0,preen=action==='preen';
-  const plumage:RGB=pelican?[239,231,202]:variant===1?[162,124,87]:[213,202,162],head:RGB=pelican?[243,228,186]:variant===1?plumage:[43,118,95];
+  const pelican=kind==='pelican',dip=action==='dip'?Math.sin(phase*Math.PI)**2:0,preen=action==='preen'?Math.sin(phase*Math.PI)**2:0,settle=action==='settle'?Math.sin(phase*Math.PI)**2:0;
+  const plumage:RGB=pelican?(variant===1?[185,174,147]:variant===2?[223,224,207]:[239,231,202]):variant===1?[162,124,87]:[213,202,162],head:RGB=pelican?[243,228,186]:variant===1?plumage:[43,118,95];
   ellipsoid(m,[0,0,.2],[pelican?.4:.3,.19,.19],plumage);
-  for(const side of [-1,1]){ellipsoid(m,[-.05,side*.13,.23],[.27,.075,.11],variant===2?dark:plumage);bone(m,[-.04,side*.12,.08],[-.14+wave*.05,side*.19,.012],.025,[211,151,63]);}
-  const hx=preen?-.15:.21+dip*.2,hz=(pelican?.65:.45)-dip*.42;
+  for(const side of [-1,1]){ellipsoid(m,[-.05,side*(.13+settle*.08),.23+settle*.025],[.27,.075,.11],variant===2?dark:plumage);bone(m,[-.04,side*.12,.08],[-.14+Math.sin(phase*tau+(side===1?Math.PI:0))*.08,side*.19,.012+(action==='walk'?Math.max(0,Math.cos(phase*tau+(side===1?Math.PI:0)))*.035:0)],.025,[211,151,63]);}
+  const hx=.21+dip*.2-preen*.36,hz=(pelican?.65:.45)-dip*.42;
   bone(m,[.17,0,.28],[hx,0,hz],pelican?.08:.07,head);
   ellipsoid(m,[hx,0,hz],[.115,.11,.12],head);
   bone(m,[hx+.08,0,hz-.01],[hx+(pelican?.48:.23),0,hz-.06-dip*.14],pelican?.044:.05,[225,166,69]);
-  if(pelican)ellipsoid(m,[hx+.22,0,hz-.095],[.18,.07,.075+dip*.02],[208,165,102]);
+  if(pelican)ellipsoid(m,[hx+.22,0,hz-.095],[.18,.07,.075+dip*.065],[208,165,102]);
   for(const side of [-1,1])ellipsoid(m,[hx+.057,side*.093,hz+.032],[.02,.02,.02],dark);
   bone(m,[-.2,0,.2],[-.43,0,.28],.075,plumage);
  }return m;
@@ -111,10 +113,10 @@ export async function bakeZen():Promise<BakeSprite[]>{
   const frames=windFrames({width:88,height:108,data:normalized},88,108,'tree',0);
   out.push({id:`zen-tree-${i}`,anchor:[44,104],frames});
  }
- for(const kind of ['monk','koi','duck','pelican'] as const){
-  const actions=kind==='monk'?['idle','walk','sit','water']:kind==='koi'?['swim']:['swim','dip','preen'];
-  for(const action of actions){const count=action==='walk'?12:action==='idle'?4:8;
-   for(let d=0;d<8;d++)out.push({id:`zen-${kind}-${action}-${d}`,anchor:[24,37],frames:Array.from({length:count},(_,i)=>bakeMesh(zenMesh(kind,action,i/count),d*tau/8,{width:48,height:48,anchor:[24,37],scale:kind==='monk'?29:kind==='pelican'?25:23}))});
+ for(const kind of ['monk','koi','duck','pelican'] as const)for(const variant of (kind==='monk'?[0]:[0,1,2])){
+  const actions=kind==='monk'?['idle','walk','sit','water']:kind==='koi'?['swim','feed']:kind==='duck'?['swim','dip','preen','walk']:['swim','dip','preen','settle'];
+  for(const action of actions){const count=kind==='monk'?(action==='walk'?12:action==='idle'?4:8):action==='swim'?16:24;
+   for(let d=0;d<8;d++)out.push({id:`zen-${kind}${variant?`-form${variant}`:''}-${action}-${d}`,anchor:kind==='monk'?[24,37]:[36,55],frames:Array.from({length:count},(_,i)=>bakeMesh(zenMesh(kind,action,i/(['dip','preen','feed','settle'].includes(action)?count-1:count),variant),d*tau/8,{width:kind==='monk'?48:72,height:kind==='monk'?48:72,anchor:kind==='monk'?[24,37]:[36,55],scale:kind==='monk'?29:kind==='pelican'?25:23}))});
   }
  }
  // Three lotus colonies with optional folded/open blossoms, gentle pad lift.

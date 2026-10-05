@@ -1,3 +1,5 @@
+import { gzipSync } from 'node:zlib';
+import { packRuntimeAtlas } from './atlas-pack.mjs';
 import { build } from 'esbuild';
 import { mkdir, rm, readFile, writeFile, realpath } from 'node:fs/promises';
 import { resolve, relative, extname, basename } from 'node:path';
@@ -30,6 +32,13 @@ export async function buildSite(root = projectRoot, destination = resolve(root, 
     define: { __BUILD_INFO__: JSON.stringify(metadata) },
     loader: { '.png': 'file', '.jpg': 'file', '.jpeg': 'file', '.svg': 'file', '.webp': 'file', '.gif': 'file', '.woff': 'file', '.woff2': 'file' },
     plugins: [{ name: 'asset-urls', setup(builder) {
+      builder.onResolve({filter:/\?atlas$/},args=>({path:resolve(args.resolveDir,args.path.slice(0,-6))+'.atlas',namespace:'atlas-url'}));
+      builder.onLoad({filter:/.*/,namespace:'atlas-url'},async args=>{
+        const original=JSON.parse(await readFile(args.path.slice(0,-6),'utf8'));
+        const packed=JSON.stringify(packRuntimeAtlas(original)),contents=gzipSync(packed,{level:9});
+        console.log(`Runtime sprite manifest: ${(contents.length/1048576).toFixed(2)} MiB compressed / ${(Buffer.byteLength(packed)/1048576).toFixed(2)} MiB packed JSON`);
+        return {contents,loader:'file'};
+      });
       builder.onResolve({ filter: /\?url$/ }, args => ({ path: resolve(args.resolveDir, args.path.slice(0, -4)), namespace: 'asset-url' }));
       builder.onLoad({ filter: /.*/, namespace: 'asset-url' }, async args => ({ contents: await readFile(args.path), loader: 'file' }));
     } }],
@@ -40,6 +49,7 @@ export async function buildSite(root = projectRoot, destination = resolve(root, 
     if (info.entryPoint === 'src/main.ts') urls.set('./app.js', url);
     if (info.entryPoint === 'public/style.css') urls.set('./style.css', url);
     for (const input of Object.keys(info.inputs)) {
+      if(input.startsWith('atlas-url:')){const source=input.slice('atlas-url:'.length,-6);urls.set('./'+relative(resolve(root,'public'),source),url);continue;}
       const path = input.startsWith('asset-url:') ? input.slice('asset-url:'.length) : resolve(root, input);
       if (path.startsWith(resolve(root, 'public') + '/') && extname(output) === extname(path)) {
         urls.set('./' + relative(resolve(root, 'public'), path), url);

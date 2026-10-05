@@ -1,8 +1,9 @@
+import { decodeRuntimeAtlas } from './jungle/atlas-codec';
 import { ARTIFACT_GROUPS, ARTIFACT_DEFAULTS, artifactLabel, type ArtifactKey } from './jungle/artifacts';
 import { SPACE_KINDS } from './jungle/ecology';
 import { mobileDevice, startupSeed } from './platform';
 import { AnimationBudget } from './iso/animation-budget';
-import atlasManifestUrl from '../public/assets/jungle.json?url';
+import atlasManifestUrl from '../public/assets/jungle.json?atlas';
 import atlasImageUrl from '../public/assets/jungle.png?url';
 import tigerAudioUrl from '../public/assets/audio/tiger-roar.wav?url';
 import elephantAudioUrl from '../public/assets/audio/elephant-trumpet.wav?url';
@@ -312,7 +313,8 @@ function bindCanvas(): void {
   canvas.addEventListener('wheel', e => { e.preventDefault(); pauseDrift(); zoom(e.deltaY > 0 ? -CONFIG.camera.wheelZoomStep : CONFIG.camera.wheelZoomStep); }, { passive: false });
 }
 async function loadAtlas(): Promise<PixelImage> {
-  const response = await fetch(new URL(atlasManifestUrl, import.meta.url)); if (!response.ok) throw new Error('Cannot load sprite manifest'); atlas = await response.json() as AtlasManifest;
+  const response = await fetch(new URL(atlasManifestUrl, import.meta.url)); if (!response.ok) throw new Error('Cannot load sprite manifest'); if(!response.body)throw new Error('Empty sprite manifest response');
+  atlas=decodeRuntimeAtlas(await new Response(response.body.pipeThrough(new DecompressionStream('gzip'))).json());
   const image = new Image(); image.src = new URL(atlasImageUrl, import.meta.url).href; await image.decode();
   const surface = document.createElement('canvas'); surface.width = image.width; surface.height = image.height;
   const ctx = surface.getContext('2d', { willReadFrequently: true })!; ctx.drawImage(image, 0, 0);

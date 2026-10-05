@@ -1,8 +1,9 @@
+import { animalForm,animalPrefix } from './animal-appearance';
 import type { VolcanoLavaArt } from './volcano-animation';
 import { restingSprite } from './resting';
 import { PlantAgent } from './agents';
 import { project, hash, lerp, clamp } from '../iso/math';
-import { color, sortCommands, type DrawCommand, type Frame, type Region, type SpriteFrames } from '../iso/render';
+import { color, sortCommands, spriteRegion, type DrawCommand, type Frame, type Region, type SpriteFrames } from '../iso/render';
 import { TILE, waterAt, type World, type Deer, type DeerSample, type Plant, HABITATS, WORLD_SIZE } from './world';
 import { DEER_CLIPS, directionIndex, PLANT_FPS, HEAD_SECONDS, angleDelta } from './animation';
 import { SpatialGrid } from '../iso/spatial';
@@ -55,15 +56,17 @@ export function composeScene(world: World, atlas: AtlasManifest, view: View, alp
       commands.push({ id, x, y, width: w, height: h, color: color(hex, alpha), layer, depth });
   };
   const sprite = (id: string, name: string, x: number, y: number, scale: number, frame: number, layer: number, depth: number, flip = false, alpha = 1) => {
-    const s = atlas.sprites[name]; if (!s) throw new Error(`Unknown sprite: ${name}`);
-    const p = screen(x, y), z = scale * fit;
-    drawSprite(id, s, p.x, p.y, z, frame, layer, depth, flip, alpha);
+    const parts=atlas.animalClips?.[name]?.parts??[name],p=screen(x,y),z=scale*fit;
+    for(const [i,part] of parts.entries()){
+      const s=atlas.sprites[part];if(!s)throw new Error(`Unknown sprite: ${part}`);
+      drawSprite(i?`${id}:${i}`:id,s,p.x,p.y,z,frame,layer,depth,flip,alpha);
+    }
   };
   const drawSprite = (id: string, s: Sprite, px: number, py: number, z: number, frame: number, layer: number, depth: number, flip = false, alpha = 1) => {
     const x = px - s.anchor[0] * z, y = py - s.anchor[1] * z, width = s.width * z, height = s.height * z;
     // Cull before constructing a command or choosing its animation frame.
     if (x + width <= 0 || y + height <= 0 || x >= view.width || y >= view.height) return;
-    commands.push({ id, x, y, width, height, region: s.frames[frame % s.frames.length], color: [255, 255, 255, Math.round(alpha * 255)], layer, depth, flip });
+    commands.push({ id, x, y, width, height, region: spriteRegion(s,frame), color: [255, 255, 255, Math.round(alpha * 255)], layer, depth, flip });
   };
   sprite('island-shadow', 'island-shadow', WORLD_SIZE.width / 2, WORLD_SIZE.height / 2, 1, 0, -2, 0);
   for (const tile of world.tiles) {
@@ -95,19 +98,20 @@ export function composeScene(world: World, atlas: AtlasManifest, view: View, alp
   for (const deer of world.deer) {
     const d = sampleDeer(deer, alpha);
     if(deer.repose.active){
-      const rest=restingSprite('deer',deer.repose,d.heading,alpha);
+      const rest=restingSprite('deer',deer.repose,d.heading,alpha,animalForm('deer',deer.coat,deer.juvenile));
       sprite(deer.id,rest.name,d.x,d.y,1.05*deer.size,rest.frame,2,d.x+d.y);continue;
     }
     sprite(`${deer.id}-shadow`, 'shadow', d.x, d.y, .4*deer.size, 0, 1, d.x + d.y, false, .35);
     const clip = d.state === 'lower' ? 'raise' : d.state, count = DEER_CLIPS[clip];
     let phase = d.state === 'walk' || d.state === 'run' || d.state === 'turn' ? d.gait % 1 : ((time + deer.phase) / 1.2) % 1;
     let frame = Math.floor(phase * count);
-    if (clip === 'raise') {
+    if(clip==='groom'||clip==='play')frame=Math.round(clamp(d.actionTime/4,0,1)*(count-1));
+      if (clip === 'raise') {
       phase = clamp(d.actionTime / HEAD_SECONDS, 0, 1);
       if (d.state === 'lower') phase = 1 - phase;
       frame = Math.round(phase * (count - 1));
     }
-    sprite(deer.id, `deer-${clip}-${directionIndex(d.heading)}`, d.x, d.y, 1.05*deer.size, frame, 2, d.x + d.y);
+    sprite(deer.id, `${animalPrefix('deer',animalForm('deer',deer.coat,deer.juvenile))}-${clip}-${directionIndex(d.heading)}`, d.x, d.y, 1.05*deer.size, frame, 2, d.x + d.y);
   }
   // Fireflies and falling leaves: deterministic particles, independent of frame rate.
   for (let i = 0; i < 18; i++) {

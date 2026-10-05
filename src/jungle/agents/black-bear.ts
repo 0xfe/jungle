@@ -11,17 +11,26 @@ export class BlackBearAgent extends EcologicalAgent {
  /** Actual support coordinates survive the approach, upright pause and lowering. */
  treeTarget=false;supportX=0;supportY=0;
  standCooldown=35;runCooldown=12;
+ stopPhase=0;stopRunning=false;curved=false;curveX=0;curveY=0;endX=0;endY=0;
  override update(dt:number,env:AgentEnvironment):void {
   this.standCooldown=Math.max(0,this.standCooldown-dt);
   this.runCooldown=Math.max(0,this.runCooldown-dt);
+  const state=this.state,speed=this.speed,x=this.x,y=this.y;
+  if(this.curved&&this.state==='travel'){
+   const t=Math.min(1,this.routeProgress+.20/this.routeDuration),u=1-t;
+   this.target={x:u*u*this.routeX+2*u*t*this.curveX+t*t*this.endX,y:u*u*this.routeY+2*u*t*this.curveY+t*t*this.endY};
+  }
   super.update(dt,env);
+  if(this.curved){this.routeProgress=Math.min(1,this.routeProgress+Math.hypot(this.x-x,this.y-y)/this.routeDuration);if(this.state!=='travel')this.curved=false;}
+  if((state==='travel'||state==='run')&&this.state==='rest'&&speed>.04){this.stopPhase=this.gait%1;this.stopRunning=state==='run';this.state='settle';this.gait=0;this.motor.stop();}
+
  }
  private supported(env:AgentEnvironment):boolean {
   return this.treeTarget&&(env.perches?.(this.x,this.y,.8)??[]).some(p=>Math.hypot((p.root?.x??p.x)-this.supportX,(p.root?.y??p.y)-this.supportY)<.03);
  }
  private beginAction(state:typeof this.state):void {this.state=state;this.gait=0;this.motor.stop();}
  protected decide(env:AgentEnvironment):void {
-  if(['rise','stand','pick','lower','feedDown','feedUp'].includes(this.state))return;
+  if(['settle','rise','stand','pick','lower','feedDown','feedUp'].includes(this.state))return;
   const family=this.groupId?env.nearby(this.x,this.y,5).filter(n=>n.id!==this.id&&n.groupId===this.groupId).sort((a,b)=>a.id.localeCompare(b.id)):[];
   const mother=family.find(n=>n.id===this.motherId);
   if(mother&&Math.hypot(mother.x-this.x,mother.y-this.y)>.7){
@@ -32,7 +41,7 @@ export class BlackBearAgent extends EcologicalAgent {
    for(const offset of [0,.4,-.4,1.8,-1.8,Math.PI]){
     const x=mother.x-Math.cos(heading+offset)*.38,y=mother.y-Math.sin(heading+offset)*.38;
     if(!this.routeClear(x,y,env))continue;
-    this.target={x,y};this.forageTarget=false;this.state=gap>1.35||mother.speed>.4?'run':'travel';this.timer=15;this.tripPace=1.12;return;
+    this.curved=false;this.target={x,y};this.forageTarget=false;this.state=gap>1.35||mother.speed>.4?'run':'travel';this.timer=15;this.tripPace=1.12;return;
    }
    // A blocked reunion is a reason to wait and retry, not to wander or play.
    this.motor.stop();this.state='rest';this.timer=1;return;
@@ -61,17 +70,35 @@ export class BlackBearAgent extends EcologicalAgent {
    const tree=trees.length&&i<12?trees[Math.floor(this.random.next()*trees.length)]:undefined;
    const angle=this.heading+(this.random.next()-.5)*(i<12?Math.PI:TAU),distance=tree?.33*this.size+.04:.45+this.random.next()*1.1;
    const x=(tree?.x??this.x)+Math.cos(angle)*distance,y=(tree?.y??this.y)+Math.sin(angle)*distance;
-   if(Math.hypot(x-this.x,y-this.y)<.18||!this.routeClear(x,y,env))continue;
+   if(Math.hypot(x-this.x,y-this.y)<.18||!this.approach(x,y,env))continue;
    if(mother&&Math.hypot(x-mother.x,y-mother.y)>1)continue;
-   this.target={x,y};this.state='travel';this.timer=18;this.tripPace=.82+this.random.next()*.42;
+   if(!this.curved)this.target={x,y};this.state='travel';this.timer=18;this.tripPace=.82+this.random.next()*.42;
    this.treeTarget=Boolean(tree);if(tree){this.supportX=tree.x;this.supportY=tree.y;}
    this.forageTarget=this.cooldown===0&&(Boolean(tree)||env.sample(x,y).moisture>.4);
-   if(!tree&&!this.forageTarget&&this.runCooldown===0&&this.random.next()<.12){this.state='run';this.tripPace=.90+this.random.next()*.15;this.timer=2.5;this.runCooldown=30+this.random.next()*35;}
+   if(!tree&&!this.forageTarget&&this.runCooldown===0&&this.random.next()<.12){this.curved=false;this.target={x,y};this.state='run';this.tripPace=.90+this.random.next()*.15;this.timer=2.5;this.runCooldown=30+this.random.next()*35;}
    return;
   }
   this.timer=2+this.random.next()*3;
  }
+ /** A short, sampled curve can skirt a trunk; every probe uses the full bear footprint. */
+ private approach(x:number,y:number,env:AgentEnvironment):boolean {
+  const dx=x-this.x,dy=y-this.y,length=Math.hypot(dx,dy);
+  for(const bend of [.18,-.18,0,.35,-.35]){
+   const cx=(this.x+x)/2-dy/length*bend,cy=(this.y+y)/2+dx/length*bend;
+   let valid=true,total=0,px=this.x,py=this.y;
+   const count=Math.ceil((length+Math.abs(bend)*2)/.05);
+   for(let i=1;i<=count;i++){
+    const t=i/count,u=1-t,qx=u*u*this.x+2*u*t*cx+t*t*x,qy=u*u*this.y+2*u*t*cy+t*t*y;
+    if(!this.allowed(qx,qy,env)){valid=false;break;}total+=Math.hypot(qx-px,qy-py);px=qx;py=qy;
+   }
+   if(!valid)continue;
+   this.curved=bend!==0;this.routeX=this.x;this.routeY=this.y;this.routeProgress=0;this.routeDuration=Math.max(.1,total);this.curveX=cx;this.curveY=cy;this.endX=x;this.endY=y;
+   const t=Math.min(1,.2/this.routeDuration),u=1-t;this.target={x:u*u*this.x+2*u*t*cx+t*t*x,y:u*u*this.y+2*u*t*cy+t*t*y};return true;
+  }
+  return false;
+ }
  protected override stationaryAction(dt:number,env:AgentEnvironment):boolean {
+  if(this.state==='settle'){this.motor.stop();this.gait=Math.min(1,this.gait+dt/.7);if(this.gait===1){this.state='rest';this.gait=0;this.timer=Math.max(1,this.timer);}return true;}
   if(['rise','stand','pick','lower'].includes(this.state)){
    this.motor.stop();
    // Losing a support reverses an unfinished rise continuously, or lowers from
@@ -112,13 +139,13 @@ export class BlackBearAgent extends EcologicalAgent {
   this.motor.stop();this.gait+=dt*(this.state==='play'?.7:.55)*this.pace;return true;
  }
  override write(w:BinaryWriter):void {
-  super.write(w);w.u8(Number(this.forageTarget));w.u8(Number(this.treeTarget));
-  for(const n of [this.supportX,this.supportY,this.standCooldown,this.runCooldown])w.f64(n);
+  super.write(w);w.u8(Number(this.forageTarget));w.u8(Number(this.treeTarget));w.u8(Number(this.stopRunning));w.u8(Number(this.curved));
+  for(const n of [this.supportX,this.supportY,this.standCooldown,this.runCooldown,this.stopPhase,this.curveX,this.curveY,this.endX,this.endY])w.f64(n);
  }
  static read(r:BinaryReader):BlackBearAgent {
-  const a=EcologicalAgent.readAs(r,(...args)=>new BlackBearAgent(...args)),target=r.u8(),tree=r.u8();
-  if(target>1||tree>1)throw new Error('Invalid bear target');
-  a.forageTarget=Boolean(target);a.treeTarget=Boolean(tree);a.supportX=r.f64();a.supportY=r.f64();a.standCooldown=r.f64();a.runCooldown=r.f64();
+  const a=EcologicalAgent.readAs(r,(...args)=>new BlackBearAgent(...args)),target=r.u8(),tree=r.u8(),run=r.u8(),curve=r.u8();
+  if(target>1||tree>1||run>1||curve>1)throw new Error('Invalid bear target');
+  a.forageTarget=Boolean(target);a.treeTarget=Boolean(tree);a.supportX=r.f64();a.supportY=r.f64();a.standCooldown=r.f64();a.runCooldown=r.f64();a.stopPhase=r.f64();a.curveX=r.f64();a.curveY=r.f64();a.endX=r.f64();a.endY=r.f64();a.stopRunning=Boolean(run);a.curved=Boolean(curve);
   if(a.standCooldown<0||a.runCooldown<0)throw new Error('Invalid bear cooldown');return a;
  }
 }

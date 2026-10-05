@@ -1,5 +1,7 @@
+import { animalOneShot,quietAction } from './animal-actions';
+import { animalForm,animalPrefix } from './animal-appearance';
 import { spriteRegion } from '../iso/render';
-import { BEAR_COATS, BEAR_ONE_SHOTS } from './bear-motion';
+import { bearSettleClip, BEAR_COATS, BEAR_ONE_SHOTS } from './bear-motion';
 import { composeZen } from './zen-scene';
 import { composeVolcanoes } from './volcano-scene';
 import { VolcanicWildlifeAgent } from './agents/volcanic-wildlife';
@@ -23,7 +25,7 @@ import { color, sortCommands, visible, type DrawCommand, type Frame, type Region
 import { quadBounds, type QuadCorners } from '../iso/quad';
 import type { AtlasManifest } from './scene';
 import { sampleDeer } from './scene';
-import { SnakeAgent, ElephantAgent, MonkeyAgent, EcologicalAgent, DeerAgent, WildlifeAgent, sampleWildlife, PlantAgent, MoteAgent, WaterAgent } from './agents';
+import { BlackBearAgent, SnakeAgent, ElephantAgent, MonkeyAgent, EcologicalAgent, DeerAgent, WildlifeAgent, sampleWildlife, PlantAgent, MoteAgent, WaterAgent } from './agents';
 import { DEER_CLIPS, directionIndex, HEAD_SECONDS, PLANT_FPS, PLANT_FRAMES } from './animation';
 import { InfiniteWorld, type WorldBounds } from './infinite';
 import { TerrainTile, TerrainKind, coordinateHash } from './terrain';
@@ -323,7 +325,7 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
       }
     } else if ((a instanceof DeerAgent||a instanceof WildlifeAgent)&&a.repose.active) {
       const d=a instanceof DeerAgent?sampleDeer(a,alpha):sampleWildlife(a,alpha);
-      const rest=restingSprite(a.kind,a.repose,d.heading,alpha);
+      const rest=restingSprite(a.kind,a.repose,d.heading,alpha,animalForm(a.kind,a.coat,a.juvenile));
       const size=a.size*(a instanceof DeerAgent?1.05:a instanceof EcologicalAgent?a.spec.displayScale:1);
       sprite(`${a.id}-shadow`,'shadow',d.x,d.y,.4*a.size,0,1,.2);
       sprite(a.id,rest.name,d.x,d.y,size,rest.frame,2,1,a.kind==='blackBear'?BEAR_COATS[a.coat]:[255,248,240][a.coat]);
@@ -331,17 +333,18 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
       const d = sampleDeer(a, alpha), clip = d.state === 'lower' ? 'raise' : d.state, count = DEER_CLIPS[clip];
       let phase = ['walk', 'run', 'turn'].includes(d.state) ? d.gait % 1 : ((time + a.phase) / 1.2) % 1;
       let frame = Math.floor(phase * count);
+      if(clip==='groom'||clip==='play')frame=Math.round(clamp(d.actionTime/4,0,1)*(count-1));
       if (clip === 'raise') { phase = clamp(d.actionTime / HEAD_SECONDS, 0, 1); if (d.state === 'lower') phase = 1 - phase; frame = Math.round(phase * (count - 1)); }
       sprite(`${a.id}-shadow`, 'shadow', d.x, d.y, .4*a.size, 0, 1, .35);
-      sprite(a.id, `deer-${clip}-${directionIndex(d.heading)}`, d.x, d.y, 1.05*a.size, frame, 2, 1, [255,247,237][a.coat]);
+      sprite(a.id, `${animalPrefix('deer',animalForm('deer',a.coat,a.juvenile))}-${clip}-${directionIndex(d.heading)}`, d.x, d.y, 1.05*a.size, frame, 2, 1, [255,247,237][a.coat]);
     } else if (a instanceof EcologicalAgent) {
       if(a.kind==='vulture'&&'homeX' in a&&'homeY' in a)sprite(`${a.id}-remains`,'scavenging-remains',Number(a.homeX)+.16,Number(a.homeY),1,0,1.3);
       const d=sampleWildlife(a,alpha),spec=ECO_SPECS[a.kind];
       const submerged=spec.mode==='amphibious'&&world.tileAt(d.x,d.y)?.materialAt(d.x,d.y)!>=TerrainKind.Shallow;
-      const clip=a.kind==='hippo'&&submerged?(d.state==='travel'?'wade':'wallow'):a.kind==='whale'?(d.state==='surface'?'surface':'travel'):submerged&&['beaver','crocodile'].includes(a.kind)&&d.state==='travel'?'swim':d.state;
+      const clip=d.state==='settle'&&a instanceof BlackBearAgent?bearSettleClip(Boolean(a.stopRunning),Number(a.stopPhase)):d.state==='approach'?'travel':a.kind==='hippo'&&submerged&&!['enterWater','leaveWater','yawn'].includes(d.state)?(d.state==='travel'?'wade':'wallow'):a.kind==='whale'?(d.state==='surface'?'surface':'travel'):submerged&&['beaver','crocodile'].includes(a.kind)&&['travel','rest'].includes(d.state)?d.state==='travel'?'swim':'wallow':d.state;
       if(a instanceof SnakeAgent && ['wrap','coil','unwrap'].includes(d.state)){
         const action=d.state==='coil'?'coil':'wrap',heading=ecoDirection(a.kind,a.supportHeading);
-        const name=`boa-${action}-${heading}`,count=atlas.sprites[`${name}-front`]!.frames.length;
+        const name=`${animalPrefix('boa',animalForm('boa',a.coat))}-${action}-${heading}`,count=atlas.animalClips?.[`${name}-front`]?.frames??atlas.sprites[`${name}-front`]!.frames.length;
         const phase=d.state==='unwrap'?1-d.gait:d.state==='coil'?0:d.gait;
         const pose=Math.round(phase*(count-1));
         const angle=heading/spec.directions*Math.PI*2,offset=SNAKE_SUPPORT_OFFSET*SNAKE_MODEL_TO_TILE*a.size;
@@ -363,14 +366,23 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
           commands.push({...quadBounds(corners),corners,id:`${a.id}-support`,color:[92,116,48,255],layer:2,depth:d.x+d.y});
         }
       }
-      const name=`${a.kind}${(a.kind==='hippo'||a.kind==='bison')&&a.coat===1?'-form1':''}-${clip}-${ecoDirection(a.kind,d.heading)}`,count=atlas.animalClips?.[name]?.frames??atlas.sprites[name]?.frames.length;
+      const name=`${animalPrefix(a.kind,animalForm(a.kind,a.coat,a.juvenile))}-${clip}-${ecoDirection(a.kind,d.heading)}`,count=atlas.animalClips?.[name]?.frames??atlas.sprites[name]?.frames.length;
       if(!count)throw new Error(`Unknown ecology sprite ${name}`);
-      const oneShot=BEAR_ONE_SHOTS.includes(d.state)||d.state==='drink'||d.state==='spray'||d.state==='hop'||d.state==='rise'||d.state==='lower';
-      const pose=oneShot?Math.min(count-1,Math.floor(d.gait*(count-1))):Math.min(count-1,Math.floor((d.state==='swing'?d.gait:d.gait%1)*count));
+      const oneShot=animalOneShot(a.kind,d.state);
+      const pose=a.kind==='whale'&&d.state==='surface'?Math.round(clamp(((lerp(a.previousBreath,a.breathClock,alpha)%a.cycleSeconds)/a.cycleSeconds-.83)/.17,0,1)*(count-1)):a instanceof SnakeAgent&&['turnLeft','turnRight'].includes(d.state)?Math.round(lerp(a.previousTurnBend,a.turnBend,alpha)*(count-1)):oneShot?Math.min(count-1,Math.floor(d.gait*(count-1))):Math.min(count-1,Math.floor((d.state==='swing'?d.gait:d.gait%1)*count));
       const water=spec.mode==='water',visibility=a.kind==='whale'?clamp((d.altitude+12)/12,0,1):1;
       const heading=a.kind==='crab'?d.heading+Math.PI/2:d.heading;
       if(!water)sprite(`${a.id}-shadow`,'shadow',d.x,d.y,(spec.mode==='air'?.18:.4)*a.size,0,1,.16);
       sprite(a.id,name,d.x,d.y,a.size*spec.displayScale,pose,water?.8:2,a.kind==='fish'?.65:submerged?.78:visibility,a.kind==='blackBear'?BEAR_COATS[a.coat]:[255,250,243][a.coat],d.altitude);
+      if(a.speed>.03&&((a.kind==='bison'&&d.state==='run'&&!submerged)||(a.kind==='beaver'&&submerged))){
+        const wake=a.kind==='beaver',clock=lerp(a.previousBreath,a.breathClock,alpha);
+        for(let i=0;i<4;i++){
+          const t=(clock*(wake?.7:1.4)+i*.25)%1,side=i%2?1:-1;
+          const x=d.x-Math.cos(d.heading)*(.12+t*.22)+Math.sin(d.heading)*side*(.06+t*.05),y=d.y-Math.sin(d.heading)*(.12+t*.22)-Math.cos(d.heading)*side*(.06+t*.05);
+          const p=screen(x,y,world.heightAt(x,y)+(wake?.5:t*3));
+          rect(`${a.id}-${wake?'wake':'dust'}-${i}`,p.x,p.y,(wake?4+t*7:2+t*2)*scale,scale,wake?'#d5e6ce':'#b59b6d',(1-t)*(wake?.22:.2),1.1);
+        }
+      }
       if(a instanceof ElephantAgent&&d.state==='spray'&&a.loaded){
         const tip=elephantTrunk('spray',pose/(count-1))[3]!,heading=ecoDirection('elephant',d.heading)/spec.directions*Math.PI*2;
         const factor=ELEPHANT_MODEL_TO_TILE*a.size,nx=d.x+(tip[0]*Math.cos(heading)-tip[1]*Math.sin(heading))*factor,ny=d.y+(tip[0]*Math.sin(heading)+tip[1]*Math.cos(heading))*factor;
@@ -394,11 +406,11 @@ export function composeInfinite(world: InfiniteWorld, atlas: AtlasManifest, view
         if(puff>0&&puff<1)for(let i=0;i<7;i++)rect(`${a.id}-blow-${i}`,p.x+(i-3)*puff*3*scale,p.y-(6+Math.sin(puff*Math.PI)*20+i%2*5)*scale,2*scale,3*scale,'#d3efde',(1-puff)*.8,3);
       }
     } else if (a instanceof WildlifeAgent) {
-      const d=sampleWildlife(a,alpha),clip=d.state==='run'?'chase':d.state, phase=d.gait%1;
-      const name=`${a.kind}-${clip}-${directionIndex(d.heading)}`,count=atlas.animalClips?.[name]?.frames??atlas.sprites[name]?.frames.length;
+      const d=sampleWildlife(a,alpha),clip=d.state==='run'?'chase':d.state, phase=(quietAction(d.state)||['takeoff','land','crouch','uncrouch'].includes(d.state))?d.gait:d.gait%1;
+      const name=`${animalPrefix(a.kind,animalForm(a.kind,a.coat,a.juvenile))}-${clip}-${directionIndex(d.heading)}`,count=atlas.animalClips?.[name]?.frames??atlas.sprites[name]?.frames.length;
       if(!count)throw new Error(`Unknown wildlife sprite ${name}`);
       sprite(`${a.id}-shadow`,'shadow',d.x,d.y,(a.kind==='toucan'?.2:.4)*a.size,0,1,.22);
-      sprite(a.id,name,d.x,d.y,a.size,Math.floor(phase*count),2,1,a.kind==='blackBear'?BEAR_COATS[a.coat]:[255,248,240][a.coat],d.altitude);
+      sprite(a.id,name,d.x,d.y,a.size,Math.min(count-1,Math.floor(phase*((quietAction(d.state)||['takeoff','land','crouch','uncrouch'].includes(d.state))?count-1:count))),2,1,a.kind==='blackBear'?BEAR_COATS[a.coat]:[255,248,240][a.coat],d.altitude);
     } else if (a instanceof MoteAgent) {
       const t = lerp(a.previousPhase, a.phase, alpha);
       rect(a.id, point.x + Math.sin(t * .7) * 20 * scale, point.y - (20 + Math.cos(t * .4) * 13) * scale, scale, scale, '#eff4aa', (world.weather === 'dusk' ? .9 : .4) * (.6 + .4 * Math.sin(t) ** 2), 3);

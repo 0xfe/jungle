@@ -13,8 +13,8 @@ const angleDelta=(a:number,b:number)=>Math.atan2(Math.sin(b-a),Math.cos(b-a));
 export abstract class ZenResident implements Agent {
  abstract readonly kind:ZenKind;abstract readonly type:number;
  rng:AgentRandom;heading=0;gait=0;speed=0;clock=0;timer=0;state=0;variant=0;index=0;visibility=1;
- homeX:number;homeY:number;previous={x:0,y:0,heading:0,gait:0,clock:0,visibility:1};
- constructor(readonly id:string,public x:number,public y:number,seed:number){this.homeX=x;this.homeY=y;this.rng=new AgentRandom(seed);this.variant=Math.floor(this.rng.next()*3);this.capture();}
+ size=1;homeX:number;homeY:number;previous={x:0,y:0,heading:0,gait:0,clock:0,visibility:1};
+ constructor(readonly id:string,public x:number,public y:number,seed:number){this.homeX=x;this.homeY=y;this.rng=new AgentRandom(seed);this.variant=Math.floor(this.rng.next()*3);this.size=.85+this.rng.next()*.3;this.capture();}
  capture(){this.previous={x:this.x,y:this.y,heading:this.heading,gait:this.gait,clock:this.clock,visibility:this.visibility};}
  presentation(alpha:number){return{x:lerp(this.previous.x,this.x,alpha),y:lerp(this.previous.y,this.y,alpha),heading:this.previous.heading+angleDelta(this.previous.heading,this.heading)*alpha,gait:lerp(this.previous.gait,this.gait,alpha),clock:lerp(this.previous.clock,this.clock,alpha),visibility:lerp(this.previous.visibility,this.visibility,alpha)};}
  /** Turns plant the feet, and only accepted distance advances the baked gait. */
@@ -25,18 +25,18 @@ export abstract class ZenResident implements Agent {
   const desired=Math.min(pace,d*2),speed=Math.min(desired,this.speed+dt*.25),step=Math.min(d,speed*dt);
   const nx=this.x+Math.cos(this.heading)*step,ny=this.y+Math.sin(this.heading)*step;
   if(!valid(nx,ny)){this.speed=0;return false;}
-  this.x=nx;this.y=ny;this.speed=speed;this.gait+=step/(this.kind==='monk'?.12:.18);return false;
+  this.x=nx;this.y=ny;this.speed=speed;this.gait+=step/(this.kind==='monk'?.12:.18*this.size);return false;
  }
  abstract update(dt:number,e:AgentEnvironment):void;
  write(w:BinaryWriter):void{
-  w.string(this.id);w.u32(this.rng.state);w.u8(this.state);w.u8(this.variant);w.u8(this.index);
+  w.string(this.id);w.u32(this.rng.state);w.u8(this.state);w.u8(this.variant);w.u8(this.index);w.f64(this.size);
   for(const n of [this.x,this.y,this.homeX,this.homeY,this.heading,this.gait,this.speed,this.clock,this.timer,this.visibility,...Object.values(this.previous)])w.f64(n);
  }
  static restore<T extends ZenResident>(a:T,r:BinaryReader):T{
-  a.rng.state=r.u32();a.state=r.u8();a.variant=r.u8();a.index=r.u8();
+  a.rng.state=r.u32();a.state=r.u8();a.variant=r.u8();a.index=r.u8();a.size=r.f64();
   [a.x,a.y,a.homeX,a.homeY,a.heading,a.gait,a.speed,a.clock,a.timer,a.visibility]=Array.from({length:10},()=>r.f64()) as [number,number,number,number,number,number,number,number,number,number];
   a.previous={x:r.f64(),y:r.f64(),heading:r.f64(),gait:r.f64(),clock:r.f64(),visibility:r.f64()};
-  if(a.variant>2||a.state>7||a.visibility<0||a.visibility>1)throw new Error('Invalid sanctuary resident');return a;
+  if(a.size<.5||a.size>1.5||a.variant>2||a.state>7||a.visibility<0||a.visibility>1)throw new Error('Invalid sanctuary resident');return a;
  }
 }
 /** Independent residents own their tasks; only the dedicated procession shares a schedule. */
@@ -118,37 +118,80 @@ export class ZenMonkAgent extends ZenResident {
   return a;
  }
 }
-/** Koi follow loose, individually phased ellipses and dart away from bill splashes. */
-export class KoiAgent extends ZenResident {
+/** Saved local routes keep every pond resident inside its sanctuary. */
+export abstract class PondResident extends ZenResident {
+ goalX:number;goalY:number;actionPhase=0;previousAction=0;actionSeconds=4;
+ constructor(id:string,x:number,y:number,seed:number){super(id,x,y,seed);this.goalX=x;this.goalY=y;}
+ protected contained(x:number,y:number,margin=1):boolean{return ((x-this.homeX)/(2.05*margin))**2+((y-this.homeY)/(1.45*margin))**2<1;}
+ protected waterGoal(e:AgentEnvironment,away?:{x:number;y:number}):boolean{
+  for(let i=0;i<32;i++){
+   const angle=away?Math.atan2(this.y-away.y,this.x-away.x)+(this.rng.next()-.5):this.heading+(this.rng.next()-.5)*(i<16?2:TAU);
+   const d=.25+this.rng.next()*.7,x=this.x+Math.cos(angle)*d,y=this.y+Math.sin(angle)*d;
+   if(!this.contained(x,y)||!e.sample(x,y).water)continue;
+   this.goalX=x;this.goalY=y;return true;
+  }
+  this.goalX=this.homeX;this.goalY=this.homeY;return false;
+ }
+ protected begin(action:number,seconds:number):void{this.state=action;this.actionPhase=this.previousAction=0;this.actionSeconds=seconds;this.speed=0;}
+ protected tick(dt:number):void{this.capture();this.previousAction=this.actionPhase;this.clock+=dt;this.timer-=dt;}
+ override write(w:BinaryWriter):void{super.write(w);for(const n of [this.goalX,this.goalY,this.actionPhase,this.previousAction,this.actionSeconds])w.f64(n);}
+ static restorePond<T extends PondResident>(a:T,r:BinaryReader):T{ZenResident.restore(a,r);a.goalX=r.f64();a.goalY=r.f64();a.actionPhase=r.f64();a.previousAction=r.f64();a.actionSeconds=r.f64();if(a.actionSeconds<=0||a.actionPhase<0||a.actionPhase>1)throw new Error('Invalid pond action');return a;}
+}
+/** Independent curved trips, small surface feeding turns and fish-owned bill avoidance. */
+export class KoiAgent extends PondResident {
  readonly type=72;readonly kind='koi';
- update(dt:number,e:AgentEnvironment){this.capture();this.clock+=dt;this.timer=Math.max(0,this.timer-dt);
-  if(e.nearby(this.x,this.y,.6).some(n=>n.kind==='pelican'&&n.alarm===1))this.timer=1.8;
-  const a=this.clock*(.13+this.index*.007)+this.index*2.4,r=.35+(this.index%3)*.14;this.state=this.timer>0?1:0;
-  this.move(this.homeX+Math.cos(a)*r*2.1,this.homeY+Math.sin(a)*r*1.5,this.state?.4:.16,dt,(x,y)=>e.sample(x,y).water);
+ update(dt:number,e:AgentEnvironment){
+  this.tick(dt);const danger=e.nearby(this.x,this.y,.65).find(n=>n.kind==='pelican'&&n.alarm===1);
+  if(danger&&this.state!==1){this.state=1;this.timer=1.4+this.rng.next();this.waterGoal(e,danger);}
+  if(this.state===2){this.speed=0;this.actionPhase=Math.min(1,this.actionPhase+dt/this.actionSeconds);if(this.actionPhase===1){this.state=0;this.timer=10+this.rng.next()*15;this.waterGoal(e);}return;}
+  if(this.state===1&&this.timer<=0){this.state=0;this.timer=12;}
+  if(Math.hypot(this.goalX-this.x,this.goalY-this.y)<.10){
+   if(this.state===0&&this.timer<=0&&this.rng.next()<.25){this.begin(2,2.5+this.rng.next());return;}
+   this.waterGoal(e,danger);
+  }
+  this.move(this.goalX,this.goalY,this.state===1?.42:.13+this.size*.035,dt,(x,y)=>this.contained(x,y)&&e.sample(x,y).water);
  }
- static read(r:BinaryReader){return ZenResident.restore(new KoiAgent(r.string(),0,0,1),r);}
+ static read(r:BinaryReader){return PondResident.restorePond(new KoiAgent(r.string(),0,0,1),r);}
 }
-/** Ducks paddle, dabble, then preen; each has its own seeded pause schedule. */
-export class DuckAgent extends ZenResident {
+/** Dabbling folds down/up once; preening may happen during a short dry-bank visit. */
+export class DuckAgent extends PondResident {
  readonly type=73;readonly kind='duck';
- update(dt:number,e:AgentEnvironment){this.capture();this.clock+=dt;this.timer-=dt;
-  if(this.timer<=0){this.state=(this.state+1)%3;this.timer=this.state?3+this.rng.next()*4:12+this.rng.next()*12;}
-  if(this.state){this.speed=0;return;}const a=this.clock*.09+this.index*2.1;
-  this.move(this.homeX+Math.cos(a)*1.4,this.homeY+Math.sin(a)*.8,.13,dt,(x,y)=>e.sample(x,y).water);
+ update(dt:number,e:AgentEnvironment){
+  this.tick(dt);
+  if([1,2,4].includes(this.state)){
+   this.speed=0;this.actionPhase=Math.min(1,this.actionPhase+dt/this.actionSeconds);
+   if(this.actionPhase===1){this.state=this.state===4?5:0;this.timer=12+this.rng.next()*15;this.waterGoal(e);}return;
+  }
+  if(this.state===0&&this.timer<=0){
+   if(this.rng.next()<.24)for(let i=0;i<32;i++){
+    const a=this.rng.next()*TAU,x=this.homeX+Math.cos(a)*2.15,y=this.homeY+Math.sin(a)*1.52;
+    if(!e.sample(x,y).water&&e.canMove(x,y)){this.state=3;this.goalX=x;this.goalY=y;this.timer=48;break;}
+   }
+   if(this.state===0){this.begin(this.rng.next()<.5?1:2,4+this.rng.next()*3);return;}
+  }
+  const landTrip=this.state===3||this.state===5;
+  const arrived=this.move(this.goalX,this.goalY,landTrip?.10:.13,dt,(x,y)=>this.contained(x,y,1.12)&&(e.sample(x,y).water||(landTrip&&e.canMove(x,y))));
+  if(arrived){if(this.state===3)this.begin(4,6);else{this.state=0;this.waterGoal(e);}}
+  if(landTrip&&this.timer<=0){this.state=5;this.timer=20;this.waterGoal(e);}
  }
- static read(r:BinaryReader){return ZenResident.restore(new DuckAgent(r.string(),0,0,1),r);}
+ static read(r:BinaryReader){return PondResident.restorePond(new DuckAgent(r.string(),0,0,1),r);}
 }
-/** Pelicans patrol the pond edge, pause to watch koi, and dip their long bills. */
-export class PelicanAgent extends ZenResident {
- readonly type=74;readonly kind='pelican';get alarm(){return this.state===2?1:0;}
- update(dt:number,e:AgentEnvironment){this.capture();this.clock+=dt;this.timer-=dt;
-  if(this.timer<=0){this.state=(this.state+1)%3;this.timer=this.state===0?18+this.rng.next()*20:this.state===1?3+this.rng.next()*3:1.3;}
-  if(this.state){this.speed=0;return;}
-  const fish=e.nearby(this.x,this.y,4).filter(n=>n.kind==='koi');const nearest=fish.sort((a,b)=>Math.hypot(a.x-this.x,a.y-this.y)-Math.hypot(b.x-this.x,b.y-this.y))[0];
-  const a=this.clock*.055+this.index*Math.PI;
-  this.move(nearest?.x??this.homeX+Math.cos(a)*1.5,nearest?.y??this.homeY+Math.sin(a)*.9,.1,dt,(x,y)=>e.sample(x,y).water);
+/** Retained fish-directed approaches stop short, settle wings, watch, then dip once. */
+export class PelicanAgent extends PondResident {
+ readonly type=74;readonly kind='pelican';get alarm(){return this.state===2&&this.actionPhase>.3&&this.actionPhase<.7?1:0;}
+ update(dt:number,e:AgentEnvironment){
+  this.tick(dt);
+  if(this.state===2){this.speed=0;this.actionPhase=Math.min(1,this.actionPhase+dt/this.actionSeconds);if(this.actionPhase===1){this.state=0;this.timer=12+this.rng.next()*18;this.waterGoal(e);}return;}
+  if(this.state===1){this.speed=0;this.actionPhase=Math.min(1,this.actionPhase+dt/this.actionSeconds);if(this.actionPhase===1)this.begin(2,2.2);return;}
+  if(this.timer<=0){
+   const fish=e.nearby(this.x,this.y,2).filter(n=>n.kind==='koi').sort((a,b)=>Math.hypot(a.x-this.x,a.y-this.y)-Math.hypot(b.x-this.x,b.y-this.y))[0];
+   if(fish){const d=Math.hypot(fish.x-this.x,fish.y-this.y);if(d<.6){this.begin(1,3);return;}
+    const x=fish.x+(this.x-fish.x)/d*.4,y=fish.y+(this.y-fish.y)/d*.4;if(this.contained(x,y)&&e.sample(x,y).water){this.goalX=x;this.goalY=y;}}
+   else this.waterGoal(e);
+  }
+  if(this.move(this.goalX,this.goalY,.10,dt,(x,y)=>this.contained(x,y)&&e.sample(x,y).water))this.waterGoal(e);
  }
- static read(r:BinaryReader){return ZenResident.restore(new PelicanAgent(r.string(),0,0,1),r);}
+ static read(r:BinaryReader){return PondResident.restorePond(new PelicanAgent(r.string(),0,0,1),r);}
 }
 export const ZEN_CLASSES={monk:ZenMonkAgent,koi:KoiAgent,duck:DuckAgent,pelican:PelicanAgent};
 /** One bounded sanctuary owner keeps its procession and pond snapshot synchronized. */

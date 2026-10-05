@@ -99,7 +99,7 @@ test('bears stay quadrupedal, vary trip tempo and direction, and only stand brie
 test('every bear action and its previous pose resume exactly; runs stop at blocked ground',()=>{
  const env={...forest,canMove:()=>true,perches:()=>[]};
  for(const state of Object.keys(ecoClips('blackBear'))){
-  const a=new BlackBearAgent('action',0,0,9);a.state=state as typeof a.state;a.gait=.43;a.timer=2;a.target={x:2,y:0};a.heading=0;a.decision=10;
+  const a=new BlackBearAgent('action',0,0,9);a.state=(state.startsWith('settle')?'settle':state) as typeof a.state;if(state.startsWith('settle')){a.stopRunning=state.includes('Run');a.stopPhase=Number(state.match(/\d+$/)?.[0]??0)/8;}a.gait=.43;a.timer=2;a.target={x:2,y:0};a.heading=0;a.decision=10;
   for(let i=0;i<13;i++)a.update(1/60,env);
   const b=jungleAgents.decode(jungleAgents.encode([a]))[0]!;
   for(let i=0;i<600;i++){a.update(1/60,env);b.update(1/60,env);}
@@ -139,4 +139,17 @@ test('lost support reverses a partial rise, and cub play stays near its mother',
  let played=false;
  for(let i=0;i<600*60;i++){cub.update(1/60,env);if(cub.state==='play'){played=true;assert.ok(Math.hypot(cub.x,cub.y)<.72);assert.equal(cub.speed,0);}}
  assert.ok(played);
+});
+
+test('bear curved approaches avoid trunk footprints and resume mid-curve exactly',()=>{
+ const a=new BlackBearAgent('curve',.4,1,18);a.timer=0;
+ for(let i=0;i<600&&!a.curved;i++)a.update(1/60,forest);
+ assert.ok(a.curved,'a vegetation approach should use a validated curve');
+ for(let i=0;i<20;i++)a.update(1/60,forest);
+ const b=jungleAgents.decode(jungleAgents.encode([a]))[0] as BlackBearAgent;
+ for(let i=0;i<600;i++){
+  a.update(1/60,forest);b.update(1/60,forest);
+  assert.ok(forest.canMove(a.x,a.y));
+ }
+ assert.deepEqual(jungleAgents.encode([a]),jungleAgents.encode([b]));
 });

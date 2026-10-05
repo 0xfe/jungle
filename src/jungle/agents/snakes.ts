@@ -7,7 +7,7 @@ import { EcologicalAgent } from './ecological-base';
 /** Slow serpentine transport. Resting/blocked bodies never continue a travel wave. */
 export abstract class SnakeAgent extends EcologicalAgent {
   abstract override readonly kind: 'boa' | 'smallSnake';
-  hasSupport = false;
+  hasSupport = false;turnBend=0;previousTurnBend=0;
   supportX = 0; supportY = 0; supportHeading = 0;
 
   constructor(id: string, x: number, y: number, seed: number) {
@@ -54,7 +54,7 @@ export abstract class SnakeAgent extends EcologicalAgent {
   }
 
   override update(dt: number, env: AgentEnvironment): void {
-    Object.assign(this.previous,this.sample());
+    Object.assign(this.previous,this.sample());this.previousTurnBend=this.turnBend;
     this.previousBreath = this.breathClock; this.breathClock += dt;
     this.timer -= dt; this.cooldown = Math.max(0,this.cooldown-dt); this.decision -= dt;
     this.startle.update(dt);
@@ -80,6 +80,7 @@ export abstract class SnakeAgent extends EcologicalAgent {
       }
       return;
     }
+    if(this.quietActivity(dt))return;
     if (this.state==='rest') {this.motor.stop();return;}
     const dx=this.target.x-this.x,dy=this.target.y-this.y,distance=Math.hypot(dx,dy);
     if (distance<.012 || this.timer<=0) {
@@ -94,8 +95,11 @@ export abstract class SnakeAgent extends EcologicalAgent {
     }
     const delta=angleDelta(this.heading,Math.atan2(dy,dx));
     this.heading+=clamp(delta,-dt*1.5,dt*1.5);
-    // Align while planted. This avoids side-sliding a long body at route changes.
-    if (Math.abs(delta)>.16) {this.motor.stop();return;}
+    // The head leads a supported body bend while the root stays planted.
+    const wanted=Math.abs(delta)>.16?Math.min(1,Math.abs(delta)/.8):0;
+    this.turnBend+=clamp(wanted-this.turnBend,-dt*2,dt*2);
+    if(wanted||this.turnBend>.001){this.state=delta>=0?'turnLeft':'turnRight';this.motor.stop();return;}
+    if(this.state==='turnLeft'||this.state==='turnRight'){this.state='travel';this.turnBend=0;}
     const acceleration=.22,cruise=this.spec.speed*this.pace*this.tripPace;
     this.motor.update(Math.min(cruise,distance/.35,Math.sqrt(2*acceleration*distance)*.65),dt,acceleration,1.2);
     const step=Math.min(distance,this.speed*dt),x=this.x+Math.cos(this.heading)*step,y=this.y+Math.sin(this.heading)*step;
@@ -105,12 +109,12 @@ export abstract class SnakeAgent extends EcologicalAgent {
 
   override write(w: BinaryWriter): void {
     super.write(w);w.u8(Number(this.hasSupport));
-    for (const n of [this.supportX,this.supportY,this.supportHeading]) w.f64(n);
+    for (const n of [this.supportX,this.supportY,this.supportHeading,this.turnBend,this.previousTurnBend]) w.f64(n);
   }
   static restoreSnake<T extends SnakeAgent>(r:BinaryReader,create:(id:string,x:number,y:number,seed:number)=>T):T {
     const a=EcologicalAgent.readAs(r,create),flag=r.u8();
     if(flag>1)throw new Error('Invalid snake support state');
-    a.hasSupport=Boolean(flag);a.supportX=r.f64();a.supportY=r.f64();a.supportHeading=r.f64();return a;
+    a.hasSupport=Boolean(flag);a.supportX=r.f64();a.supportY=r.f64();a.supportHeading=r.f64();a.turnBend=r.f64();a.previousTurnBend=r.f64();return a;
   }
 }
 
@@ -120,6 +124,7 @@ export class BoaAgent extends SnakeAgent {
   constructor(id:string,x:number,y:number,seed:number){super(id,x,y,seed);this.size=.95+this.random.next()*.2;}
   protected decide(env:AgentEnvironment):void {
     if(this.state!=='rest'||this.timer>0)return;
+    if(this.cooldown===0&&this.random.next()<.25){this.beginActivity('investigate',5);this.cooldown=20;return;}
     if(this.cooldown===0&&this.random.next()<.75&&this.seekSupport(env))return;
     this.forage(env);
   }
@@ -130,7 +135,7 @@ export class BoaAgent extends SnakeAgent {
 export class SmallSnakeAgent extends SnakeAgent {
   readonly kind='smallSnake';readonly type=52;
   protected decide(env:AgentEnvironment):void {
-    if(this.state==='rest'&&this.timer<=0)this.forage(env);
+    if(this.state==='rest'&&this.timer<=0){if(this.cooldown===0){this.beginActivity('investigate',3.5);this.cooldown=20;}else this.forage(env);}
     if(this.state==='travel'&&this.groupId){
       const peers=env.nearby(this.x,this.y,4).filter(a=>a.id!==this.id&&a.groupId===this.groupId);
       if(peers.length){

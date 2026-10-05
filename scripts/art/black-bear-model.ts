@@ -1,13 +1,16 @@
-import { bearFoot } from '../../src/jungle/bear-motion';
+import { BEAR_SETTLE_SAMPLES,bearFoot } from '../../src/jungle/bear-motion';
 import { restingPose } from './repose';
 import { bone, ellipsoid, type Mesh, type RGB, type V3 } from '../../src/iso/bake/mesh';
 const TAU=Math.PI*2,smooth=(t:number)=>t*t*(3-2*t);
 /** +X-facing plantigrade rig. Gait dimensions come from the simulation's stride
  * contract; the higher-resolution bake retains one ground anchor in every pose. */
-export function blackBearMesh(clip:string,p:number):Mesh {
- if(clip==='lower')return blackBearMesh('rise',1-p);
- if(clip==='feedUp')return blackBearMesh('feedDown',1-p);
- const rest=restingPose(clip,p),walking=clip==='travel',running=clip==='run',moving=walking||running;
+export function blackBearMesh(clip:string,p:number,form=0):Mesh {
+ if(clip==='lower')return blackBearMesh('rise',1-p,form);
+ if(clip==='feedUp')return blackBearMesh('feedDown',1-p,form);
+ const settle=/^settle(Run)?(\d+)?$/.exec(clip),progress=p,start=settle?Number(settle[2]??0)/BEAR_SETTLE_SAMPLES:0;
+ if(settle)p=start;
+ const rest=restingPose(clip,p),walking=clip==='travel'||Boolean(settle&&!settle[1]),running=clip==='run'||Boolean(settle?.[1]),moving=walking||running;
+ const amount=settle?smooth(progress):0;
  const wave=Math.sin(p*TAU),playing=clip==='play',play=playing?(1-Math.cos(p*TAU))*.5:0;
  const feeding=clip==='forage'?1:clip==='feedDown'?smooth(p):0;
  const upright=clip==='rise'?smooth(p):clip==='stand'||clip==='pick'?1:0;
@@ -19,8 +22,8 @@ export function blackBearMesh(clip:string,p:number):Mesh {
   const grain=Math.sin(n[0]*43+n[1]*17)*Math.cos(n[2]*37-n[1]*13),base=n[2]>.25?highlight:fur,delta=grain>.65?8:grain<-.6?-7:0;
   return [base[0]+delta,base[1]+delta,base[2]+delta];
  };
- const bob=-.31*rest.amount+(running?Math.cos(p*TAU*2)*.033:walking?Math.sin(p*TAU*2)*.011:wave*.004);
- const sway=moving?wave*(running?.012:.018):0;
+ const bob=-.31*rest.amount+(1-amount)*(running?Math.cos(p*TAU*2)*.033:walking?Math.sin(p*TAU*2)*.011:wave*.004);
+ const sway=moving?(1-amount)*wave*(running?.012:.018):0;
  const m:Mesh=[];
  ellipsoid(m,[-.04,sway,.59+bob],[.58,.29,.32],fur,undefined,wool,28,16);
  ellipsoid(m,[-.34,sway*.7,.57+bob],[.29,.28,.30],fur,undefined,wool,20,12);
@@ -30,11 +33,11 @@ export function blackBearMesh(clip:string,p:number):Mesh {
  bone(m,[.31,0,.65+bob],head,.18,fur);
  const headStart=m.length;
  ellipsoid(m,head,[.23,.19,.22],highlight,undefined,wool,24,14);
- ellipsoid(m,[head[0]+.18,head[1],head[2]-.07],[.16,.115,.09],muzzle);
+ ellipsoid(m,[head[0]+.18,head[1],head[2]-.07],[form===1?.18:form===2?.14:.16,.115,.09],muzzle);
  ellipsoid(m,[head[0]+.30,head[1],head[2]-.055],[.055,.079,.043],paw);
  for(const side of [-1,1]){
   const ear=clip==='stand'?Math.sin(p*TAU)*side*.012:0;
-  ellipsoid(m,[head[0]-.07+ear,head[1]+side*.145,head[2]+.18],[.065,.048,.072],fur);
+  ellipsoid(m,[head[0]-.07+ear,head[1]+side*.145,head[2]+.18],[form===2?.077:.065,.048,form===1?.061:.072],fur);
   ellipsoid(m,[head[0]-.046+ear,head[1]+side*.15,head[2]+.19],[.026,.033,.038],[126,110,90]);
   ellipsoid(m,[head[0]+.108,head[1]+side*.158,head[2]+.05],[.025,.016,.024],[18,20,20]);
   ellipsoid(m,[head[0]+.118,head[1]+side*.17,head[2]+.059],[.008,.006,.008],[222,206,158]);
@@ -49,7 +52,8 @@ export function blackBearMesh(clip:string,p:number):Mesh {
  for(let i=0;i<4;i++){
   const side=i<2?-1:1,front=i%2===1,step=bearFoot(p,i,running),fore=moving?step.fore:0,lift=moving?step.lift:0;
   const x=front?.36:-.4;
-  let foot:V3=[x+fore,side*.22,.045+lift],knee:V3=[x+fore*.4+(front?.025:-.035),side*.225,.27+lift*.3];
+  const t=settle?Math.max(0,Math.min(1,progress*1.6-i*.2)):0,u=smooth(t);
+  let foot:V3=[x+fore*(1-u),side*.22,.045+lift*(1-u)+(settle?Math.sin(t*Math.PI)*.055:0)],knee:V3=[x+fore*.4*(1-u)+(front?.025:-.035),side*.225,.27+lift*.3*(1-u)];
   if(rest.amount){
    foot=[foot[0]+((front?.65:-.44)-foot[0])*rest.amount,side*(.22+.10*rest.amount),foot[2]];
    knee=[knee[0],side*.29,knee[2]+(.075-knee[2])*rest.amount];

@@ -41,7 +41,7 @@ test('resident routines stay in habitat, visit all monk activities and resume ex
  const {w,s}=worldAt(),a=w.agents.find((a):a is ZenGardenAgent=>a instanceof ZenGardenAgent)!;assert.ok(a);
  const env={time:0,canMove:(x:number,y:number)=>w.canMove(x,y),sample:(x:number,y:number)=>({water:w.tileAt(x,y)!.materialAt(x,y)>=TerrainKind.Shallow,elevation:w.heightAt(x,y),light:1,wind:1,moisture:.5}),nearby:()=>[]};
  const seen=new Set<number>();
- for(let i=0;i<220*60;i++){a.update(1/60,env);for(const c of a.residents){if(c instanceof ZenMonkAgent)seen.add(c.state);else assert.ok(env.sample(c.x,c.y).water,`${c.kind} left pond`);}}
+ for(let i=0;i<220*60;i++){a.update(1/60,env);for(const c of a.residents){if(c instanceof ZenMonkAgent)seen.add(c.state);else if(c instanceof DuckAgent&&[3,4,5].includes(c.state)){assert.ok(env.sample(c.x,c.y).water||env.canMove(c.x,c.y));assert.ok(((c.x-c.homeX)/2.3)**2+((c.y-c.homeY)/1.63)**2<1,'duck shore visit remains bounded');}else assert.ok(env.sample(c.x,c.y).water,`${c.kind} left pond`);}}
  for(const state of [0,1,2,3,4,5])assert.ok(seen.has(state),`monk state ${state}`);
  const b=jungleAgents.decode(jungleAgents.encode([a]))[0] as ZenGardenAgent;
  for(let i=0;i<600;i++){a.update(1/60,env);b.update(1/60,env);}assert.deepEqual(jungleAgents.encode([a]),jungleAgents.encode([b]));

@@ -5,9 +5,11 @@ import { EcologicalAgent } from './ecological-base';
 export class ZebraAgent extends EcologicalAgent {
  readonly kind='zebra';readonly type=59;
  protected decide(env:AgentEnvironment):void {
+  if(this.state==='feedDown'||this.state==='feedUp')return;
   const herd=env.nearby(this.x,this.y,5).filter(n=>n.groupId===this.groupId&&n.id!==this.id&&this.groupId);
   const leader=herd.find(n=>n.id===this.leaderId);
   if(leader&&Math.hypot(leader.x-this.x,leader.y-this.y)>.7){
+   if(this.state==='graze'){this.timer=0;return;}
    const angle=leader.heading??0;
    // Stagger followers across the leader's trail so a small herd does not
    // collapse into a single overlapping waypoint. Snapshot IDs fix the order.
@@ -19,20 +21,17 @@ export class ZebraAgent extends EcologicalAgent {
    }
   }
   if(this.id===this.leaderId&&herd.some(n=>Math.hypot(n.x-this.x,n.y-this.y)>1.3)){
+   if(this.state==='graze'){this.timer=0;return;}
    this.state='rest';this.motor.stop();this.timer=1;return;
   }
-  if(this.state==='graze'){
-   if(this.timer<=0){this.state='rest';this.timer=1+this.random.next()*3;this.cooldown=12+this.random.next()*15;}
-   return;
-  }
+  if(this.state==='graze')return;
   if(this.state!=='rest'||this.timer>0)return;
   if(this.repose.cooldown===0&&this.random.next()<.4){this.repose.begin(this.random);this.timer=2;return;}
-  if(this.cooldown===0){this.state='graze';this.gait=0;this.timer=5+this.random.next()*9;return;}
+  if(this.cooldown===0){this.beginFeeding(5+this.random.next()*9);return;}
   if(this.journey(env)&&this.random.next()<.2){this.state='run';this.timer=3+this.random.next()*3;}
  }
  protected override stationaryAction(dt:number,_env:AgentEnvironment):boolean {
-  if(this.state!=='graze')return false;
-  this.motor.stop();this.gait+=dt*.22*this.pace;return true;
+  return this.feedingAction(dt,.65,.55,'graze');
  }
  static read(r:BinaryReader):ZebraAgent{return EcologicalAgent.readAs(r,(...a)=>new ZebraAgent(...a));}
 }

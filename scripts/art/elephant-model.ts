@@ -14,9 +14,9 @@ function tube(m:Mesh,curve:readonly V3[],start:number,end:number,color:RGB){
  }
 }
 /** Asian-inspired silhouette: domed back/head, smaller lobed ears, weight-bearing feet. */
-export function elephantMesh(clip:string,p:number):Mesh {
+export function elephantMesh(clip:string,p:number,form=0):Mesh {
  const m:Mesh=[],walk=clip==='travel',beat=Math.sin(p*TAU),bob=walk?Math.cos(p*TAU*2)*.013:Math.sin(p*TAU)*.004;
- ellipsoid(m,[-.10,0,1.16+bob],[.88,.44,.58],skin,undefined,n=>n[2]>.45?[153,154,143]:n[2]<-.45?[127,132,124]:skin,20,12);
+ ellipsoid(m,[-.10,0,1.16+bob],[.88,form===1?.48:form===2?.41:.44,.58],skin,undefined,n=>n[2]>.45?[153,154,143]:n[2]<-.45?[127,132,124]:skin,20,12);
  ellipsoid(m,[.34,0,1.3+bob],[.49,.43,.52],skin,undefined,undefined,16,10);
  ellipsoid(m,[-.64,0,1.12+bob],[.37,.40,.46],skin);
  // A four-beat, nearly straight-legged walk with wide padded feet and small toenails.
@@ -34,15 +34,16 @@ export function elephantMesh(clip:string,p:number):Mesh {
  ellipsoid(m,[.69,0,1.48+bob],[.37,.31,.41],skin,undefined,undefined,18,12);
  for(const side of [-1,1]){
   ellipsoid(m,[.68,side*.12,1.75+bob],[.20,.19,.21],[150,151,140]);
+  const earScale=form===1?1.12:form===2?1.08:1;
   const flap=Math.sin(p*TAU+(side===1?.3:0))*.055,hinge:V3=[.49,side*.245,1.54+bob];
-  const rim:V3[]=[[.46,side*.29,1.77+bob],[.12,side*(.51+flap),1.69+bob],[.05,side*(.55+flap),1.42+bob],[.15,side*(.48+flap),1.15+bob],[.31,side*.31,1.21+bob],[.52,side*.25,1.39+bob]];
+  const rim:V3[]=[[.46,side*.29,1.77+bob],[.12,side*(.51+flap)*earScale,1.69+bob],[.05,side*(.55+flap)*earScale,1.42+bob],[.15,side*(.48+flap)*earScale,1.15+bob],[.31,side*.31,1.21+bob],[.52,side*.25,1.39+bob]];
   for(let i=0;i<rim.length;i++)m.push({vertices:[hinge,rim[i]!,rim[(i+1)%rim.length]!].map(position=>({position,normal:unit([.15,side,.12])})) as [Vertex,Vertex,Vertex],color:i%2?[142,139,127]:[151,146,133]});
   bone(m,rim[1]!,rim[2]!, .018,fold);bone(m,hinge,rim[3]!, .011,fold);
   ellipsoid(m,[.895,side*.237,1.58+bob],[.043,.022,.036],fold);
   ellipsoid(m,[.919,side*.246,1.586+bob],[.02,.016,.022],dark);
   bone(m,[.85,side*.235,1.64+bob],[.96,side*.215,1.62+bob],.018,[165,161,147]);
   // Short curved tusks keep the trunk readable at all 16 headings.
-  tube(m,Array.from({length:7},(_,i)=>{const t=i/6;return [.94+t*.4,side*(.17+t*.025),1.20-t*.15+t*t*.20] as V3;}),.041,.007,[220,211,175]);
+  tube(m,Array.from({length:7},(_,i)=>{const t=i/6*(form===2?.15:form===1?.6:1);return [.94+t*.4,side*(.17+t*.025),1.20-t*.15+t*t*.20] as V3;}),.041,.007,[220,211,175]);
   for(let j=0;j<3;j++)bone(m,[.39-j*.045,side*.405,1.49-j*.14+bob],[.25-j*.045,side*.427,1.40-j*.14+bob],.012,fold);
  }
  ellipsoid(m,[.99,0,1.17+bob],[.12,.14,.055],fold);

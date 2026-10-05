@@ -1,11 +1,12 @@
+import { feedingBlend, smooth, transformMesh } from './pose-tools';
 import { bone, ellipsoid, type Mesh, type RGB, type V3 } from '../../src/iso/bake/mesh';
 const TAU=Math.PI*2,ink:RGB=[30,28,24],ivory:RGB=[235,223,190];
 /** Four rooted articulated legs. Excursion / stance agrees with species stride metadata. */
-function legs(m:Mesh,p:number,moving:boolean,run:boolean,hip:number,width:number,height:number,excursion:number,color:RGB,thickness:number,hoof=false):void {
+function legs(m:Mesh,p:number,moving:boolean,run:boolean,hip:number,width:number,height:number,excursion:number,color:RGB,thickness:number,hoof=false,amount=1):void {
  for(let i=0;i<4;i++){
   const front=i%2===1,side=i<2?-1:1,phase=(p+(run?[0,.48,.08,.56]:[0,.25,.5,.75])[i]!)%1,stance=run?.36:.66;
   const u=Math.max(0,(phase-stance)/(1-stance));
-  const fore=moving?(phase<stance?.5-phase/stance:-.5+u*u*(3-2*u))*excursion:0,lift=moving?Math.sin(u*Math.PI)*(run?.17:.065):0;
+  const fore=moving?(phase<stance?.5-phase/stance:-.5+u*u*(3-2*u))*excursion*amount:0,lift=moving?Math.sin(u*Math.PI)*(run?.17:.065)*amount:0;
   const x=front?hip:-hip,foot:V3=[x+fore,side*width,.065+lift],knee:V3=[x+fore*.38,side*width,height*.46+lift*.4];
   bone(m,[x,side*width*.9,height],knee,thickness,color);bone(m,knee,foot,thickness*.73,color);
   ellipsoid(m,foot,[thickness*1.3,thickness,hoof?.055:.075],hoof?ink:color);
@@ -13,15 +14,16 @@ function legs(m:Mesh,p:number,moving:boolean,run:boolean,hip:number,width:number
  }
 }
 /** +X-facing tiger: striped muscular cat, white cheek ruff, paws and articulated tail. */
-export function tigerMesh(clip:string,p:number):Mesh {
- const m:Mesh=[],wave=Math.sin(p*TAU),run=clip==='chase',moving=['travel','stalk','chase'].includes(clip),low=clip==='stalk'?.13:0;
+export function tigerMesh(clip:string,p:number,form=0):Mesh {
+ if(clip==='uncrouch')return tigerMesh('crouch',1-p,form);
+ const m:Mesh=[],wave=Math.sin(p*TAU),run=clip==='chase',moving=['travel','stalk','chase'].includes(clip),low=.13*(clip==='stalk'?1:clip==='crouch'?smooth(p):clip==='uncrouch'?smooth(1-p):0);
  const fur:RGB=[217,126,43],white:RGB=[237,222,185],bob=run?Math.cos(p*TAU*2)*.055:moving?wave*.014:wave*.007;
- const stripe=(n:V3):RGB=>n[2]<-.38?white:Math.sin(n[0]*27+Math.sin(n[2]*8)*1.8)>.45?ink:fur;
- ellipsoid(m,[0,0,.62-low+bob],[.72,.245,.27],fur,undefined,stripe,36,18);
+ const stripe=(n:V3):RGB=>n[2]<-.38?white:Math.sin(n[0]*(27+form*3)+Math.sin(n[2]*8+form)*1.8+form*.7)>.45?ink:fur;
+ ellipsoid(m,[0,0,.62-low+bob],[.72,form===1?.27:form===2?.225:.245,.27],fur,undefined,stripe,36,18);
  ellipsoid(m,[.41,0,.67-low+bob],[.27,.27,.3],fur,undefined,stripe,28,14);
- legs(m,p,moving,run,.45,.19,.61-low+bob,run?.50:.482,fur,.073);
+ legs(m,clip==='crouch'?0:p,moving||clip==='crouch',run,.45,.19,.61-low+bob,run?.50:.482,fur,.073,false,clip==='crouch'?smooth(p):1);
  const head:V3=[.77,0,.83-low+bob],roar=clip==='roar'?Math.max(0,Math.sin(p*TAU))*.13:0;
- ellipsoid(m,head,[.225,.22,.205],fur,undefined,n=>Math.sin(n[0]*20+n[2]*5)>.4?ink:fur,28,14);
+ ellipsoid(m,head,[.225,.22,.205],fur,undefined,n=>Math.sin(n[0]*(20+form*2)+n[2]*5+form)>.4?ink:fur,28,14);
  for(const side of [-1,1]){
   ellipsoid(m,[.81,side*.17,.75-low+bob],[.18,.085,.14],white);
   ellipsoid(m,[.96,side*.072,.78-low+bob],[.105,.08,.067],white);
@@ -39,7 +41,7 @@ export function tigerMesh(clip:string,p:number):Mesh {
  return m;
 }
 /** Clip submerged geometry against one water plane, keeping eyes/nostrils above it. */
-function waterline(mesh:Mesh,z:number):Mesh {
+export function waterline(mesh:Mesh,z:number):Mesh {
  const out:Mesh=[];
  for(const t of mesh){
   let points=[...t.vertices],cut:typeof points=[];
@@ -54,7 +56,8 @@ function waterline(mesh:Mesh,z:number):Mesh {
 }
 /** Barrel-shaped hippo with high eyes/ears, broad muzzle, folds and small toes. */
 export function hippoMesh(clip:string,p:number,form=0):Mesh {
- const m:Mesh=[],wave=Math.sin(p*TAU),wet=clip==='wallow'||clip==='wade',moving=clip==='travel'||clip==='wade',graze=clip==='graze';
+ if(clip==='leaveWater')return hippoMesh('enterWater',1-p,form);
+ const m:Mesh=[],wave=Math.sin(p*TAU),wet=clip==='wallow'||clip==='wade'||clip==='yawn',moving=clip==='travel'||clip==='wade',graze=feedingBlend(clip,p);
  const skin:RGB=form?[149,133,125]:[113,124,133],pink:RGB=form?[181,143,137]:[158,133,150],bob=moving?Math.cos(p*TAU*2)*.01:wave*.009;
  ellipsoid(m,[-.1,0,.63+bob],[.79,.40,.41],skin,undefined,n=>{
   if(n[2]<-.3)return pink;
@@ -62,13 +65,15 @@ export function hippoMesh(clip:string,p:number,form=0):Mesh {
   return skin.map(c=>c+(pore>.7?10:pore<-.75?-9:0)) as unknown as RGB;
  },40,24);
  legs(m,p,moving,false,.45,.29,.55,.346,skin,.13);
- const h:V3=[.69,0,(graze?.32:.63)+bob];
+ const h:V3=[.69,0,.63-.31*graze+bob];
+ const yawn=clip==='yawn'?Math.sin(p*Math.PI)**2:0;
  ellipsoid(m,h,[.43,.30,.28],skin);ellipsoid(m,[1.01,0,h[2]-.04],[.30,.32,.19],pink);
+ if(yawn>.001){ellipsoid(m,[1.07,0,h[2]-.18-yawn*.07],[.23,.24,yawn*.1],[64,47,53]);ellipsoid(m,[1.04,0,h[2]-.24-yawn*.15],[.24,.26,.07],pink);for(const side of [-1,1])bone(m,[1.15,side*.17,h[2]-.20-yawn*.15],[1.15,side*.17,h[2]-.11-yawn*.13],.026,ivory);}
  bone(m,[.92,-.29,h[2]-.1],[1.21,0,h[2]-.13],.012,[93,75,81]);bone(m,[1.21,0,h[2]-.13],[.92,.29,h[2]-.1],.012,[93,75,81]);
  for(const side of [-1,1]){
   ellipsoid(m,[.62,side*.24,h[2]+.26],[.085,.071,.076],skin);
   ellipsoid(m,[.65,side*.278,h[2]+.277],[.024,.022,.021],ink);
-  ellipsoid(m,[.40,side*.29,h[2]+.31],[.07,.057,.085],skin);
+  ellipsoid(m,[.40,side*(.29+Math.sin(p*TAU+side)*.013),h[2]+.31],[.07,.057,.085],skin);
   ellipsoid(m,[.42,side*.307,h[2]+.32],[.037,.029,.046],pink);
   // Raised nostril rims, dark openings, cheek folds and a glint in each eye.
   ellipsoid(m,[1.15,side*.17,h[2]+.13],[.065,.047,.041],skin);
@@ -84,11 +89,12 @@ export function hippoMesh(clip:string,p:number,form=0):Mesh {
  bone(m,[-.8,0,.67],[-1.04,wave*.09,.57],.033,skin);
  // A round slate form and a slimmer warm form share exactly calibrated strides.
  if(form)reshape(m,.90,.94);
- return wet?waterline(m,(form?.53:.57)+Math.sin(p*TAU)*.016):m;
+ const immersion=clip==='enterWater'?smooth(p):clip==='leaveWater'?smooth(1-p):wet?1:0;
+ return immersion?waterline(m,(form?.53:.57)*immersion+(wet?Math.sin(p*TAU)*.016:0)):m;
 }
 /** Humped bison: shaggy shoulders/beard, short curved horns and narrow hindquarters. */
 export function bisonMesh(clip:string,p:number,form=0):Mesh {
- const m:Mesh=[],wave=Math.sin(p*TAU),run=clip==='run',moving=clip==='travel'||run,graze=clip==='graze';
+ const m:Mesh=[],wave=Math.sin(p*TAU),run=clip==='run',moving=clip==='travel'||run,graze=feedingBlend(clip,p);
  const fur:RGB=form?[110,78,53]:[74,57,45],dark:RGB=form?[65,44,32]:[40,33,29],mane:RGB=form?[137,93,53]:[111,77,51];
  const bob=run?Math.cos(p*TAU*2)*.045:moving?wave*.012:wave*.008;
  // Smoother, tapered hindquarters contrast with the high woolly shoulder mass.
@@ -105,7 +111,7 @@ export function bisonMesh(clip:string,p:number,form=0):Mesh {
   const a=i*2.399963,z=.58+(i%6)*.125,x=.23+Math.cos(a)*(.38-(z-.7)*.1),y=Math.sin(a)*.32;
   bone(m,[x,y,z+bob],[x-.055,y*1.1,z-.15-(i%3)*.015+bob],.035,i%4===0?mane:dark);
  }
- const h:V3=[.80,0,(graze?.38:.68)+bob];
+ const h:V3=[.80,0,.68-.30*graze+bob];
  ellipsoid(m,h,[.31,.275,.31],dark);
  // A broad curly forehead, long face, wet nose and drooping chin beard.
  ellipsoid(m,[.85,0,h[2]+.16],[.25,.28,.20],mane,undefined,n=>{
@@ -126,6 +132,7 @@ export function bisonMesh(clip:string,p:number,form=0):Mesh {
   for(let j=1;j<points.length;j++)bone(m,points[j-1]!,points[j]!,[.052,.037,.019][j-1]!,j===3?[100,101,91]:ivory);
  }
  bone(m,[-.77,0,.86],[-.94,wave*.06,.39],.025,fur);ellipsoid(m,[-.94,wave*.06,.34],[.06,.047,.095],dark);
+ if(moving)transformMesh(m,([x,y,z])=>[x,y+Math.sin(p*TAU)*.016*smooth((z-.1)/.5),z+Math.sin(p*TAU*2)*.009*Math.max(0,x)]);
  if(form)reshape(m,.92,.94);
  return m;
 }

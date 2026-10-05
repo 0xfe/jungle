@@ -7,7 +7,9 @@ export const BEAR_MOTION = {
  standSeconds: 1.1, feedSeconds: .5,
 } as const;
 export const BEAR_MODEL_TO_TILE=BEAR_MOTION.cameraScale*BEAR_MOTION.displayScale*Math.SQRT1_2/96;
-export const BEAR_CLIPS={rest:8,travel:32,run:32,feedDown:16,forage:24,feedUp:16,rise:24,stand:16,pick:24,lower:24,play:24} as const;
+export const BEAR_SETTLE_SAMPLES=8;
+export function bearSettleClip(running:boolean,phase:number):string{return `settle${running?'Run':''}${Math.round(phase*BEAR_SETTLE_SAMPLES)%BEAR_SETTLE_SAMPLES}`;}
+export const BEAR_CLIPS={rest:8,travel:32,run:32,feedDown:16,forage:24,feedUp:16,rise:24,stand:16,pick:24,lower:24,play:24,settle:16,...Object.fromEntries([false,true].flatMap(run=>Array.from({length:BEAR_SETTLE_SAMPLES},(_,i)=>[bearSettleClip(run,i/BEAR_SETTLE_SAMPLES),16])))} as const;
 export const BEAR_ONE_SHOTS=['feedDown','feedUp','rise','lower'] as readonly string[];
 
 /** A planted paw moves backwards at exactly the body's ground speed. */

@@ -1,11 +1,16 @@
+import { gzipSync } from 'node:zlib';
+import { restoreAtlasManifest } from './atlas-artifact';
+import { cachedAnimalFrames } from './art/animal-frame-cache';
+import { animalOneShot,quietAction } from '../src/jungle/animal-actions';
+import { ANIMAL_FORMS,animalForms,animalPrefix } from '../src/jungle/animal-appearance';
 import { BEAR_MOTION, BEAR_ONE_SHOTS } from '../src/jungle/bear-motion';
-import { spritePieces } from './art/sprite-pieces';
+import { spritePieces,stationarySpritePieces } from './art/sprite-pieces';
 import { bakeZen } from './art/zen';
 import { VOLCANO_ART_SCALE, VOLCANO_TEXEL_SCALE } from '../src/jungle/volcanoes';
 import { bakeSpaceVisitors, spacecraftMesh, explorerMesh } from './art/space-visitors';
 import { SPACE_KINDS } from '../src/jungle/ecology';
 import { bakeVolcanoes, bakeVolcanoLava } from './art/volcanoes';
-import { REPOSE_CLIPS } from './art/repose';
+import { REPOSE_CLIPS,REPOSE_DIRECTIONS } from './art/repose';
 import { scavengingRemains } from './art/raptor-model';
 import { bakeLandscapeAccents } from './art/landscape-accents';
 import { bakeLandscapePatches, patchLogicalScale } from './art/landscape-patches';
@@ -34,9 +39,10 @@ const dependencies = ['src/jungle/volcano-animation.ts','src/jungle/agents/volca
   'src/iso/bake/mesh.ts', 'src/iso/bake/rasterize.ts', 'src/iso/bake/atlas.ts', 'src/iso/math.ts',
   'src/iso/spatial.ts', 'src/jungle/animation.ts', 'src/jungle/world.ts', 'src/jungle/agents/deer.ts', 'src/jungle/agents/fixed.ts', 'src/jungle/agents/index.ts', 'src/agents/core.ts', 'src/agents/motion.ts', 'src/agents/system.ts', 'src/agents/index.ts', 'assets/source/trees.png', 'assets/source/plants.png',
   'package-lock.json'];
-dependencies.push('src/jungle/bear-motion.ts','scripts/art/megafauna-model.ts','src/jungle/agents/megafauna.ts','scripts/art/sprite-pieces.ts','scripts/art/zen.ts','scripts/art/zen-dock.ts','src/jungle/zen-layout.ts','assets/source/zen-pagoda.png','assets/source/zen-pagoda-wide.png','assets/source/zen-cherry.png','assets/source/zen-maple.png','assets/source/zen-pine.png','assets/zen-prompts.json','assets/zen-pagoda-wide-prompts.json','src/jungle/agents/zen.ts');
+dependencies.push('scripts/atlas-artifact.ts','scripts/art/animal-frame-cache.ts','scripts/art/gait.ts','src/jungle/agents/swimmers.ts','src/jungle/animal-actions.ts','scripts/art/animal-activities.ts','src/jungle/animal-appearance.ts','scripts/art/pose-tools.ts','src/jungle/agents/browsers.ts','src/jungle/agents/shore-birds.ts','src/jungle/bear-motion.ts','scripts/art/megafauna-model.ts','src/jungle/agents/megafauna.ts','scripts/art/sprite-pieces.ts','scripts/art/zen.ts','scripts/art/zen-dock.ts','src/jungle/zen-layout.ts','assets/source/zen-pagoda.png','assets/source/zen-pagoda-wide.png','assets/source/zen-cherry.png','assets/source/zen-maple.png','assets/source/zen-pine.png','assets/zen-prompts.json','assets/zen-pagoda-wide-prompts.json','src/jungle/agents/zen.ts');
 const sources: Record<string, string> = {};
 dependencies.push('src/jungle/space-animation.ts','scripts/art/space-visitors.ts','src/jungle/agents/spacecraft.ts','src/jungle/space-sites.ts','assets/source/space-visitors-reference.png','assets/space-visitors-prompts.json');
+const animalModels=Object.keys(ANIMAL_FORMS).flatMap(kind=>animalForms(kind).map(form=>animalPrefix(kind,form)));
 const visitorModels=SPACE_KINDS.flatMap(kind=>[`ship-${kind}`,`alien-${kind}`]);
 for (const file of dependencies) sources[file] = sha(await readFile(file));
 const fingerprint = sha(JSON.stringify(sources));
@@ -45,9 +51,9 @@ try {
   const cache = JSON.parse(await readFile('assets/derived.json', 'utf8'));
   if (!process.argv.includes('--force') && cache.fingerprint === fingerprint &&
       cache.atlas === sha(await readFile('public/assets/jungle.png')) &&
-      cache.manifest === sha(await readFile('public/assets/jungle.json')) &&
+      cache.manifest === sha(await restoreAtlasManifest('.',cache.manifestArchive,cache.manifest)) &&
       cache.model === sha(await readFile('assets/models/deer.obj')) &&
-      (await Promise.all(['toucan','orangutan','jaguar',...ECO_KINDS,'hippo-form1','bison-form1',...visitorModels].map(async kind => cache.models?.[kind] === sha(await readFile(`assets/models/${kind}.obj`))))).every(Boolean)) {
+      (await Promise.all([...animalModels,...visitorModels].map(async kind => cache.models?.[kind] === sha(await readFile(`assets/models/${kind}.obj`))))).every(Boolean)) {
     console.log('Assets unchanged; verified atlas/model hashes, skipping bake.'); process.exit(0);
   }
 } catch { /* First build, changed dependencies or missing generated outputs: rebuild. */ }
@@ -114,45 +120,61 @@ for(let v=0;v<4;v++)inputs.push({id:`vine-${v}`,anchor:[16,86],frames:vineFrames
 // Match the denser animal atlas to the pixel scale of newer rigs, preserving
 // logical dimensions below. Bake directly at this resolution, never blur frames.
 const camera = { width: 72, height: 72, anchor: [36, 55] as [number, number], scale: 21 };
-for (const [clip, count] of Object.entries(DEER_CLIPS) as [keyof typeof DEER_CLIPS, number][]) {
+// Hash camera/clip assembly separately so packing edits reuse raw poses, while
+// camera, phase, clip-list or rig edits always invalidate those cached frames.
+const ownSource=await readFile('scripts/prepare-assets.ts','utf8');
+const frameAssembly=ownSource.slice(ownSource.indexOf('// Match the denser animal atlas'),ownSource.indexOf("\ninputs.push({id:'scavenging-remains'"));
+const frameKey=sha(frameAssembly+JSON.stringify(Object.fromEntries(Object.entries(sources).filter(([p])=>!['scripts/prepare-assets.ts','scripts/art/sprite-pieces.ts','src/iso/bake/atlas.ts'].includes(p)))));
+async function appendFrames(name:string,make:(out:BakeSprite[])=>void):Promise<void>{
+ const frames=await cachedAnimalFrames('artifacts/.animal-cache',name,frameKey,()=>{const out:BakeSprite[]=[];make(out);return out;});
+ inputs.push(...frames);
+}
+for(const form of animalForms('deer'))await appendFrames(`deer-${form}`,out=>{for (const [clip, count] of Object.entries(DEER_CLIPS) as [keyof typeof DEER_CLIPS, number][]) {
   // Reuse posed geometry across directions: only the view changes.
-  const poses = Array.from({ length: count }, (_, frame) => deerMesh(clip, frame / (clip === 'raise' ? count - 1 : count)));
-  for (let direction = 0; direction < DEER_DIRECTIONS; direction++) inputs.push({
-    id: `deer-${clip}-${direction}`, anchor: camera.anchor,
+  const poses = Array.from({ length: count }, (_, frame) => deerMesh(clip, frame / (['raise','groom','play'].includes(clip) ? count - 1 : count),form));
+  for (let direction = 0; direction < DEER_DIRECTIONS; direction++) out.push({
+    id: `${animalPrefix('deer',form)}-${clip}-${direction}`, anchor: camera.anchor,
     frames: poses.map(mesh => bakeMesh(mesh, direction / DEER_DIRECTIONS * TAU, camera)),
   });
 }
+});
 const wildlifeCamera={width:80,height:80,anchor:[40,65] as [number,number],scale:28};
-for(const kind of ['toucan','orangutan','jaguar'] as WildlifeKind[]){
+for(const kind of ['toucan','orangutan','jaguar'] as WildlifeKind[])for(const form of animalForms(kind)){
+ await appendFrames(`legacy-${kind}-${form}`,out=>{
  const camera={...wildlifeCamera,scale:kind==='jaguar'?25:28};
- const clips:WildlifeClip[]=kind==='orangutan'?['rest','travel','climb']:kind==='jaguar'?['rest','travel','chase']:['rest','travel'];
- for(const clip of clips){const count=WILDLIFE_CLIPS[clip],poses=Array.from({length:count},(_,i)=>wildlifeMesh(kind,clip,i/count));
-  for(let direction=0;direction<16;direction++)inputs.push({id:`${kind}-${clip}-${direction}`,anchor:camera.anchor,frames:poses.map(mesh=>bakeMesh(mesh,direction/16*TAU,camera))});
+ const clips:WildlifeClip[]=kind==='orangutan'?['rest','travel','climb','feed','groom']:kind==='jaguar'?['rest','travel','chase','stalk','crouch','uncrouch','groom','feed']:['rest','travel','takeoff','land','preen','feed'];
+ for(const clip of clips){const count=WILDLIFE_CLIPS[clip],poses=Array.from({length:count},(_,i)=>wildlifeMesh(kind,clip,i/((quietAction(clip)||['takeoff','land','crouch','uncrouch'].includes(clip))?count-1:count),form));
+  for(let direction=0;direction<16;direction++)out.push({id:`${animalPrefix(kind,form)}-${clip}-${direction}`,anchor:camera.anchor,frames:poses.map(mesh=>bakeMesh(mesh,direction/16*TAU,camera))});
  }
+ });
 }
-for(const kind of ECO_KINDS)for(const form of (kind==='hippo'||kind==='bison'?[0,1]:[0])){
- const prefix=`${kind}${form?'-form1':''}`;
+for(const kind of ECO_KINDS)for(const form of animalForms(kind)){
+ await appendFrames(`ecology-${kind}-${form}`,out=>{
+ const prefix=animalPrefix(kind,form);
  const spec=ECO_SPECS[kind],camera={width:112,height:112,anchor:[56,87] as [number,number],scale:kind==='blackBear'?BEAR_MOTION.bakeScale:kind==='elephant'?17.5:spec.cameraScale};
  for(const [clip,count] of Object.entries(ecoClips(kind))){
-  const poses=Array.from({length:count},(_,i)=>ecologyMesh(kind,clip,i/(BEAR_ONE_SHOTS.includes(clip)||clip==='drink'||clip==='spray'||clip==='wrap'||clip==='hop'?count-1:count),form));
+  const poses=Array.from({length:count},(_,i)=>ecologyMesh(kind,clip,i/(animalOneShot(kind,clip)?count-1:count),form));
   for(let d=0;d<spec.directions;d++){
    const heading=d/spec.directions*TAU;
-   if(kind!=='boa'||(clip!=='wrap'&&clip!=='coil'))inputs.push({id:`${prefix}-${clip}-${d}`,anchor:camera.anchor,frames:poses.map(mesh=>bakeMesh(mesh,heading,camera))});
+   if(kind!=='boa'||(clip!=='wrap'&&clip!=='coil'))out.push({id:`${prefix}-${clip}-${d}`,anchor:camera.anchor,frames:poses.map(mesh=>bakeMesh(mesh,heading,camera))});
    if(kind==='boa'&&(clip==='wrap'||clip==='coil'))for(const front of [false,true])
-    inputs.push({id:`${kind}-${clip}-${d}-${front?'front':'back'}`,anchor:camera.anchor,frames:poses.map(mesh=>bakeMesh(snakeSide(mesh,heading,front),heading,camera))});
+    out.push({id:`${prefix}-${clip}-${d}-${front?'front':'back'}`,anchor:camera.anchor,frames:poses.map(mesh=>bakeMesh(snakeSide(mesh,heading,front),heading,camera))});
   }
  }
+ });
 }
 // Rest poses are shared across all individuals. Reverse the same lowering clip
 // when rising, retaining union bounds and root registration in either direction.
-for(const kind of ['deer','zebra','jaguar','blackBear'] as const){
+for(const kind of ['deer','zebra','jaguar','blackBear','wolf','tiger'] as const)for(const form of animalForms(kind)){
+ await appendFrames(`repose-${kind}-${form}`,out=>{
  const scale=kind==='deer'?21:kind==='jaguar'?25:kind==='blackBear'?BEAR_MOTION.bakeScale:ECO_SPECS[kind].cameraScale;
  const camera={width:112,height:112,anchor:[56,87] as [number,number],scale};
  for(const [clip,count] of Object.entries(REPOSE_CLIPS)){
-  const poses=Array.from({length:count},(_,i)=>kind==='deer'?deerMesh(clip as keyof typeof REPOSE_CLIPS,i/(clip==='lieDown'?count-1:count)):
-   kind==='jaguar'?wildlifeMesh(kind,clip as keyof typeof REPOSE_CLIPS,i/(clip==='lieDown'?count-1:count)):ecologyMesh(kind,clip,i/(clip==='lieDown'?count-1:count)));
-  for(let d=0;d<8;d++)inputs.push({id:`${kind}-${clip}-${d}`,anchor:camera.anchor,frames:poses.map(mesh=>bakeMesh(mesh,d/8*TAU,camera))});
+  const poses=Array.from({length:count},(_,i)=>kind==='deer'?deerMesh(clip as keyof typeof REPOSE_CLIPS,i/(clip==='lieDown'?count-1:count),form):
+   kind==='jaguar'?wildlifeMesh(kind,clip as keyof typeof REPOSE_CLIPS,i/(clip==='lieDown'?count-1:count),form):ecologyMesh(kind,clip,i/(clip==='lieDown'?count-1:count),form));
+  for(let d=0;d<REPOSE_DIRECTIONS;d++)out.push({id:`${animalPrefix(kind,form)}-${clip}-${d}`,anchor:camera.anchor,frames:poses.map(mesh=>bakeMesh(mesh,d/REPOSE_DIRECTIONS*TAU,camera))});
  }
+ });
 }
 inputs.push({id:'scavenging-remains',anchor:[24,24],frames:[bakeMesh(scavengingRemains(),0,{width:48,height:40,anchor:[24,24],scale:28})]});
 // Small porous root-bed textures: localized soil flecks and recognizable leaves, not broad mud disks.
@@ -266,11 +288,26 @@ for(const s of inputs)if(/^(tree|plant)-/.test(s.id)){
 }
 // Share exact small pixel blocks across the new large-animal poses, preserving every pixel.
 const animalClips:Record<string,{parts:string[];frames:number}>={};
-for(let i=inputs.length-1;i>=0;i--)if(/^(tiger|hippo|bison|blackBear)-|^(elephant|giraffe)-rest-/.test(inputs[i]!.id)){
- const source=inputs[i]!,parts=spritePieces(trimClip(source),source.id.startsWith('giraffe-')?4:/^blackBear-(run|play)-/.test(source.id)?2:3);
- animalClips[source.id]={parts:parts.map(p=>p.id),frames:source.frames.length};
- inputs.splice(i,1,...parts);
+const sharedInputs:BakeSprite[]=[];
+const piecePool=new Map();
+// Identical registered part timelines can also share one manifest entry. Keep
+// species separate because their logical/display scale is applied after packing.
+const timelines=new Map<string,BakeSprite>(),imageIds=new WeakMap<object,number>();let nextImageId=0;
+function sharedTimeline(piece:BakeSprite,kind:string):BakeSprite {
+ const ids=piece.frames.map(frame=>{let id=imageIds.get(frame);if(id===undefined){id=nextImageId++;imageIds.set(frame,id);}return id;});
+ const key=`${kind}/${piece.anchor}/${piece.frames[0]!.width},${piece.frames[0]!.height}/${ids}`;
+ const existing=timelines.get(key);if(existing)return existing;
+ timelines.set(key,piece);sharedInputs.push(piece);return piece;
 }
+for(const source of inputs){
+ if(Object.hasOwn(ANIMAL_FORMS,source.id.split('-')[0]!)){
+  const parts=stationarySpritePieces(trimClip(source),2,piecePool).map(p=>sharedTimeline(p,source.id.split('-')[0]!));
+  animalClips[source.id]={parts:parts.map(p=>p.id),frames:source.frames.length};
+ }else sharedInputs.push(source);
+}
+inputs.length=0;for(const source of sharedInputs)inputs.push(source);sharedInputs.length=0;
+piecePool.clear();timelines.clear();
+console.log(`Packing ${inputs.length} shared sprite layers…`);
 const { image, manifest } = packAtlas(inputs, 4096, 4096);
 manifest.version=3; // Optional frame indices retain exact timing with compact repeated regions.
 for(const clip of Object.values(animalClips))for(const part of clip.parts)compactSpriteFrames(manifest.sprites[part]!);
@@ -296,16 +333,19 @@ for(const kind of SPACE_KINDS){
  await writeFile(`assets/models/ship-${kind}.obj`,meshToObj(spacecraftMesh(kind,true)).replaceAll('deer',`ship-${kind}`));
  await writeFile(`assets/models/alien-${kind}.obj`,meshToObj(explorerMesh(kind,'rest',0)).replaceAll('deer',`alien-${kind}`));
 }
-for(const kind of ['toucan','orangutan','jaguar'] as WildlifeKind[])await writeFile(`assets/models/${kind}.obj`,meshToObj(wildlifeMesh(kind,'rest',0)).replaceAll('deer',kind));
-for(const kind of ECO_KINDS)await writeFile(`assets/models/${kind}.obj`,meshToObj(ecologyMesh(kind,'rest',0)).replaceAll('deer',kind));
-const model = meshToObj(deerMesh('look', 0));
-for(const kind of ['hippo','bison'] as const)await writeFile(`assets/models/${kind}-form1.obj`,meshToObj(ecologyMesh(kind,'rest',0,1)).replaceAll('deer',`${kind}-form1`));
+for(const kind of Object.keys(ANIMAL_FORMS))for(const form of animalForms(kind)){
+ const mesh=kind==='deer'?deerMesh('look',0,form):['toucan','orangutan','jaguar'].includes(kind)?wildlifeMesh(kind as WildlifeKind,'rest',0,form):ecologyMesh(kind as (typeof ECO_KINDS)[number],'rest',0,form);
+ await writeFile(`assets/models/${animalPrefix(kind,form)}.obj`,meshToObj(mesh).replaceAll('deer',animalPrefix(kind,form)));
+}
+const model=meshToObj(deerMesh('look',0));
 await writeFile('assets/models/deer.obj', model);
 await sharp(image.data, { raw: { width: image.width, height: image.height, channels: 4 } }).png().toFile('public/assets/jungle.png');
-const json = JSON.stringify(manifest, null, 2) + '\n';
+const json = JSON.stringify(manifest) + '\n';
 await writeFile('public/assets/jungle.json', json);
+const manifestArchive=gzipSync(json,{level:9});
+await writeFile('assets/jungle-manifest.json.gz',manifestArchive);
 const png = await readFile('public/assets/jungle.png');
-const models:Record<string,string>={};for(const kind of ['toucan','orangutan','jaguar',...ECO_KINDS,'hippo-form1','bison-form1',...visitorModels])models[kind]=sha(await readFile(`assets/models/${kind}.obj`));
-await writeFile('assets/derived.json', JSON.stringify({ pipeline: 6, fingerprint, sources, atlas: sha(png), manifest: sha(json), model: sha(model), models,
+const models:Record<string,string>={};for(const kind of [...animalModels,...visitorModels])models[kind]=sha(await readFile(`assets/models/${kind}.obj`));
+await writeFile('assets/derived.json', JSON.stringify({ pipeline: 7, manifestArchive:sha(manifestArchive), fingerprint, sources, atlas: sha(png), manifest: sha(json), model: sha(model), models,
   stats: { ...manifest.stats, pngBytes: png.length, width: image.width, height: image.height } }, null, 2) + '\n');
 console.log(`Baked ${manifest.stats.frames} frames (${manifest.stats.uniqueFrames} unique) → ${image.width} × ${image.height}; ${(image.data.length / 1048576).toFixed(2)} MiB RGBA, ${(png.length / 1024).toFixed(0)} KiB PNG; ${((performance.now() - started) / 1000).toFixed(2)}s.`);

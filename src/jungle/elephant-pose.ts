@@ -10,6 +10,13 @@ const dip:readonly ElephantPoint[]=[root,[1.18,0,1.02],[1.59,0,.04],[1.95,0,-.02
 const mouth:readonly ElephantPoint[]=[root,[1.74,0,1.34],[1.62,0,.66],[.99,0,1.16]];
 const raised:readonly ElephantPoint[]=[root,[1.27,0,1.65],[1.62,0,1.66],[1.88,0,1.55]];
 export function elephantTrunk(clip:string,phase:number):readonly ElephantPoint[]{
+ if(clip==='feed'){
+  const foliage:readonly ElephantPoint[]=[root,[1.4,0,1.8],[1.68,.03,1.94],[1.8,0,1.8]];
+  const resting=elephantTrunk('rest',0);
+  const a=phase<.4?resting:phase<.75?foliage:mouth,b=phase<.4?foliage:phase<.75?mouth:resting;
+  const t=phase<.4?smooth(phase/.3):phase<.75?smooth((phase-.4)/.25):smooth((phase-.75)/.25);
+  return a.map((p,i)=>mix(p,b[i]!,t));
+ }
  if(clip==='drink'){
   const a=phase<.42?relaxed:phase<.8?dip:mouth,b=phase<.42?dip:phase<.8?mouth:relaxed;
   const t=phase<.42?smooth(phase/.2):phase<.8?smooth((phase-.42)/.26):smooth((phase-.8)/.2);

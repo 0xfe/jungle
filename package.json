@@ -37,7 +37,10 @@
     "volcanoes:preview": "tsx scripts/volcano-preview.ts",
     "zen:preview": "npm run assets && tsx scripts/zen-preview.ts",
     "megafauna:preview": "npm run assets && tsx scripts/megafauna-preview.ts",
-    "bears:preview": "npm run assets && tsx scripts/bear-preview.ts"
+    "bears:preview": "npm run assets && tsx scripts/bear-preview.ts",
+    "wildlife:preview": "npm run assets && tsx scripts/animal-preview.ts",
+    "pretest": "npm run assets",
+    "prebenchmark": "npm run assets"
   },
   "c8": {
     "all": true,

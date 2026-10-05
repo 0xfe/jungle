@@ -19,3 +19,6 @@
 *~
 
 # Source art, prompts, baked assets and provenance are intentionally tracked.
+
+# Losslessly restored by npm run assets from assets/jungle-manifest.json.gz.
+/public/assets/jungle.json

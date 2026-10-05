@@ -3,9 +3,9 @@ import { Repose } from '../../agents/repose';
 import { StartleResponse, AgentRandom, BinaryReader, BinaryWriter, SpeedMotor, ease, herdIntent, type Agent, type AgentEnvironment } from '../../agents';
 import { clamp, type Vec2 } from '../../iso/math';
 import { angleDelta, DEER_STRIDE, DEER_RUN_STRIDE, DEER_TURN_RATE, HEAD_SECONDS, TAU } from '../animation';
-export type DeerState = 'graze' | 'raise' | 'look' | 'turn' | 'walk' | 'run' | 'lower';
+export type DeerState = 'graze' | 'raise' | 'look' | 'turn' | 'walk' | 'run' | 'lower' | 'groom' | 'play';
 export interface DeerSample extends Vec2 { state: DeerState; heading: number; gait: number; actionTime: number }
-const states: DeerState[] = ['graze', 'raise', 'look', 'turn', 'walk', 'run', 'lower'];
+const states: DeerState[] = ['graze', 'raise', 'look', 'turn', 'walk', 'run', 'lower','groom','play'];
 export class DeerAgent implements Agent, DeerSample {
   readonly kind = 'deer'; readonly type = 20;
   groupId = ''; leaderId = ''; motherId = ''; juvenile = false; size = 1; coat = 0;
@@ -41,6 +41,7 @@ export class DeerAgent implements Agent, DeerSample {
     const local = environment.sample(this.x, this.y);
     const weather = local.wind > 1.2 ? 1.15 : local.light < .4 ? .9 : 1;
     this.alertness = ease(this.alertness, 0, 3, dt);
+    if(this.state==='groom'||this.state==='play'){this.motor.stop();if(this.timer<=0)this.enter('look',2);return;}
     if (this.state === 'turn') {
       const desired = Math.atan2(this.target.y - this.y, this.target.x - this.x), delta = angleDelta(this.heading, desired);
       this.turnSpeed = ease(this.turnSpeed, Math.min(DEER_TURN_RATE, Math.abs(delta) * 7), .1, dt);
@@ -78,10 +79,14 @@ export class DeerAgent implements Agent, DeerSample {
     } else if (this.state === 'raise') this.enter('look', .6 + this.random.next() * (1 + this.curiosity) * (1 - this.alertness));
     else if (this.state === 'lower') this.enter('graze', (local.light < .4 ? 8 : 3) + this.random.next() * 7);
     else if (this.state === 'look') {
+      if(this.fear<.1&&this.random.next()<.12){
+        const mother=environment.nearby(this.x,this.y,.9).find(n=>n.id===this.motherId&&n.speed<.1);
+        this.enter(this.juvenile&&mother?'play':'groom',4);return;
+      }
       if(this.fear<.1&&this.repose.cooldown===0&&this.random.next()<.35){this.repose.begin(this.random);this.timer=2;return;}
       const running = this.fear > .2 || this.random.next() < (local.light < .4 ? .025 : .06) + this.alertness * .15;
       const social = herdIntent(this, environment.nearby(this.x, this.y, 5));
-      let target: Vec2 | undefined;
+      let target: Vec2 | undefined,targetScore=-Infinity;
       for (let attempt = 0; attempt < 24; attempt++) {
         const angle = this.random.next() * TAU, length = running ? 1.6 + this.random.next() * 2 : .4 + this.random.next() * 1.2;
         const x = clamp(social && attempt < 12 ? social.target.x + (this.random.next() - .5) * .3 : this.x + Math.cos(angle) * length, this.territory[0] + .14, this.territory[2] - .14);
@@ -92,7 +97,7 @@ export class DeerAgent implements Agent, DeerSample {
         let clear = true;
         const samples = Math.ceil(distance / .06);
         for (let j = 1; j <= samples; j++) if (!environment.canMove(this.x + (x - this.x) * j / samples, this.y + (y - this.y) * j / samples)) { clear = false; break; }
-        if (clear) { target = { x, y }; break; }
+        if(clear){const vegetation=environment.sample(x,y),score=vegetation.moisture-(vegetation.bank?.2:0)-distance*.04;if(score>targetScore){target={x,y};targetScore=score;}if(running||social)break;}
       }
       if (target) {
         this.target = target; this.tripPace = .85 + this.random.next() * .3;

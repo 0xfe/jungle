@@ -33,7 +33,7 @@ test('tigers stalk slowly, pursue briefly, stop before contact and recover',()=>
  const a=new TigerAgent('t',0,0,1);a.state='stalk';a.target={x:2,y:0};a.timer=8;a.heading=0;
  let preyX=2;const env={...land,nearby:(x:number,y:number,r:number)=>Math.hypot(preyX-x,y)<=r?[{id:'prey',kind:'deer',x:preyX,y:0,speed:0}]:[]};
  for(let i=0;i<60;i++)a.update(1/60,env);assert.equal(a.state,'stalk');assert.ok(a.speed<.11);
- preyX=1.2;let chased=false;for(let i=0;i<30;i++){a.update(1/60,env);chased ||= String(a.state)==='chase';}assert.ok(chased);
+ preyX=1.2;let chased=false,raised=false;for(let i=0;i<75;i++){a.update(1/60,env);raised ||= String(a.state)==='uncrouch';chased ||= String(a.state)==='chase';}assert.ok(raised&&chased);
  for(let i=0;i<180;i++)a.update(1/60,env);
  assert.equal(a.state,'rest');assert.ok(a.cooldown>25);assert.ok(preyX-a.x>=.6);
 });
