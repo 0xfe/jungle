@@ -275,10 +275,10 @@ export const CONFIG = {
     statsSamples: 120,
   },
   audio: {
-    /** Mobile/touch-first devices start muted unless explicitly enabled here. */
-    mobileEnabled: false,
-    /** Initial sound preference on every platform; only the sound control unmutes. */
-    enabled: false,
+    /** Allow sound on mobile after the explicit Play gesture. */
+    mobileEnabled: true,
+    /** Initial sound preference when Play starts the loaded scene. */
+    enabled: true,
     levels: {
       /** Master volume, 0–1, before the mixer's fixed headroom gain. */
       master: .6,

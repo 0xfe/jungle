@@ -30,7 +30,7 @@ export function createSiteServer(root, { cache = false, basePath = '/' } = {}) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const root = resolve('dist'), port = Number(process.env.PORT ?? 4173), basePath = process.env.BASE_PATH ?? '/';
+  const root = resolve('dist'), port = Number(process.env.PORT ?? 5174), basePath = process.env.BASE_PATH ?? '/';
   try { await stat(resolve(root, 'index.html')); } catch { console.error('Run npm run build first.'); process.exit(1); }
   createSiteServer(root, { cache: process.argv.includes('--cache'), basePath }).listen(port, '127.0.0.1', () => console.log(`Jungle → http://localhost:${port}${basePath} (Ctrl+C to stop)`));
 }

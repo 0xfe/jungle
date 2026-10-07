@@ -19,7 +19,7 @@ npm ci
 npm run dev
 ```
 
-Open **http://localhost:4173** for the full-screen jungle. **Click the jungle or press Enter / Return to show or hide the compact bottom menu.** Only the mute button is visible initially, in the top right. Tap the scene on touchscreens to show or hide the menu; double-tap to show it. The GitHub icon opens the [official repository](https://github.com/0xfe/jungle) in a new tab. The menu fades after 3 seconds unused and stays visible while Settings or Help is open; `?` opens Help even while the menu is hidden. This builds assets/code and starts a local static server. It doesn't watch files: rebuild and refresh after edits. Use `PORT=8080 npm run serve` for another port.
+Open **http://localhost:5174** for the full-screen jungle. Once loading finishes, click the centered **Play** button to start with sound on (desktop and mobile). Until then, the scene and its controls stay still. **Click the jungle or press Enter / Return to show or hide the compact bottom menu.** After Play, only the mute button is visible initially, in the top right. Tap the scene on touchscreens to show or hide the menu; double-tap to show it. The GitHub icon opens the [official repository](https://github.com/0xfe/jungle) in a new tab. The menu fades after 3 seconds unused and stays visible while Settings or Help is open; `?` opens Help even while the menu is hidden. This builds assets/code and starts a local static server. It doesn't watch files: rebuild and refresh after edits. Use `PORT=8080 npm run serve` for another port.
 
 ```sh
 npm run build          # deterministic assets, typecheck, bundle → dist/

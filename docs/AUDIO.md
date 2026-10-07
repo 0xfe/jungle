@@ -1,10 +1,10 @@
 # Soundscapes and the reusable audio library
 
-Sound is **muted by default on every platform**, with master **60%**, environment **5%** and wildlife **80%**. The top-right speaker button remains visible when Enter/Return hides the main menu. Settings contains the same mute control and the three volume sliders. The initial scene has a quiet leaf/water bed underneath independent bird phrases, with steps, rain and dusk insects joining as appropriate.
+Sound is **on by default after Play on every platform**, with master **60%**, environment **5%** and wildlife **80%**. The top-right speaker button remains visible when Enter/Return hides the main menu. Settings contains the same mute control and the three volume sliders. The initial scene has a quiet leaf/water bed underneath independent bird phrases, with steps, rain and dusk insects joining as appropriate.
 
-`CONFIG.audio.enabled` defaults to false. Every user explicitly enables sound with the speaker button. `mobileEnabled` remains an additional mobile opt-in restriction if automatic startup is configured in a custom build; resizing a window never changes mute.
+`CONFIG.audio.enabled` and `mobileEnabled` default to true. The loaded scene waits behind a centered Play button; no audio context is started during loading or while waiting. Play enables audio within its click gesture. The top-right speaker button can mute it afterward.
 
-When sound is enabled, the application attempts startup automatically and retries on clicks/keypresses if browser autoplay policy suspends it. A muted preference is never reversed by a gesture. The graph is silent while suspended, paused or hidden, avoiding a queue of calls that would burst out on resume. Browsers may require the first interaction before producing sound; see [autoplay behavior](https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Autoplay). The graph is released on page exit and can restart after a back/forward-cache return. Nothing is fetched from a sound service.
+The application retries audio on later clicks/keypresses if the browser suspends it. A muted preference is never reversed by a gesture. The graph is silent while suspended, paused or hidden, avoiding a queue of calls that would burst out on resume. Browsers may require the first interaction before producing sound; see [autoplay behavior](https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Autoplay). The graph is released on page exit and can restart after a back/forward-cache return. Nothing is fetched from a sound service.
 
 ## Layers and reuse
 

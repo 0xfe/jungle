@@ -19,6 +19,8 @@ Edit **[`src/config.ts`](../src/config.ts)**, run `npm run build`, then refresh 
 
 A URL seed/position override still takes precedence, and `?renderer=canvas` can force Canvas. Sliders and keyboard controls override defaults for the current page only. Resetting world settings restores `CONFIG.world.settings`. Home restores configured zoom/drift at the seeded opening. `camera.driftResumeSeconds` defaults to 3: navigation delays drift without overriding P or Pause. Pinch zoom shares the same zoom bounds as buttons and the wheel. The config is build-time source, not a live settings store.
 
+The loaded scene waits for the centered Play button before motion or audio begins. Play explicitly resumes animation even when startup pause or reduced motion selected an initially paused scene; reduced motion still disables initial camera drift and CSS animations. Audio defaults to enabled on desktop and mobile, and starts from this gesture.
+
 ## Startup seeds
 
 Browser loads choose a fresh unsigned 32-bit seed using Web Crypto by default. A valid integer `?seed=` overrides this choice (including `0`); empty, fractional or invalid values use the configured startup policy. Explicit integers retain unsigned 32-bit normalization. Set `startup.randomizeSeed` to `false` to use `startup.seed` on ordinary loads. Headless world constructors retain that deterministic default regardless of the browser policy. Entropy is selected once before world creation; terrain, animals, regrowth and checkpoints still use seeded randomness. Refresh does not save or reuse the previous random seed.
@@ -52,7 +54,7 @@ The fixed 60 Hz simulation, tile projection, atlas layout, codec IDs, model geom
 
 World checkpoints store slider values, but not a copy of this entire source configuration. Use the same generation configuration when restoring checkpoints; changing opening/population rules requires discarding older checkpoints or explicitly versioning/migrating them. Nothing automatically persists across browser reloads.
 
-`world.patches` controls canopy fullness, clearing wavelength (`clearingScale`, tiles), maximum local thinning (`clearingAmount`, 0–1), continuous rooted wind (`sway`, shear amplitude; `windPeriod`, seconds), and three leaf-tint palettes. `audio.mobileEnabled` defaults to false and is only a startup choice; explicit mute/unmute remains authoritative. Arrangement planning follows density/opening and river geometry settings, with temporary bounded terrain probes. Changing generator controls requires a new world, as before. See [landscape groups](LANDSCAPE-PATCHES.md).
+`world.patches` controls canopy fullness, clearing wavelength (`clearingScale`, tiles), maximum local thinning (`clearingAmount`, 0–1), continuous rooted wind (`sway`, shear amplitude; `windPeriod`, seconds), and three leaf-tint palettes. `audio.mobileEnabled` defaults to true and is only a startup choice; explicit mute/unmute remains authoritative. Arrangement planning follows density/opening and river geometry settings, with temporary bounded terrain probes. Changing generator controls requires a new world, as before. See [landscape groups](LANDSCAPE-PATCHES.md).
 
 `population.canopyBirdBoost` increases colorful flocks in dense cover; `blackBear` and `bearFamilyChance` tune solitary versus mother–cub candidates. Species placement uses independent seeded streams. See [regional variety](REGIONAL-VARIETY.md).
 

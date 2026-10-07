@@ -38,7 +38,8 @@ const initialSeed = startupSeed(params.get('seed'), () => CONFIG.startup.randomi
 let settings=normalizeSettings();
 let world = new InfiniteWorld(initialSeed,CONFIG.startup.habitat,undefined,settings);
 const recordings:Partial<Record<'elephant'|'tiger',SoundBuffer>>={};
-let audioReady=false;
+/** Loading and explicit playback are separate: no motion or audio before Play. */
+let audioReady=false, started=false;
 const audioSettings:AudioSettings={...CONFIG.audio.levels},soundscape=new Soundscape(CONFIG.audio),audio=new WebAudioSink(undefined,{...CONFIG.audio,recordings});
 const mobile=mobileDevice(navigator.userAgent,navigator.maxTouchPoints,matchMedia('(pointer: coarse)').matches);
 let soundEnabled=CONFIG.audio.enabled&&(!mobile||CONFIG.audio.mobileEnabled),audioElapsed=0,lastAudioState='off';
@@ -174,7 +175,7 @@ el('reset-artifacts').onclick=()=>{
 for(const [key,label] of [['master','Master volume'],['ambience','Environment volume'],['wildlife','Animal sounds']] as const)slider(el('audio-sliders'),key,label,100,audioSettings[key],value=>{audioSettings[key]=value;updateAudio(0);});
 function updateAudio(dt:number):void{
  if(lastAudioState!==audio.state){lastAudioState=audio.state;syncSound();}
- if(!soundEnabled&&audio.state==='off')return;
+ if(!started||(!soundEnabled&&audio.state==='off'))return;
  audio.apply(soundscape.update(jungleSound(world,view.cameraX,view.cameraY),dt,audioSettings,soundEnabled&&audio.state==='running'&&!paused&&!document.hidden));
 }
 function syncSound():void {
@@ -189,7 +190,7 @@ function syncSound():void {
  el('sound-status').textContent=!soundEnabled?'Sound muted.':running?'Sound on · nearby calls blend with the forest.':'Sound ready · click or press a key to start audio.';
 }
 function unlockSound():void {
- if(!audioReady||!soundEnabled||audio.state==='running')return;
+ if(!started||!audioReady||!soundEnabled||audio.state==='running')return;
  // Some browsers leave resume pending until a gesture. A later gesture must be able to retry.
  void audio.enable().then(()=>{syncSound();updateAudio(0);}).catch(()=>{
   syncSound();el('sound-status').textContent='Audio is waiting for permission. Try Enable sound again.';
@@ -264,6 +265,8 @@ for(const button of Array.from(document.querySelectorAll<HTMLButtonElement>('[da
   executeCommand(key);
 };
 window.addEventListener('keydown', e => {
+  // Leave native keyboard activation of Play intact; no jungle shortcuts before it.
+  if(!started){if(e.key==='Escape')e.preventDefault();return;}
   // Preserve native activation for links and the actionable guide buttons.
   if(e.key==='Enter'&&e.target instanceof Element&&e.target.closest('#github-link, [data-command]'))return;
   if(e.key==='Enter'&&!e.metaKey&&!e.ctrlKey&&!e.altKey){e.preventDefault();if(!e.repeat)toggleUI();return;}
@@ -282,7 +285,7 @@ window.addEventListener('blur', clearNavigation);
 document.addEventListener('visibilitychange', () => { last = 0; clearNavigation(); updateAudio(0); });
 function bindCanvas(): void {
   canvas.addEventListener('pointerdown', e => {
-    if (e.button !== 0 || !pointers.begin(e.pointerId, { x: e.clientX, y: e.clientY })) return;
+    if (!started || e.button !== 0 || !pointers.begin(e.pointerId, { x: e.clientX, y: e.clientY })) return;
     menuTap.begin(e.pointerId,{x:e.clientX,y:e.clientY},e.timeStamp);
     canvas.setPointerCapture(e.pointerId);
   });
@@ -310,7 +313,7 @@ function bindCanvas(): void {
   canvas.addEventListener('pointerup', release);
   canvas.addEventListener('pointercancel', release);
   canvas.addEventListener('lostpointercapture', release);
-  canvas.addEventListener('wheel', e => { e.preventDefault(); pauseDrift(); zoom(e.deltaY > 0 ? -CONFIG.camera.wheelZoomStep : CONFIG.camera.wheelZoomStep); }, { passive: false });
+  canvas.addEventListener('wheel', e => { e.preventDefault(); if(!started)return; pauseDrift(); zoom(e.deltaY > 0 ? -CONFIG.camera.wheelZoomStep : CONFIG.camera.wheelZoomStep); }, { passive: false });
 }
 async function loadAtlas(): Promise<PixelImage> {
   const response = await fetch(new URL(atlasManifestUrl, import.meta.url)); if (!response.ok) throw new Error('Cannot load sprite manifest'); if(!response.body)throw new Error('Empty sprite manifest response');
@@ -333,7 +336,7 @@ const animationBudget = new AnimationBudget(CONFIG.rendering.animationBudget);
 function loop(now: number): void {
   const cpuStart = performance.now();
   const elapsed = last ? (now - last) / 1000 : 0;
-  const dt = Math.min(elapsed, .1); last = now;
+  const dt = started ? Math.min(elapsed, .1) : 0; last = now;
   let dx = Number(keys.has('arrowright') || keys.has('d')) - Number(keys.has('arrowleft') || keys.has('a'));
   let dy = Number(keys.has('arrowdown') || keys.has('s')) - Number(keys.has('arrowup') || keys.has('w'));
   const norm = Math.hypot(dx, dy); if (norm) { dx /= norm; dy /= norm; }
@@ -343,16 +346,16 @@ function loop(now: number): void {
   const targetX = norm ? dx * speed : drift && !paused && !driftBlocked ? CONFIG.camera.driftSpeed * view.pixelRatio : 0;
   const targetY = norm ? dy * speed : 0;
   cameraVX = ease(cameraVX, targetX, CONFIG.camera.easingSeconds, dt); cameraVY = ease(cameraVY, targetY, CONFIG.camera.easingSeconds, dt);
-  if (!paused || norm) panCamera(view, cameraVX * dt, cameraVY * dt);
+  if (started && (!paused || norm)) panCamera(view, cameraVX * dt, cameraVY * dt);
   world.ensure(cameraBounds(view));
   const streamed = performance.now();
-  if (!paused && !document.hidden) clock.advance(dt, step => world.update(step));
+  if (started && !paused && !document.hidden) clock.advance(dt, step => world.update(step));
   const simulated = performance.now();
   const frame = composeInfinite(world, atlas, view, clock.alpha, animationBudget.detail);
   const composed = performance.now();
   renderer.render(frame);
   const submitted = performance.now();
-  if (!paused && !document.hidden) animationBudget.record(submitted - cpuStart, elapsed);
+  if (started && !paused && !document.hidden) animationBudget.record(submitted - cpuStart, elapsed);
   [streamed-cpuStart, simulated-streamed, composed-simulated, submitted-composed].forEach((value,i)=>stageSamples[i]![sampleCursor%CONFIG.interface.statsSamples]=value);
   audioElapsed+=dt;if(audioElapsed>=CONFIG.audio.updateInterval){updateAudio(audioElapsed);audioElapsed=0;}
   cpuSamples[sampleCursor++ % cpuSamples.length] = performance.now() - cpuStart; sampleCount = Math.min(sampleCount + 1, cpuSamples.length);
@@ -366,6 +369,7 @@ function animate(now:number):void {
   catch(error){
     console.error('Jungle frame failed',error);
     paused=true;syncUI();
+    el<HTMLDialogElement>('start-screen').close();
     const notice=el('loading');notice.hidden=false;notice.setAttribute('role','alert');
     const message=document.createElement('p');message.textContent=`The jungle stopped: ${error instanceof Error?error.message:String(error)}`;
     const reload=document.createElement('button');reload.textContent='Reload jungle';reload.addEventListener('click',()=>location.reload());
@@ -386,6 +390,18 @@ function updateStats(quads: number): void {
   el('heap').textContent = heap ? (heap / 1e9).toFixed(3) : 'n/a';
   el('location-info').textContent = `Seed ${world.seed} · ${view.cameraX.toFixed(1)}, ${view.cameraY.toFixed(1)} · ${world.weather}`;
 }
+/** The Play activation supplies the browser gesture required by Web Audio. */
+el<HTMLDialogElement>('start-screen').addEventListener('cancel',e=>e.preventDefault());
+el('play-button').onclick=()=>{
+  if(started||!audioReady)return;
+  started=true;
+  el<HTMLButtonElement>('mute-button').disabled=false;
+  // Explicit Play also opts into motion when the initial preference was paused.
+  paused=false;last=0;keys.clear();
+  el<HTMLDialogElement>('start-screen').close();
+  unlockSound();syncUI();syncSound();
+  canvas.focus({preventScroll:true});
+};
 async function start(): Promise<void> {
   const pixels = await loadAtlas();
   for(const [kind,url] of [['elephant',elephantAudioUrl],['tiger',tigerAudioUrl]] as const)if(CONFIG.audio.sounds[kind].enabled){
@@ -401,10 +417,11 @@ async function start(): Promise<void> {
     e.preventDefault(); renderer.dispose(); freshCanvas(); bindCanvas(); renderer = new CanvasRenderer(canvas, pixels, {maxEntries:CONFIG.rendering.canvasTintEntries,maxBytes:CONFIG.rendering.canvasTintBytes}); resize();
     el('renderer').textContent = renderer.name; announce('Graphics context lost. Continued with Canvas rendering.');
   });
-  el('renderer').textContent = renderer.name; syncUI(); syncSound(); unlockSound();
+  el('renderer').textContent = renderer.name; syncUI(); syncSound();
   // Keep the loading scene visible until the first real jungle frame is drawn.
   await new Promise<void>((resolve,reject)=>requestAnimationFrame(time=>{try{loop(time);resolve();}catch(error){reject(error);}}));
   el('loading').hidden=true;canvas.setAttribute('aria-busy','false');
+  el<HTMLDialogElement>('start-screen').showModal();
   logStartup();
 }
 /** Snapshot only after the first frame, when streaming and visible-tile counts are populated. */

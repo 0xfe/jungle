@@ -28,3 +28,10 @@
 #artifact-sliders .setting { margin-top: .8rem; }
 
 .teleport-options{display:flex;gap:8px;margin:10px 0}.teleport-options button{flex:1;min-height:44px}
+
+/* A native modal keeps the loaded scene inert until the explicit Play gesture. */
+.start-screen{margin:auto;padding:24px;border:0;background:transparent;color:var(--paper);text-align:center;overflow:visible}
+.start-screen::backdrop{background:#102d2459}
+.play-button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;width:112px;height:112px;margin:auto;border-radius:50%;border:1px solid #d5efae99;background:#204e3bef;box-shadow:0 8px 36px #102d2466;font-size:17px}
+.play-button:hover{background:#356345}.play-button svg{width:36px;height:36px}
+.start-screen p{margin:20px 0 0;font-size:12px;text-shadow:0 1px 5px #102d24}

@@ -9,12 +9,19 @@
   <link rel="stylesheet" href="./style.css">
 </head>
 <body class="ui-hidden">
-  <button id="mute-button" class="mute-button" aria-label="Mute sound" aria-pressed="false" title="Mute sound">
+  <button id="mute-button" disabled class="mute-button" aria-label="Mute sound" aria-pressed="false" title="Mute sound">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4Z"/><g class="sound-waves"><path d="M15 8a6 6 0 0 1 0 8M18 5a10 10 0 0 1 0 14"/></g><path class="mute-cross" d="m16 9 5 6m0-6-5 6"/></svg>
   </button>
+  <dialog id="start-screen" closedby="none" class="start-screen" aria-label="Start the jungle">
+    <button id="play-button" class="play-button" autofocus aria-describedby="play-note">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M10 5 27 16 10 27Z" fill="currentColor"/></svg>
+      <span>Play</span>
+    </button>
+    <p id="play-note">Enter the jungle · sound on</p>
+  </dialog>
   <main>
     <section id="stage" class="stage" aria-label="Interactive jungle diorama">
-      <canvas id="jungle" aria-busy="true" role="img" aria-label="An endlessly scrolling isometric jungle with forests, hills, rare zen pagodas with meditating monks, flowering gardens, lotus ponds, koi, ducks and pelicans, occasional tigers, waterside hippos, grazing and running bison herds, active volcanoes and visiting spacecraft with curious alien crews, dry land, lakes and deer families, monkeys, wolves, giraffes, zebras, elephants, solitary boas, small snake groups, squirrels, wild boar, black bears and cubs, beavers, crocodiles, toads, circling hawks, scavenging vultures, colorful birds, fish schools and surfacing whales. Click, tap, or press Enter / Return to show or hide controls; question mark also opens the keyboard guide."></canvas>
+      <canvas id="jungle" tabindex="-1" aria-busy="true" role="img" aria-label="An endlessly scrolling isometric jungle with forests, hills, rare zen pagodas with meditating monks, flowering gardens, lotus ponds, koi, ducks and pelicans, occasional tigers, waterside hippos, grazing and running bison herds, active volcanoes and visiting spacecraft with curious alien crews, dry land, lakes and deer families, monkeys, wolves, giraffes, zebras, elephants, solitary boas, small snake groups, squirrels, wild boar, black bears and cubs, beavers, crocodiles, toads, circling hawks, scavenging vultures, colorful birds, fish schools and surfacing whales. Click, tap, or press Enter / Return to show or hide controls; question mark also opens the keyboard guide."></canvas>
       <div id="loading" class="loading" role="status" aria-live="polite">
         <div class="loading-garden" aria-hidden="true">
           <svg viewBox="0 0 120 120" fill="none"><circle class="loading-orbit" cx="60" cy="60" r="53"/><path class="loading-stem" d="M60 98V47M60 72 39 57M60 58 82 39"/><path class="loading-leaf leaf-left" d="M59 74C31 75 22 57 23 42 47 42 61 53 59 74Z"/><path class="loading-leaf leaf-right" d="M60 60C59 33 75 23 99 24 98 48 84 61 60 60Z"/><path class="loading-leaf leaf-top" d="M60 47C45 36 47 21 60 11 74 23 73 37 60 47Z"/><path class="loading-veins" d="m35 53 24 21m1-14 26-25M60 47V25"/></svg>

@@ -20,7 +20,7 @@ test('ordinary pointer presses do not navigate; drags and pinch do, including he
  p.begin(1,{x:5,y:5});assert.equal(p.navigating,false);
 });
 test('mobile sound defaults identify touch-first phones and desktop-UA iPads without using viewport width',()=>{
- assert.equal(CONFIG.audio.mobileEnabled,false);
+ assert.equal(CONFIG.audio.mobileEnabled,true);
  for(const [ua,touch,coarse] of [['iPhone',1,false],['Android',5,true],['Macintosh',5,false],['Windows',1,true]] as const)assert.equal(mobileDevice(ua,touch,coarse),true);
  assert.equal(mobileDevice('Macintosh',0,false),false);assert.equal(mobileDevice('Windows',1,false),false);
 });
